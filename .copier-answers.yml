@@ -1,0 +1,13 @@
+# Do not edit - changes here will be overwritten by Copier
+_commit: v1
+_src_path: gh:pydev-guide/pyrepo-copier
+author_email: noel@ipt.unibe.ch
+author_name: Frederic Noel
+github_username: Partynumbers42
+mode: tooling
+module_name: phasr
+project_name: phasr
+project_short_description: Package to calculate scattering phase shifts for arbitrary
+    radial potentials using the phase shift method as well as resulting crosssections
+    as mainly used in the context of elastic electron nucleus scattering.
+
