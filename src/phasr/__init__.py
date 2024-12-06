@@ -8,3 +8,5 @@ except PackageNotFoundError:
     __version__ = "uninstalled"
 __author__ = "Frederic Noel"
 __email__ = "noel@ipt.unibe.ch"
+
+from nuclei import nucleus # makes it possible to call phasr.nucleus()
