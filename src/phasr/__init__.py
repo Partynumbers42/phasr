@@ -9,4 +9,4 @@ except PackageNotFoundError:
 __author__ = "Frederic Noel"
 __email__ = "noel@ipt.unibe.ch"
 
-from nuclei import nucleus # makes it possible to call phasr.nucleus()
+from .nuclei import nucleus # makes it possible to call phasr.nucleus()
