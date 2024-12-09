@@ -9,4 +9,6 @@ except PackageNotFoundError:
 __author__ = "Frederic Noel"
 __email__ = "noel@ipt.unibe.ch"
 
-from .nuclei import nucleus # makes it possible to call phasr.nucleus()
+# define calls from top level
+from .physical_constants import constants, masses, trafos
+from .nuclei import nucleus

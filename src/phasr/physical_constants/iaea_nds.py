@@ -1,6 +1,10 @@
-# nuclear values
+import os
+import re
+import numpy as np
+
+path = os.path.join(os.path.dirname(__file__), 'data/nuclei_2022.csv')
 # https://www-nds.iaea.org/relnsd/vcharthtml/VChartHTML.html
-path="./lib/nuclii/nuclii_2022.csv"
+
 with open( path, "rb" ) as file:
     nuclii = np.genfromtxt( file,comments=None,delimiter=',',names=True,dtype=2*[int]+['<U3']+4*[float]+['<U10']+3*[float]+['<U10']+['<U10','<U3',float]+4*['<U10',float,float]+23*[float]+3*['<U50'])
 #
@@ -46,7 +50,6 @@ def stableIsotopes(name):
     isos = nuclii[np.logical_and(nuclii['symbol']==name,nuclii['half_life']=='STABLE')]
     return np.stack([isos['z']+isos['n'],isos['abundance']],axis=-1)
 #
-import re
 
 p_half=re.compile('\(?([0-9]{1,}/2)\)?\(?([+-])\)?')
 p_full=re.compile('\(?[^/]?([0-9]{1,})\)?\(?([+-])\)?')
@@ -93,12 +96,3 @@ def JPofnucleusZN(Z,N):
     print('Warning: Could not make sense from JP='+JP,", returning JP as str")
     return JP
 #
-#
-mTi48=massofnucleus('Ti',48)
-mAl27=massofnucleus('Al',27)
-mCa40=massofnucleus('Ca',40)
-mCa48=massofnucleus('Ca',48)
-mTi46=massofnucleus('Ti',46)
-mTi50=massofnucleus('Ti',50)
-mAu197=massofnucleus('Au',197)
-mPb208=massofnucleus('Pb',208)
