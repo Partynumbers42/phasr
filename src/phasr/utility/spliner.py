@@ -1,11 +1,11 @@
 import os
-import numpy as np
+import numpy as np  # type: ignore
 
-from scipy.interpolate import splev, splrep
+from scipy.interpolate import splev, splrep  # type: ignore
 
 # TODO <- cleanup
 
-def calcandspline2D(fkt,xrange,path,dtype=complex,x_GeVtoMeV=False,ext=0,renew=False,save=True,verbose=True):
+def calcandspline(fkt,xrange,path,dtype=complex,x_GeVtoMeV=False,ext=0,renew=False,save=True,verbose=True):
 
     #for dtype complex evaluate only on real axis (so x should be real, f(x) can be complex of course)
     os.makedirs(os.path.dirname(path), exist_ok=True) #makes folders if necessary

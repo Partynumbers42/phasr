@@ -1,6 +1,6 @@
 import os
 import re
-import numpy as np
+import numpy as np  # type: ignore
 
 path = os.path.join(os.path.dirname(__file__), 'data/nuclei_2022.csv')
 # https://www-nds.iaea.org/relnsd/vcharthtml/VChartHTML.html

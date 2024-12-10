@@ -1,7 +1,97 @@
-        
+from .. import constants
+from ..utility import calcandspline
+from ..utility.continuer import highenergycontinuation_exp, highenergycontinuation_poly
+
+import numpy as np  # type: ignore
+pi = np.pi
+
+from scipy.integrate import quad # type: ignore
+
+from scipy.special import spherical_jn # type: ignore
+
+from scipy.misc import derivative as deriv # type: ignore <-  TODO: update to own method 
+
+def range_seperator(xrange,fct):
+    Xmin_int=xrange[0]
+    if fct(xrange[1]+xrange[2])==0:
+        Xmax_int=xrange[1]
+        return [Xmin_int, Xmax_int]
+    else:
+        Xmax_int=np.inf
+        Xsep_int=xrange[1]
+        return np.array([Xmin_int, Xsep_int, Xmax_int])
+    
+def quad_seperator(integrand,Rs):
+    # Splits the integral according to Rs
+    integral = 0
+    for i in range(len(Rs)-1):
+        Rmin = Rs[i]
+        Rmax = Rs[i+1]
+        integrali = quad(integrand,Rmin,Rmax,limit=1e3)[0]
+        integral += integrali 
+    return integral
+
+def calc_charge(density,rrange):
+    Rs = range_seperator(rrange,density)
+    integral_Q = quad_seperator(lambda x: (x**2)*density(x),Rs)
+    Q = 4*pi*integral_Q
+    return Q
+
+def calc_radius(density,rrange,norm):
+    Rs = range_seperator(rrange,density)
+    if norm==0:
+        radius=np.inf
+        radius_sq=np.inf
+    else:
+        integral_rsq = quad_seperator(lambda x: (x**4)*density(x),Rs)
+        radius_sq = 4*pi*integral_rsq/norm
+        radius = np.sqrt(radius_sq)
+    return radius_sq, radius
+
+def spline_field(field,fieldtype,name,rrange,renew):
+    # spline
+    field_spl=calcandspline(field, rrange, "./lib/splines/"+fieldtype+"_"+name+".txt",dtype=float,renew=renew)
+    return field_spl
+
+def highenergycont_field(field_spl,R,n):
+    def field_ultimate(r,R1=R):
+        E_crit=field_spl(R1)
+        dE_crit=deriv(field_spl,R1,1e-6)
+        field=highenergycontinuation_poly(r,R1,E_crit,dE_crit,0,n=n)
+        if np.any(r<=R1):
+            field = field_spl(r)
+        if np.size(field)>1:
+            field[np.where(r>R1)]=highenergycontinuation_poly(r[np.where(r>R1)],R1,E_crit,dE_crit,0,n=n)
+        return field
+    return field_ultimate
+#
+def highenergycont_rho(field_spl,R,val,t): # often val=0, t=0
+    def field_ultimate(r,R1=R):
+        E_crit=field_spl(R1)
+        dE_crit=deriv(field_spl,R1,1e-6)
+        field=highenergycontinuation_exp(r,R1,E_crit,dE_crit,val,t=t)
+        if np.any(r<=R1):
+            field = field_spl(r)
+        if np.size(field)>1:
+            field[np.where(r>R1)]=highenergycontinuation_exp(r[np.where(r>R1)],R1,E_crit,dE_crit,val,t=t)
+        return field
+    return field_ultimate
+#
+def highenergycutoff_field(field_spl,R,val=np.nan):
+    # For r>R return val (default:nan)
+    def field_ultimate(r,R1=R):
+        field=r*val
+        if np.any(r<=R1):
+            field = field_spl(r)
+        if np.size(field)>1:
+            field[np.where(r>R1)]=r[np.where(r>R1)]*val
+        return field
+    return field_ultimate
+
 class nucleus_base:
-    def __init__(self,name,Z, A, m=None, abundance=None, spin=None, parity=None, 
-                 #rrange=[0.,50.,0.05], qrange=[0.,2000.,2.], 
+    def __init__(self,name,Z, A, m=None, abundance=None, spin=None, parity=None, Qw=None, 
+                 rrange=[0.,50.,0.05], qrange=[0.,2000.,2.], 
+                 pickleable=False, calc=None, renew=False, save=True,
                  #barebone=False, pickleable=False, renew=False, calc=None, calc_multipoles=None, 
                  #spline_hyp1f1=None, fp=False, ap_dps=15, 
                  **args):
@@ -22,29 +112,27 @@ class nucleus_base:
         if (self.spin is None) or (self.parity is None):
             self.lookup_nucleus_JP()
         #
-        #self.rrange=rrange #fm
-        #self.qrange=qrange #MeV
+        Qw_p=constants.Qw_p
+        Qw_n=constants.Qw_n
         #
-        #self.barebone=barebone # only params, Q, V(r), V(0)
-        #self.pickleable=pickleable
-        #self.renew=renew
-        #self.calc=calc
+        self.weak_charge = Qw
+        if (self.weak_charge is None):
+            self.weak_charge = self.Z*Qw_p + (self.A-self.Z)*Qw_n
+        #
+        self.rrange=rrange #fm
+        self.qrange=qrange #MeV
+        #
+        self.pickleable=pickleable # no structures, only simple data types 
+        self.renew=renew # overwrite existing calculations 
+        self.save=save
+        self.calc=calc
+        #
+        #self.barebone=barebone # only params, Q, V(r), V(0) 
         #if self.renew:
         #    self.calc=True
         #self.calc_multipoles = calc_multipoles
         #if self.calc_multipoles is None:
         #    self.calc_multipoles=['M0p','M0n']
-       
-        #
-        #
-        #self.spline_hyp1f1=spline_hyp1f1 #if you want to use preloaded hyp1f1-splines
-        #if self.barebone: # barebone implies coeffs
-        #    self.as_coeffs=True
-        #else:
-        #    self.as_coeffs=False
-        #self.fp=fp
-        #self.ap_dps=ap_dps
-        #
         #
         # initialize attributes
         self.total_charge = None
@@ -56,10 +144,6 @@ class nucleus_base:
         self.formfactor = None
         self.Vmin = None
         #
-        if (self.weak_charge is None):
-            self.weak_charge = None#self.Z*Qw_p + (self.A-self.Z)*Qw_n <-- TODO # Qw_p,n are defined above @ Fw_model as global vars
-        #
-
     def lookup_nucleus_mass(self):
         self.m = None #pdg.massofnucleusZN(self.Z,self.A-self.Z) <---- TODO
     
@@ -76,158 +160,140 @@ class nucleus_base:
                 raise ValueError('looked up parity P='+str(P)+' different to present one P='+str(self.parity))
             self.spin, self.parity = J, P
     
-    #def wanna_calc(self,quantity_name='Some quantity'):
-    #    if self.calc==None:
-    #        yn=input(quantity_name+" of "+self.name+" is not available analytically, wanna look up or calculate (you won't be asked again for others)? (y/n): ")
-    #        if yn=='n' or yn=='no' or yn=='No' or yn=='N':
-    #            self.calc=False
-    #        else:
-    #            self.calc=True
-
-    #def set_total_charge(self):
-    #    self.wanna_calc('Total charge')
-    #    if not self.calc:
-    #        return None
-    #    
-    #    if self.charge_density(self.rrange[1]+self.rrange[2])==0:
-    #        Rmax_int=self.rrange[1]
-    #    else:
-    #        Rmax_int=np.inf
-    #    
-    #    self.total_charge=4*pi*quad(lambda x: (x**2)*self.charge_density(x),self.rrange[0],Rmax_int,limit=1000)[0]
-   # 
-   # def set_charge_radius(self,norm=None):
-   #     self.wanna_calc('Charge radius')
-   #     if not self.calc:
-   #         return None
-   #     if norm is None:
-   #         norm=self.total_charge
-    ##    self.charge_radius_sq, self.charge_radius = calc_radius(self.charge_density,self.rrange,norm)
-   # 
-   # def set_proton_radius(self,norm=None):
-   #     self.wanna_calc('Proton radius')
-    ##    if not self.calc:
-    #        return None
-    #    if norm is None:
-    #        norm=self.Z
-    #    self.proton_radius_sq, self.proton_radius = calc_radius(self.charge_density_Mp,self.rrange,norm)
-   # 
-   # def set_neutron_radius(self,norm=None):
-   #     self.wanna_calc('Neutron radius')
-   #     if not self.calc:
-   ##         return None
-    #    if norm is None:
-    #        norm=self.A-self.Z
-    #    self.neutron_radius_sq, self.neutron_radius = calc_radius(self.charge_density_Mn,self.rrange,norm)
-   ## 
-    #def set_weak_radius(self,norm=None):
-    #    self.wanna_calc('Weak radius')
-    #    if not self.calc:
-    #        return None
-    #    if norm is None:
-    #        norm=self.weak_charge
-    #    self.weak_radius_sq, self.weak_radius = calc_radius(self.charge_density_dict['rhow0'],self.rrange,norm)
-   # 
-
-    # def set_Vmin(self):
-    #     self.wanna_calc('Vmin')
-    #     if not self.calc:
-    #         return None
-    #     if not self.barebone:
-    #         self.Vmin = np.min(self.electric_potential(np.arange(*self.rrange)))
-    #     else:
-    #         self.Vmin = self.electric_potential(self.rrange[0])
-
-    # def set_El_from_rho(self):
-    #     #
-    #     self.wanna_calc('Electric field')
-    #     if not self.calc:
-    #         return None
-    #     #
-    #     def electric_field_0(r,rho=self.charge_density):
-    #         charge_int = quad(lambda x: (x**2)*rho(x),0.,r,limit=1000)
-    #         charge = charge_int[0]
-    #         return np.sqrt(4*pi*alpha_el)/(r**2)*charge if r!=0. else 0.  # as long as rho(0) finite follows E(0)=0, #*e=np.sqrt(4*pi*alpha_el)
-    #     # vectorize
-    #     electric_field_vec = np.vectorize(electric_field_0)
-    #     # spline
-    #     electric_field_spl = spline_field(electric_field_vec,"electric_field",self.name,rrange=self.rrange,renew=self.renew)
-    #     # highenery continue
-    #     self.electric_field = highenergycont_field(electric_field_spl,R=self.rrange[1]*0.95,n=2)
-
-    # def set_V_from_El(self):
-    #     #
-    #     self.wanna_calc('Electric potential')
-    #     if not self.calc:
-    #         return None
-    #     #
-    #     if self.electric_field(self.rrange[1]+self.rrange[2])==0:
-    #         Rmax_int=self.rrange[1]
-    #     else:
-    #         Rmax_int=np.inf
-    #     #
-    #     def electric_potential_0(r,El=self.electric_field):
-    #         potential_int = quad(El,r,Rmax_int,limit=1000)
-    #         potential = potential_int[0]
-    #         return - np.sqrt(4*pi*alpha_el)*potential #*e=np.sqrt(4*pi*alpha_el)
-    #     # vectorize
-    #     electric_potential_vec = np.vectorize(electric_potential_0)
-    #     # spline
-    #     electric_potential_spl = spline_field(electric_potential_vec,"electric_potential",self.name,rrange=self.rrange,renew=self.renew)
-    #     # highenery continue
-    #     self.electric_potential = highenergycont_field(electric_potential_spl,R=self.rrange[1]*0.95*0.95,n=2)
-
-    # def set_FF_from_rho(self):
-    #     #
-    #     self.wanna_calc('Form factor')
-    #     if not self.calc:
-    #         return None
-    #     #
-    #     if self.charge_density(self.rrange[1]+self.rrange[2])==0:
-    #         Rmax_int=self.rrange[1]
-    #     else:
-    #         Rmax_int=np.inf
-    #     #
-    #     def formfactor_0(q,rho=self.charge_density,Z=self.Z): #<---replace total charge?
-    #         formfactor_int=quad(lambda r: (r**2)*rho(r*hc)*(hc**3)*spherical_jn(0,q*r),self.rrange[0]/hc,Rmax_int/hc,limit=1000)
-    #         return 4*pi*formfactor_int[0]/Z
-    #     # vectorize
-    #     formfactor_vec = np.vectorize(formfactor_0)
-    #     # spline
-    #     formfactor_spl = spline_field(formfactor_vec,"formfactor",self.name,rrange=self.qrange,renew=self.renew)
-    #     # highenery cut off at qmax
-    #     self.formfactor = highenergycutoff_field(formfactor_spl,R=self.qrange[1],val=0)
-
-    # def set_rho_from_FF(self):
-    #     #
-    #     #print('set self.charge density from self.formfactor')
-    #     #
-    #     self.wanna_calc('Charge density')
-    #     if not self.calc:
-    #         return None
-    #     #
-    #     if self.formfactor(self.qrange[1]+self.qrange[2])==0:
-    #         Qmax_int=self.qrange[1]
-    #     else:
-    #         Qmax_int=np.inf
-    #     #
-    #     #print(Qmax_int)
-    #     #
-    #     def charge_density_0(r,FF=self.formfactor,norm=self.total_charge):
-    #         rho_int=quad(lambda q: (q**2)*FF(q*hc)*spherical_jn(0,r*q),self.qrange[0]/hc,Qmax_int/hc,limit=1000) 
-    #         return 4*pi*rho_int[0]*norm/(2*pi)**3
-    #     # vectorize
-    #     charge_density_vec = np.vectorize(charge_density_0)
-    #     # spline
-    #     charge_density_spl = spline_field(charge_density_vec,"charge_density",self.name,rrange=self.rrange,renew=self.renew)
-    #     # highenery cut off at rmax
-    #     #self.charge_density = highenergycutoff_field(charge_density_spl,R=self.rrange[1],val=0)        
-    #     # exponential decay for rho
-        
-    #     # add way to move r_crit back if rho<0,drho>0 beyond oscillatory
-        
-    #     self.charge_density = highenergycont_rho(charge_density_spl,R=self.rrange[1],val=0,t=0)
+    def wanna_calc(self,quantity_name='Some quantity'):
+       if self.calc is None:
+           yn=input(quantity_name+" of "+self.name+" is not available analytically, do you want to calculate it (you won't be asked again for others)? (y/n): ")
+           if yn=='n' or yn=='no' or yn=='No' or yn=='N':
+               self.calc=False
+           else:
+               self.calc=True
     
+    def set_total_charge(self):
+       #self.wanna_calc('Total charge') # <- move outside TODO
+       #if not self.calc:
+       #    return None
+       self.total_charge=calc_charge(self.charge_density,self.rrange)
+        
+    def set_charge_radius(self,norm=None):
+        #self.wanna_calc('Charge radius')
+        #if not self.calc:
+        #    return None
+        if norm is None:
+            norm=self.total_charge
+        self.charge_radius_sq, self.charge_radius = calc_radius(self.charge_density,self.rrange,norm)
+   
+    def set_proton_radius(self,norm=None):
+        self.wanna_calc('Proton radius')
+        #if not self.calc:
+        #    return None
+        if norm is None:
+            norm=self.Z
+        self.proton_radius_sq, self.proton_radius = calc_radius(self.charge_density_Mp,self.rrange,norm)
+   
+    def set_neutron_radius(self,norm=None):
+        self.wanna_calc('Neutron radius')
+        #if not self.calc:
+        #     return None
+        if norm is None:
+            norm=self.A-self.Z
+        self.neutron_radius_sq, self.neutron_radius = calc_radius(self.charge_density_Mn,self.rrange,norm)
+ 
+    def set_weak_radius(self,norm=None):
+        self.wanna_calc('Weak radius')
+        #if not self.calc:
+        #    return None
+        if norm is None:
+            norm=self.weak_charge
+        self.weak_radius_sq, self.weak_radius = calc_radius(self.charge_density_dict['rhow0'],self.rrange,norm)
+
+    def set_Vmin(self):
+        self.wanna_calc('Vmin')
+        #if not self.calc:
+        #    return None
+        if not self.barebone:
+            self.Vmin = np.min(self.electric_potential(np.arange(*self.rrange)))
+        else:
+            self.Vmin = self.electric_potential(self.rrange[0])
+
+    def set_El_from_rho(self):
+        #
+        #self.wanna_calc('Electric field')
+        #if not self.calc:
+        #    return None
+        #
+        def electric_field_0(r,rho=self.charge_density):
+            charge_r = quad_seperator(lambda x: (x**2)*rho(x),[0,r])
+            return np.sqrt(4*pi*constants.alpha_el)/(r**2)*charge_r if r!=0. else 0.  # as long as rho(0) finite follows E(0)=0, #*e=np.sqrt(4*pi*alpha_el)
+        # vectorize
+        electric_field_vec = np.vectorize(electric_field_0)
+        # spline
+        electric_field_spl = spline_field(electric_field_vec,"electric_field",self.name,rrange=self.rrange,renew=self.renew)
+        # highenery continue
+        self.electric_field = highenergycont_field(electric_field_spl,R=self.rrange[1]*0.95,n=2) # Asymptotic: 1/r^2
+
+    def set_V_from_El(self):
+        #
+        Rs0 = range_seperator(self.rrange,self.electric_field)
+        def electric_potential_0(r,El=self.electric_field):
+            Rs=np.array([r,*Rs0[Rs0>r]])
+            potential_r = quad_seperator(El,Rs)
+            return - np.sqrt(4*pi*constants.alpha_el)*potential_r #*e=np.sqrt(4*pi*alpha_el)
+        # vectorize
+        electric_potential_vec = np.vectorize(electric_potential_0)
+        # spline
+        electric_potential_spl = spline_field(electric_potential_vec,"electric_potential",self.name,rrange=self.rrange,renew=self.renew)
+        # highenery continue
+        self.electric_potential = highenergycont_field(electric_potential_spl,R=self.rrange[1]*0.95*0.95,n=1) # Asymptotic: 1/r
+
+    def set_FF_from_rho(self):
+        #
+        #self.wanna_calc('Form factor')
+        #if not self.calc:
+        #    return None
+        #
+        Rs = range_seperator(self.rrange,self.density)
+        #
+        def formfactor_0(q,rho=self.charge_density,Z=self.total_charge):
+            formfactor_int = quad_seperator(lambda r: (r**2)*rho(r)*spherical_jn(0,q/constants.hc*r),Rs)
+            return 4*pi*formfactor_int/Z
+        # vectorize
+        formfactor_vec = np.vectorize(formfactor_0)
+        # spline
+        formfactor_spl = spline_field(formfactor_vec,"formfactor",self.name,rrange=self.qrange,renew=self.renew)
+        # highenery cut off at qmax
+        self.formfactor = highenergycutoff_field(formfactor_spl,R=self.qrange[1],val=0) # Asymptotic: cutoff to 0
+
+    def set_rho_from_FF(self):
+        #
+        #self.wanna_calc('Charge density')
+        #if not self.calc:
+        #    return None
+        #
+        Qs = range_seperator(self.qrange,self.formfactor)
+        #
+        def charge_density_0(r,FF=self.formfactor,norm=self.total_charge):
+            rho_int=quad_seperator(lambda q: (q**2)*FF(q)*spherical_jn(0,r/constants.hc*q)/constants.hc**3,Qs) 
+            return 4*pi*rho_int*norm/(2*pi)**3
+        # vectorize
+        charge_density_vec = np.vectorize(charge_density_0)
+        # spline
+        charge_density_spl = spline_field(charge_density_vec,"charge_density",self.name,rrange=self.rrange,renew=self.renew)
+        # highenery cut off at rmax
+        #self.charge_density = highenergycutoff_field(charge_density_spl,R=self.rrange[1],val=0)        
+        # exponential decay for rho
+        # TODO add way to move r_crit back if rho<0,drho>0 beyond oscillatory        
+        self.charge_density = highenergycont_rho(charge_density_spl,R=self.rrange[1],val=0,t=0)  # Asymptotic: exp(-r)
+    
+    # TODO add these functions as derivatives
+    
+    def set_rho_from_El(self):
+        pass
+    
+    def set_El_from_V(self):
+        pass
+    
+    # TODO <-- clean implementation of rho_dict vs FF_dict / maybe separate, rho, E, V and FF ?
+    #
     # def set_rho_dict_from_FF_dict(self):
     #     #
     #     self.wanna_calc('Charge densities (L>=0)')
@@ -354,25 +420,64 @@ class nucleus_base:
     #                 self.charge_density_Mn = copy.copy(self.charge_density_dict[key0])
         
     
-    # def set_scalars_from_rho(self):
-    #     self.set_total_charge()
-    #     self.set_charge_radius()
-    #     try:
-    #         if self.charge_density_Mp is not None:
-    #             self.set_proton_radius()
-    #     except: 
-    #         pass
-    #     try:
-    #         if self.charge_density_Mn is not None:
-    #             self.set_neutron_radius()
-    #     except: 
-    #         pass
-    #     try:
-    #         if self.charge_density_dict['rhow0'] is not None:
-    #             self.set_weak_radius()
-    #     except: 
-    #         pass
+    def set_scalars_from_rho(self):
+        self.set_total_charge()
+        self.set_charge_radius()
+        # try:
+        #     if self.charge_density_Mp is not None:
+        #         self.set_proton_radius()
+        # except: 
+        #     pass
+        # try:
+        #     if self.charge_density_Mn is not None:
+        #         self.set_neutron_radius()
+        # except: 
+        #     pass
+        # try:
+        #     if self.charge_density_dict['rhow0'] is not None:
+        #         self.set_weak_radius()
+        # except: 
+        #     pass
+            
+    def fill_gaps(self):
         
+        if self.charge_density is None:
+            if self.formfactor is not None:    
+                self.set_rho_from_FF()
+            else:
+                if self.electric_field is None:
+                    if self.electric_potential is None:
+                        raise ValueError("Not enough information to deduce the charge density")
+                    raise ValueError('still need to add this, sorry') #self.set_El_from_V() #TODO
+                raise ValueError('still need to add this, sorry') #self.set_rho_from_El() #TODO
+                
+        if self.electric_potential is None:
+            if self.electric_field is None:
+                if self.charge_density is None:
+                    if self.formfactor is None:
+                        raise ValueError("Not enough information to deduce the electric potential")
+                    self.set_rho_from_FF()
+                self.set_El_from_rho()
+            self.set_V_from_El()
+        
+        if self.formfactor is None:
+            if self.charge_density is None:
+                if self.electric_field is None:
+                    if self.electric_potential is None:
+                        raise ValueError("Not enough information to deduce the form factor")
+                    raise ValueError('still need to add this, sorry') #self.set_El_from_V() #TODO
+                raise ValueError('still need to add this, sorry') #self.set_rho_from_El() #TODO
+            self.set_FF_from_rho()
+
+        if self.electric_field is None:
+            if self.electric_potential is not None:
+                raise ValueError('still need to add this, sorry') #self.set_El_from_V() #TODO
+            else:
+                if self.charge_density is None:
+                    if self.formfactor is not None:
+                        raise ValueError("Not enough information to deduce the electric field")
+                    self.set_rho_from_FF()
+                self.set_El_from_rho()   
         
     # def fill_gaps(self):
     #     while self.electric_potential is None:
