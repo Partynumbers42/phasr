@@ -2,14 +2,14 @@ from .. import constants
 from ..utility import calcandspline
 from ..utility.continuer import highenergycontinuation_exp, highenergycontinuation_poly
 
-import numpy as np  # type: ignore
+import numpy as np
 pi = np.pi
 
-from scipy.integrate import quad # type: ignore
+from scipy.integrate import quad
 
-from scipy.special import spherical_jn # type: ignore
+from scipy.special import spherical_jn
 
-from scipy.misc import derivative as deriv # type: ignore <-  TODO: update to own method 
+from ..utility.math import derivative as deriv
 
 def range_seperator(xrange,fct):
     Xmin_int=xrange[0]
@@ -27,7 +27,7 @@ def quad_seperator(integrand,Rs):
     for i in range(len(Rs)-1):
         Rmin = Rs[i]
         Rmax = Rs[i+1]
-        integrali = quad(integrand,Rmin,Rmax,limit=1e3)[0]
+        integrali = quad(integrand,Rmin,Rmax,limit=1000)[0]
         integral += integrali 
     return integral
 
@@ -56,7 +56,8 @@ def spline_field(field,fieldtype,name,rrange,renew):
 def highenergycont_field(field_spl,R,n):
     def field_ultimate(r,R1=R):
         E_crit=field_spl(R1)
-        dE_crit=deriv(field_spl,R1,1e-6)
+        dE=deriv(field_spl,1e-6)
+        dE_crit=dE(R1)
         field=highenergycontinuation_poly(r,R1,E_crit,dE_crit,0,n=n)
         if np.any(r<=R1):
             field = field_spl(r)
@@ -68,7 +69,8 @@ def highenergycont_field(field_spl,R,n):
 def highenergycont_rho(field_spl,R,val,t): # often val=0, t=0
     def field_ultimate(r,R1=R):
         E_crit=field_spl(R1)
-        dE_crit=deriv(field_spl,R1,1e-6)
+        dE=deriv(field_spl,1e-6)
+        dE_crit=dE(R1)
         field=highenergycontinuation_exp(r,R1,E_crit,dE_crit,val,t=t)
         if np.any(r<=R1):
             field = field_spl(r)
@@ -90,7 +92,7 @@ def highenergycutoff_field(field_spl,R,val=np.nan):
 
 class nucleus_base:
     def __init__(self,name,Z, A, m=None, abundance=None, spin=None, parity=None, Qw=None, 
-                 rrange=[0.,50.,0.05], qrange=[0.,2000.,2.], 
+                 rrange=[0.,50.,0.05], qrange=[0.,2000.,2.], # <- rethink these values: maybe qmax = 1000, rmax = 20 TODO
                  pickleable=False, calc=None, renew=False, save=True,
                  #barebone=False, pickleable=False, renew=False, calc=None, calc_multipoles=None, 
                  #spline_hyp1f1=None, fp=False, ap_dps=15, 
@@ -141,7 +143,7 @@ class nucleus_base:
         self.charge_density = None
         self.electric_field = None
         self.electric_potential = None
-        self.formfactor = None
+        self.form_factor = None
         self.Vmin = None
         #
     def lookup_nucleus_mass(self):
@@ -245,23 +247,60 @@ class nucleus_base:
         # highenery continue
         self.electric_potential = highenergycont_field(electric_potential_spl,R=self.rrange[1]*0.95*0.95,n=1) # Asymptotic: 1/r
 
+    def set_rho_from_El(self):
+        
+        El = self.electric_field
+        d_El = deriv(El,1e-6)
+        
+        def rho(r,El=El,d_El=d_El):
+            thresh=1e-3
+            rho0 = 1/np.sqrt(4*pi*constants.alpha_el)*3*d_El(0)
+            scalar=False
+            if len(np.shape(r))==0:
+                scalar=True
+                r=np.array([r])
+            rho=r*0+rho0
+            r_mask = np.where(r>=thresh) 
+            if np.any(r>=thresh):
+                rho[r_mask] = 1/np.sqrt(4*pi*constants.alpha_el)*((2/r[r_mask])*El(r[r_mask]) +  d_El(r[r_mask]))
+            if scalar:
+                rho=rho[0]
+            return rho
+        
+        # add spline and high energy continuation  -> speed up
+            
+        self.charge_density=rho
+    
+    def set_El_from_V(self):
+        
+        d_V = deriv(self.electric_potential,1e-6)
+        
+        def El(r,d_V=d_V):
+            return 1/np.sqrt(4*pi*constants.alpha_el) * d_V(r)
+        
+        # add spline and high energy continuation -> speed up
+        
+        self.electric_field=El
+
+# TODO -> fix these / make these faster / change cutoff for FB automatic Rmax = R ?
+
     def set_FF_from_rho(self):
         #
         #self.wanna_calc('Form factor')
         #if not self.calc:
         #    return None
         #
-        Rs = range_seperator(self.rrange,self.density)
+        Rs = range_seperator(self.rrange,self.charge_density)
         #
-        def formfactor_0(q,rho=self.charge_density,Z=self.total_charge):
-            formfactor_int = quad_seperator(lambda r: (r**2)*rho(r)*spherical_jn(0,q/constants.hc*r),Rs)
-            return 4*pi*formfactor_int/Z
+        def form_factor_0(q,rho=self.charge_density,Z=self.total_charge):
+            form_factor_int = quad_seperator(lambda r: (r**2)*rho(r)*spherical_jn(0,q/constants.hc*r),Rs)
+            return 4*pi*form_factor_int/Z
         # vectorize
-        formfactor_vec = np.vectorize(formfactor_0)
+        form_factor_vec = np.vectorize(form_factor_0)
         # spline
-        formfactor_spl = spline_field(formfactor_vec,"formfactor",self.name,rrange=self.qrange,renew=self.renew)
+        form_factor_spl = spline_field(form_factor_vec,"form_factor",self.name,rrange=self.qrange,renew=self.renew)
         # highenery cut off at qmax
-        self.formfactor = highenergycutoff_field(formfactor_spl,R=self.qrange[1],val=0) # Asymptotic: cutoff to 0
+        self.form_factor = highenergycutoff_field(form_factor_spl,R=self.qrange[1],val=0) # Asymptotic: cutoff to 0
 
     def set_rho_from_FF(self):
         #
@@ -269,9 +308,9 @@ class nucleus_base:
         #if not self.calc:
         #    return None
         #
-        Qs = range_seperator(self.qrange,self.formfactor)
+        Qs = range_seperator(self.qrange,self.form_factor)
         #
-        def charge_density_0(r,FF=self.formfactor,norm=self.total_charge):
+        def charge_density_0(r,FF=self.form_factor,norm=self.total_charge):
             rho_int=quad_seperator(lambda q: (q**2)*FF(q)*spherical_jn(0,r/constants.hc*q)/constants.hc**3,Qs) 
             return 4*pi*rho_int*norm/(2*pi)**3
         # vectorize
@@ -283,14 +322,6 @@ class nucleus_base:
         # exponential decay for rho
         # TODO add way to move r_crit back if rho<0,drho>0 beyond oscillatory        
         self.charge_density = highenergycont_rho(charge_density_spl,R=self.rrange[1],val=0,t=0)  # Asymptotic: exp(-r)
-    
-    # TODO add these functions as derivatives
-    
-    def set_rho_from_El(self):
-        pass
-    
-    def set_El_from_V(self):
-        pass
     
     # TODO <-- clean implementation of rho_dict vs FF_dict / maybe separate, rho, E, V and FF ?
     #
@@ -315,7 +346,7 @@ class nucleus_base:
     #         key_rhow='rhow'+str(L)
     #         #
                 
-    #         if L%2==0 and (key_Fch in self.formfactor_dict):
+    #         if L%2==0 and (key_Fch in self.form_factor_dict):
     #             #
     #             #print('calc even L='+str(L))
     #             #
@@ -323,7 +354,7 @@ class nucleus_base:
     #                 print('set L=0 from self.charge density')
     #                 self.charge_density_dict[key_rho]=self.charge_density
     #             else:     
-    #                 Fch = self.formfactor_dict[key_Fch]
+    #                 Fch = self.form_factor_dict[key_Fch]
     #                 #
     #                 if Fch(self.qrange[1]+self.qrange[2])==0:
     #                     Qmax_int=self.qrange[1]
@@ -346,7 +377,7 @@ class nucleus_base:
     #                     #print('overwrite L=0 self.charge_density')
     #                     self.charge_density = copy.copy(self.charge_density_dict[key_rho])
     #             #
-    #             Fw = self.formfactor_dict[key_Fw]
+    #             Fw = self.form_factor_dict[key_Fw]
     #             #
     #             if Fw(self.qrange[1]+self.qrange[2])==0:
     #                 Qmax_int=self.qrange[1]
@@ -363,11 +394,11 @@ class nucleus_base:
     #             # exponential decay for rho
     #             self.charge_density_dict[key_rhow] = highenergycont_rho(weak_density_spl,R=self.rrange[1],val=0,t=0)
     #             #
-    #         elif L%2==1 and (key_Fmag in self.formfactor_dict):
+    #         elif L%2==1 and (key_Fmag in self.form_factor_dict):
     #             #
     #             #print('calc odd L='+str(L))
     #             #
-    #             Fmag = self.formfactor_dict[key_Fmag]
+    #             Fmag = self.form_factor_dict[key_Fmag]
     #             #
     #             if Fmag(self.qrange[1]+self.qrange[2])==0:
     #                 Qmax_int=self.qrange[1]
@@ -393,7 +424,7 @@ class nucleus_base:
             
     #         if key0 in self.calc_multipoles:
     #             key_rho = 'rho'+key0
-    #             FF = self.formfactor_dict[key_FF+'c'] # only with CMS corrections
+    #             FF = self.form_factor_dict[key_FF+'c'] # only with CMS corrections
                 
     #             if FF(self.qrange[1]+self.qrange[2])==0:
     #                 Qmax_int=self.qrange[1]
@@ -442,39 +473,39 @@ class nucleus_base:
     def fill_gaps(self):
         
         if self.charge_density is None:
-            if self.formfactor is not None:    
+            if self.form_factor is not None:    
                 self.set_rho_from_FF()
             else:
                 if self.electric_field is None:
                     if self.electric_potential is None:
                         raise ValueError("Not enough information to deduce the charge density")
-                    raise ValueError('still need to add this, sorry') #self.set_El_from_V() #TODO
-                raise ValueError('still need to add this, sorry') #self.set_rho_from_El() #TODO
+                    self.set_El_from_V()
+                self.set_rho_from_El()
                 
         if self.electric_potential is None:
             if self.electric_field is None:
                 if self.charge_density is None:
-                    if self.formfactor is None:
+                    if self.form_factor is None:
                         raise ValueError("Not enough information to deduce the electric potential")
                     self.set_rho_from_FF()
                 self.set_El_from_rho()
             self.set_V_from_El()
         
-        if self.formfactor is None:
+        if self.form_factor is None:
             if self.charge_density is None:
                 if self.electric_field is None:
                     if self.electric_potential is None:
                         raise ValueError("Not enough information to deduce the form factor")
-                    raise ValueError('still need to add this, sorry') #self.set_El_from_V() #TODO
-                raise ValueError('still need to add this, sorry') #self.set_rho_from_El() #TODO
+                    self.set_El_from_V()
+                self.set_rho_from_El()
             self.set_FF_from_rho()
 
         if self.electric_field is None:
             if self.electric_potential is not None:
-                raise ValueError('still need to add this, sorry') #self.set_El_from_V() #TODO
+                self.set_El_from_V()
             else:
                 if self.charge_density is None:
-                    if self.formfactor is not None:
+                    if self.form_factor is not None:
                         raise ValueError("Not enough information to deduce the electric field")
                     self.set_rho_from_FF()
                 self.set_El_from_rho()   
@@ -483,13 +514,13 @@ class nucleus_base:
     #     while self.electric_potential is None:
     #         while self.electric_field is None:
     #             while self.charge_density is None:
-    #                 while self.formfactor is None:
+    #                 while self.form_factor is None:
     #                     raise ValueError('no structure (FF,rho,El,V) given to start from')
     #                 self.set_rho_from_FF()
     #             self.set_El_from_rho()
     #         self.set_V_from_El()
         
-    #     while self.formfactor is None:
+    #     while self.form_factor is None:
     #         while self.charge_density is None:
     #             while self.electric_field is None:
     #                 while self.electric_potential is None:
