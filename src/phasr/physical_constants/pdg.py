@@ -1,5 +1,5 @@
 import os
-import numpy as np # type: ignore
+import numpy as np
 
 path = os.path.join(os.path.dirname(__file__), 'data/mass_width_2021.mcd')
 

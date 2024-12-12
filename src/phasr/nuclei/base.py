@@ -1,4 +1,5 @@
 from .. import constants
+from ..physical_constants.iaea_nds import massofnucleusZN, abundanceofnucleusZN, JPofnucleusZN
 from ..utility import calcandspline
 from ..utility.continuer import highenergycontinuation_exp, highenergycontinuation_poly
 
@@ -11,88 +12,9 @@ from scipy.special import spherical_jn
 
 from ..utility.math import derivative as deriv
 
-def range_seperator(xrange,fct):
-    Xmin_int=xrange[0]
-    if fct(xrange[1]+xrange[2])==0:
-        Xmax_int=xrange[1]
-        return [Xmin_int, Xmax_int]
-    else:
-        Xmax_int=np.inf
-        Xsep_int=xrange[1]
-        return np.array([Xmin_int, Xsep_int, Xmax_int])
-    
-def quad_seperator(integrand,Rs):
-    # Splits the integral according to Rs
-    integral = 0
-    for i in range(len(Rs)-1):
-        Rmin = Rs[i]
-        Rmax = Rs[i+1]
-        integrali = quad(integrand,Rmin,Rmax,limit=1000)[0]
-        integral += integrali 
-    return integral
-
-def calc_charge(density,rrange):
-    Rs = range_seperator(rrange,density)
-    integral_Q = quad_seperator(lambda x: (x**2)*density(x),Rs)
-    Q = 4*pi*integral_Q
-    return Q
-
-def calc_radius(density,rrange,norm):
-    Rs = range_seperator(rrange,density)
-    if norm==0:
-        radius=np.inf
-        radius_sq=np.inf
-    else:
-        integral_rsq = quad_seperator(lambda x: (x**4)*density(x),Rs)
-        radius_sq = 4*pi*integral_rsq/norm
-        radius = np.sqrt(radius_sq)
-    return radius_sq, radius
-
-def spline_field(field,fieldtype,name,rrange,renew):
-    # spline
-    field_spl=calcandspline(field, rrange, "./lib/splines/"+fieldtype+"_"+name+".txt",dtype=float,renew=renew)
-    return field_spl
-
-def highenergycont_field(field_spl,R,n):
-    def field_ultimate(r,R1=R):
-        E_crit=field_spl(R1)
-        dE=deriv(field_spl,1e-6)
-        dE_crit=dE(R1)
-        field=highenergycontinuation_poly(r,R1,E_crit,dE_crit,0,n=n)
-        if np.any(r<=R1):
-            field = field_spl(r)
-        if np.size(field)>1:
-            field[np.where(r>R1)]=highenergycontinuation_poly(r[np.where(r>R1)],R1,E_crit,dE_crit,0,n=n)
-        return field
-    return field_ultimate
-#
-def highenergycont_rho(field_spl,R,val,t): # often val=0, t=0
-    def field_ultimate(r,R1=R):
-        E_crit=field_spl(R1)
-        dE=deriv(field_spl,1e-6)
-        dE_crit=dE(R1)
-        field=highenergycontinuation_exp(r,R1,E_crit,dE_crit,val,t=t)
-        if np.any(r<=R1):
-            field = field_spl(r)
-        if np.size(field)>1:
-            field[np.where(r>R1)]=highenergycontinuation_exp(r[np.where(r>R1)],R1,E_crit,dE_crit,val,t=t)
-        return field
-    return field_ultimate
-#
-def highenergycutoff_field(field_spl,R,val=np.nan):
-    # For r>R return val (default:nan)
-    def field_ultimate(r,R1=R):
-        field=r*val
-        if np.any(r<=R1):
-            field = field_spl(r)
-        if np.size(field)>1:
-            field[np.where(r>R1)]=r[np.where(r>R1)]*val
-        return field
-    return field_ultimate
-
 class nucleus_base:
     def __init__(self,name,Z, A, m=None, abundance=None, spin=None, parity=None, Qw=None, 
-                 rrange=[0.,50.,0.05], qrange=[0.,2000.,2.], # <- rethink these values: maybe qmax = 1000, rmax = 20 TODO
+                 rrange=[0.,20.,0.02], qrange=[0.,1000.,1.],
                  pickleable=False, calc=None, renew=False, save=True,
                  #barebone=False, pickleable=False, renew=False, calc=None, calc_multipoles=None, 
                  #spline_hyp1f1=None, fp=False, ap_dps=15, 
@@ -140,6 +62,7 @@ class nucleus_base:
         self.total_charge = None
         self.weak_charge = None
         self.charge_radius = None
+        self.charge_radius_sq = None
         self.charge_density = None
         self.electric_field = None
         self.electric_potential = None
@@ -147,13 +70,13 @@ class nucleus_base:
         self.Vmin = None
         #
     def lookup_nucleus_mass(self):
-        self.m = None #pdg.massofnucleusZN(self.Z,self.A-self.Z) <---- TODO
-    
+        self.m = massofnucleusZN(self.Z,self.A-self.Z)
+
     def lookup_nucleus_abundance(self):
-        self.abundance = None #pdg.abundanceofnucleusZN(self.Z,self.A-self.Z) <---- TODO
-            
+        self.abundance = abundanceofnucleusZN(self.Z,self.A-self.Z)
+
     def lookup_nucleus_JP(self):
-        JP = None#pdg.JPofnucleusZN(self.Z,self.A-self.Z)
+        JP = JPofnucleusZN(self.Z,self.A-self.Z)
         if type(JP) is tuple:
             J , P = JP
             if self.spin is not None and J!=self.spin:
@@ -161,67 +84,45 @@ class nucleus_base:
             if self.parity is not None and P!=self.parity:
                 raise ValueError('looked up parity P='+str(P)+' different to present one P='+str(self.parity))
             self.spin, self.parity = J, P
-    
+
     def wanna_calc(self,quantity_name='Some quantity'):
-       if self.calc is None:
-           yn=input(quantity_name+" of "+self.name+" is not available analytically, do you want to calculate it (you won't be asked again for others)? (y/n): ")
-           if yn=='n' or yn=='no' or yn=='No' or yn=='N':
-               self.calc=False
-           else:
-               self.calc=True
+        if self.calc is None:
+            yn=input(quantity_name+" of "+self.name+" is not available analytically, do you want to calculate it (you won't be asked again for others)? (y/n): ")
+            if yn=='n' or yn=='no' or yn=='No' or yn=='N':
+                self.calc=False
+            else:
+                self.calc=True
     
     def set_total_charge(self):
-       #self.wanna_calc('Total charge') # <- move outside TODO
-       #if not self.calc:
-       #    return None
-       self.total_charge=calc_charge(self.charge_density,self.rrange)
+        self.total_charge=calc_charge(self.charge_density,self.rrange)
         
     def set_charge_radius(self,norm=None):
-        #self.wanna_calc('Charge radius')
-        #if not self.calc:
-        #    return None
         if norm is None:
             norm=self.total_charge
         self.charge_radius_sq, self.charge_radius = calc_radius(self.charge_density,self.rrange,norm)
    
     def set_proton_radius(self,norm=None):
-        self.wanna_calc('Proton radius')
-        #if not self.calc:
-        #    return None
         if norm is None:
             norm=self.Z
         self.proton_radius_sq, self.proton_radius = calc_radius(self.charge_density_Mp,self.rrange,norm)
    
     def set_neutron_radius(self,norm=None):
-        self.wanna_calc('Neutron radius')
-        #if not self.calc:
-        #     return None
         if norm is None:
             norm=self.A-self.Z
         self.neutron_radius_sq, self.neutron_radius = calc_radius(self.charge_density_Mn,self.rrange,norm)
  
     def set_weak_radius(self,norm=None):
-        self.wanna_calc('Weak radius')
-        #if not self.calc:
-        #    return None
         if norm is None:
             norm=self.weak_charge
         self.weak_radius_sq, self.weak_radius = calc_radius(self.charge_density_dict['rhow0'],self.rrange,norm)
 
     def set_Vmin(self):
-        self.wanna_calc('Vmin')
-        #if not self.calc:
-        #    return None
         if not self.barebone:
             self.Vmin = np.min(self.electric_potential(np.arange(*self.rrange)))
         else:
             self.Vmin = self.electric_potential(self.rrange[0])
 
     def set_El_from_rho(self):
-        #
-        #self.wanna_calc('Electric field')
-        #if not self.calc:
-        #    return None
         #
         def electric_field_0(r,rho=self.charge_density):
             charge_r = quad_seperator(lambda x: (x**2)*rho(x),[0,r])
@@ -252,7 +153,7 @@ class nucleus_base:
         El = self.electric_field
         d_El = deriv(El,1e-6)
         
-        def rho(r,El=El,d_El=d_El):
+        def charge_density_vec(r,El=El,d_El=d_El):
             thresh=1e-3
             rho0 = 1/np.sqrt(4*pi*constants.alpha_el)*3*d_El(0)
             scalar=False
@@ -267,30 +168,33 @@ class nucleus_base:
                 rho=rho[0]
             return rho
         
-        # add spline and high energy continuation  -> speed up
-            
-        self.charge_density=rho
-    
+        charge_density_spl = spline_field(charge_density_vec,"charge_density",self.name,rrange=self.rrange,renew=self.renew)
+        
+        #
+        # TODO add way to move r_crit back if rho<0,drho>0 beyond oscillatory 
+        #
+        # highenergy exponential decay for rho
+        self.charge_density = highenergycont_rho(charge_density_spl,R=self.rrange[1],val=0,t=0)
+        
     def set_El_from_V(self):
         
         d_V = deriv(self.electric_potential,1e-6)
         
-        def El(r,d_V=d_V):
+        def electric_field_vec(r,d_V=d_V):
             return 1/np.sqrt(4*pi*constants.alpha_el) * d_V(r)
         
-        # add spline and high energy continuation -> speed up
-        
-        self.electric_field=El
+        electric_field_spl = spline_field(electric_field_vec,"electric_field",self.name,rrange=self.rrange,renew=self.renew)
+        # highenery continue
+        self.electric_field = highenergycont_field(electric_field_spl,R=self.rrange[1]*0.95,n=2) # Asymptotic: 1/r^2
 
 # TODO -> fix these / make these faster / change cutoff for FB automatic Rmax = R ?
 
     def set_FF_from_rho(self):
         #
-        #self.wanna_calc('Form factor')
-        #if not self.calc:
-        #    return None
-        #
         Rs = range_seperator(self.rrange,self.charge_density)
+        #
+        if self.total_charge is None:
+            self.set_total_charge()
         #
         def form_factor_0(q,rho=self.charge_density,Z=self.total_charge):
             form_factor_int = quad_seperator(lambda r: (r**2)*rho(r)*spherical_jn(0,q/constants.hc*r),Rs)
@@ -304,13 +208,11 @@ class nucleus_base:
 
     def set_rho_from_FF(self):
         #
-        #self.wanna_calc('Charge density')
-        #if not self.calc:
-        #    return None
+        # problematic if FF has difficult/oscillatory highenergy behaviour.
         #
         Qs = range_seperator(self.qrange,self.form_factor)
         #
-        def charge_density_0(r,FF=self.form_factor,norm=self.total_charge):
+        def charge_density_0(r,FF=self.form_factor,norm=self.Z): #use Z here b/c total_charge is not known b/c rho is not known
             rho_int=quad_seperator(lambda q: (q**2)*FF(q)*spherical_jn(0,r/constants.hc*q)/constants.hc**3,Qs) 
             return 4*pi*rho_int*norm/(2*pi)**3
         # vectorize
@@ -319,8 +221,10 @@ class nucleus_base:
         charge_density_spl = spline_field(charge_density_vec,"charge_density",self.name,rrange=self.rrange,renew=self.renew)
         # highenery cut off at rmax
         #self.charge_density = highenergycutoff_field(charge_density_spl,R=self.rrange[1],val=0)        
-        # exponential decay for rho
+        #
         # TODO add way to move r_crit back if rho<0,drho>0 beyond oscillatory        
+        #
+        # highenergy exponential decay for rho
         self.charge_density = highenergycont_rho(charge_density_spl,R=self.rrange[1],val=0,t=0)  # Asymptotic: exp(-r)
     
     # TODO <-- clean implementation of rho_dict vs FF_dict / maybe separate, rho, E, V and FF ?
@@ -452,8 +356,10 @@ class nucleus_base:
         
     
     def set_scalars_from_rho(self):
-        self.set_total_charge()
-        self.set_charge_radius()
+        if self.total_charge is None:
+            self.set_total_charge()
+        if (self.charge_radius is None) and (self.charge_radius_sq) is None:
+            self.set_charge_radius()
         # try:
         #     if self.charge_density_Mp is not None:
         #         self.set_proton_radius()
@@ -533,3 +439,81 @@ class nucleus_base:
     #         self.set_rho_from_FF()
     #     if self.electric_field is None:
     #         self.set_El_from_rho()
+
+def calc_charge(density,rrange):
+    Rs = range_seperator(rrange,density)
+    integral_Q = quad_seperator(lambda x: (x**2)*density(x),Rs)
+    Q = 4*pi*integral_Q
+    return Q
+
+def calc_radius(density,rrange,norm):
+    Rs = range_seperator(rrange,density)
+    if norm==0:
+        radius=np.inf
+        radius_sq=np.inf
+    else:
+        integral_rsq = quad_seperator(lambda x: (x**4)*density(x),Rs)
+        radius_sq = 4*pi*integral_rsq/norm
+        radius = np.sqrt(radius_sq)
+    return radius_sq, radius
+
+def range_seperator(xrange,fct):
+    Xmin_int=xrange[0]
+    if fct(xrange[1]+xrange[2])==0:
+        Xmax_int=xrange[1]
+        return [Xmin_int, Xmax_int]
+    else:
+        Xmax_int=np.inf
+        Xsep_int=xrange[1]
+        return np.array([Xmin_int, Xsep_int, Xmax_int])
+
+def quad_seperator(integrand,Rs):
+    # Splits the integral according to Rs
+    integral = 0
+    for i in range(len(Rs)-1):
+        Rmin = Rs[i]
+        Rmax = Rs[i+1]
+        integrali = quad(integrand,Rmin,Rmax,limit=1000)[0]
+        integral += integrali 
+    return integral
+
+def spline_field(field,fieldtype,name,rrange,renew):
+    field_spl=calcandspline(field, rrange, "./test/"+fieldtype+"_"+name+".txt",dtype=float,renew=renew) # <- change path TODO
+    return field_spl
+
+def highenergycont_field(field_spl,R,n):
+    def field_ultimate(r,R1=R):
+        E_crit=field_spl(R1)
+        dE=deriv(field_spl,1e-6)
+        dE_crit=dE(R1)
+        field=highenergycontinuation_poly(r,R1,E_crit,dE_crit,0,n=n)
+        if np.any(r<=R1):
+            field = field_spl(r)
+        if np.size(field)>1:
+            field[np.where(r>R1)]=highenergycontinuation_poly(r[np.where(r>R1)],R1,E_crit,dE_crit,0,n=n)
+        return field
+    return field_ultimate
+#
+def highenergycont_rho(field_spl,R,val,t): # often val=0, t=0
+    def field_ultimate(r,R1=R):
+        E_crit=field_spl(R1)
+        dE=deriv(field_spl,1e-6)
+        dE_crit=dE(R1)
+        field=highenergycontinuation_exp(r,R1,E_crit,dE_crit,val,t=t)
+        if np.any(r<=R1):
+            field = field_spl(r)
+        if np.size(field)>1:
+            field[np.where(r>R1)]=highenergycontinuation_exp(r[np.where(r>R1)],R1,E_crit,dE_crit,val,t=t)
+        return field
+    return field_ultimate
+#
+def highenergycutoff_field(field_spl,R,val=np.nan):
+    # For r>R return val (default:nan)
+    def field_ultimate(r,R1=R):
+        field=r*val
+        if np.any(r<=R1):
+            field = field_spl(r)
+        if np.size(field)>1:
+            field[np.where(r>R1)]=r[np.where(r>R1)]*val
+        return field
+    return field_ultimate

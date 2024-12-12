@@ -12,16 +12,25 @@ class nucleus_FB(nucleus_base):
         self.nucleus_type = "Fourier-Bessel"
         self.ai=ai
         self.R=R
-        self.N=len(ai)
+        self.N_a=len(ai)
+        self.qi=np.arange(1,self.N_a+1)*pi/self.R
         #
-        self.qi=np.arange(1,self.N+1)*pi/self.R
-        self.total_charge = total_charge_FB(self.ai,self.qi,self.N)
-        self.charge_radius_sq = charge_radius_sq_FB(self.ai,self.Z,self.qi,self.N)
+        self.rrange[1]=self.R 
+        self.qrange[1]=self.qi[-1]*constants.hc 
+        #
+        self.total_charge = total_charge_FB(self.ai,self.qi,self.N_a)
+        self.charge_radius_sq = charge_radius_sq_FB(self.ai,self.Z,self.qi,self.N_a)
         self.charge_radius = np.sqrt(self.charge_radius_sq) if self.charge_radius_sq>=0 else np.sqrt(self.charge_radius_sq+0j)
-        #self.charge_density = charge_density_FB_gen(self.ai,self.R,self.qi)
-        #self.form_factor = formfactor_FB_gen(self.ai,self.R,self.Z,self.qi,self.N)
+        #
+        self.charge_density = charge_density_FB_gen(self.ai,self.R,self.qi)
+        self.electric_field = electric_field_FB_gen(self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
         self.electric_potential = electric_potential_FB_gen(self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
+        self.form_factor = formfactor_FB_gen(self.ai,self.R,self.Z,self.qi,self.N_a)
+        #
+        self.Vmin = electric_potential_FB_V0(self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
+        #
 
+# TODO -> change from gen methods, just one methdod. maybe online def foo(baa): return baa
 
 # FB
 def total_charge_FB(ai,qi,N):

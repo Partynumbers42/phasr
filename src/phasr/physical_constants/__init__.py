@@ -1,1 +1,1 @@
-from .constants import constants, masses, trafos
+from .constants import constants, masses, trafos, massof, massofnucleus
