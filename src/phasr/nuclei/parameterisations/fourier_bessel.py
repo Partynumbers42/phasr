@@ -22,12 +22,7 @@ class nucleus_FB(nucleus_base):
         self.charge_radius_sq = charge_radius_sq_FB(self.ai,self.Z,self.qi,self.N_a)
         self.charge_radius = np.sqrt(self.charge_radius_sq) if self.charge_radius_sq>=0 else np.sqrt(self.charge_radius_sq+0j)
         #
-        def charge_density(r):
-            return charge_density_FB(r,self.ai,self.R,self.qi) # do it like this such that the functions is automatically updated when ai,R,qi change <------------------------------------------s TODO TODO TODO 
-        #
-        def electric_field(r):
-            pass
-            #return charge_density_FB(r,self.ai,self.R,self.qi) # do it like this such that the functions is automatically updated when ai,R,qi change <------------------------------------------s TODO TODO TODO 
+        #return charge_density_FB(r,self.ai,self.R,self.qi) # do it like this such that the functions is automatically updated when ai,R,qi change <------------------------------------------s TODO TODO TODO 
         #
         # rework 
         #
@@ -42,7 +37,14 @@ class nucleus_FB(nucleus_base):
         self.charge_radius_sq_jacobian = charge_radius_sq_FB_jacob(self.Z,self.qi,self.N_a)
         #
         self.charge_density_jacobian = charge_density_FB_jacob(self.R,self.qi,self.N)
-
+        
+    # are these initialised in that case? <--- rework derivation from the base_nucleus class etc.
+    def charge_density(self,r):
+        return charge_density_FB(r,self.ai,self.R,self.qi) # do it like this such that the functions is automatically updated when ai,R,qi change <------------------------------------------s TODO TODO TODO 
+    #
+    def electric_field(self,r):
+        pass
+    
 #
 def total_charge_FB(ai,qi,N):
     nu=np.arange(1,N+1)
