@@ -22,8 +22,16 @@ class nucleus_FB(nucleus_base):
         self.charge_radius_sq = charge_radius_sq_FB(self.ai,self.Z,self.qi,self.N_a)
         self.charge_radius = np.sqrt(self.charge_radius_sq) if self.charge_radius_sq>=0 else np.sqrt(self.charge_radius_sq+0j)
         #
-        self.charge_density = charge_density_FB_gen(self.ai,self.R,self.qi)
-        self.electric_field = electric_field_FB_gen(self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
+        def charge_density(r):
+            return charge_density_FB(r,self.ai,self.R,self.qi) # do it like this such that the functions is automatically updated when ai,R,qi change <------------------------------------------s TODO TODO TODO 
+        #
+        def electric_field(r):
+            pass
+            #return charge_density_FB(r,self.ai,self.R,self.qi) # do it like this such that the functions is automatically updated when ai,R,qi change <------------------------------------------s TODO TODO TODO 
+        #
+        # rework 
+        #
+        self.electric_field = (self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
         self.electric_potential = electric_potential_FB_gen(self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
         self.form_factor = formfactor_FB_gen(self.ai,self.R,self.Z,self.qi,self.N_a)
         #
@@ -33,11 +41,7 @@ class nucleus_FB(nucleus_base):
         self.total_charge_jacobian = total_charge_FB_jacob(self.qi,self.N_a)
         self.charge_radius_sq_jacobian = charge_radius_sq_FB_jacob(self.Z,self.qi,self.N_a)
         #
-
-# TODO -> change from gen methods, just one methdod. maybe one line def foo(baa): return baa
-
-#def error_prop(cov,jacob):
-#    return np.sqrt(np.einsum('i,ik,k->',jacob,cov,jacob))
+        self.charge_density_jacobian = charge_density_FB_jacob(self.R,self.qi,self.N)
 
 #
 def total_charge_FB(ai,qi,N):
@@ -61,7 +65,8 @@ def charge_radius_sq_FB_jacob(Z,qi,N):
     dQi_dai = (-1)**nu*nu*pi*(6-(nu*pi)**2)/qi**5
     drsq_dai = 4*pi*dQi_dai/Z
     return drsq_dai
-    
+#
+
 # TODO Barrett Moment
 # def Bi0(qi,R,k,alpha):
 #     return (1./qi)*np.imag(complex(gammainc(k+2,0,R*(alpha-1j*qi))/(alpha-1j*qi)**(k+2)))
@@ -76,31 +81,34 @@ def charge_radius_sq_FB_jacob(Z,qi,N):
 #     dB = np.sqrt(np.einsum('i,ik,k->',J,cov,J)) 
 #     return dB
 
-# TODO -> continue here ---------------------------------------------------------------------------------------------- <-----------------------------
+# TODO write test functions for these aka one example nucleus
 
+# needs tests !!!
 def charge_density_FB(r,ai,R,qi):
-    scalar=False
-    if len(np.shape(r))==0:
-        scalar=True
-        r=np.array([r])
-    rho=np.array([0])
-    if np.any(r<=R):
-        qr=np.einsum('i,j->ij',qi,r)
-        rho = np.einsum('i,ij->j',ai,spherical_jn(0,qr))
-    if np.any(r>R):
-        if np.size(rho)>1:
-            rho[np.where(r>R)]=np.array([0])
-        else:
-            rho=np.array([0])
-    if scalar:
+    r_arr = np.atleast_1d(r)
+    rho=np.zeros(len(r_arr))
+    mask_r = np.where(r_arr<=R)
+    if np.any(r_arr<=R):
+        qr=np.einsum('i,j->ij',qi,r_arr[mask_r])
+        rho[mask_r] = np.einsum('i,ij->j',ai,spherical_jn(0,qr))
+    if np.isscalar(r):
         rho=rho[0]
     return rho
 #
-def charge_density_FB_gen(ai,R,qi):
-    def charge_density(r):
-        return charge_density_FB(r,ai,R,qi)
-    return charge_density
-# #
+# needs tests !!!
+def charge_density_FB_jacob(R,qi,N):
+    def charge_density_jacob(r,R=R,qi=qi,N=N):
+        r_arr = np.atleast_1d(r)
+        drho_dai=np.zeros((N,len(r_arr)))
+        mask_r = np.where(r_arr<=R)
+        if np.any(r_arr<=R):
+            qr=np.einsum('i,j->ij',qi,r_arr[mask_r])
+            drho_dai = spherical_jn(0,qr)
+        if np.isscalar(r):
+            drho_dai=drho_dai[:,0] # right component???
+        return drho_dai
+    return charge_density_jacob
+#
 # def dcharge_density_dr_FB(r,ai,R,qi):
 #     scalar=False
 #     if len(np.shape(r))==0:
@@ -118,69 +126,33 @@ def charge_density_FB_gen(ai,R,qi):
 #     if scalar:
 #         drho_dr=drho_dr[0]
 #     return drho_dr
-# #
+#
 # def dcharge_density_dr_FB_gen(ai,R,qi):
 #     def dcharge_density_dr(r):
 #         return dcharge_density_dr_FB(r,ai,R,qi)
 #     return dcharge_density_dr
-# #
-# def charge_density_FB_uncertainty(r,ai,R,qi,cov,include_R=False,R_cut=None):
-#     if R_cut is None:
-#         R_cut=R
-#     scalar=False
-#     if len(np.shape(r))==0:
-#         scalar=True
-#         r=np.array([r])
-#     drho=np.array([0])
-#     if np.any(r<=R_cut):
-#         qr=np.einsum('i,j->ij',qi,r)
-#         drho_dai = spherical_jn(0,qr)
-#         if not include_R:
-#             J=drho_dai
-#         else:
-#             drho_dR = np.einsum('i,ij->j',ai,spherical_jn(1,qr)*qr/R)
-#             J=np.concatenate((drho_dR[np.newaxis,:],drho_dai),axis=0)
-#         drho=np.sqrt(np.einsum('ij,ik,kj->j',J,cov,J))
-#     if np.any(r>R_cut):
-#         if np.size(drho)>1:
-#             drho[np.where(r>R_cut)]=np.array([0])
-#         else:
-#             drho=np.array([0])
-#     if scalar:
-#         drho=drho[0]
-    
-#     # add alternative cov_rho return
-        
-#     return drho#, J
-# #
-# def charge_density_FB_uncertainty_gen(ai,R,qi,cov):
-#     def charge_density_uncertainty(r):
-#         return charge_density_FB_uncertainty(r,ai,R,qi,cov)
-#     return charge_density_uncertainty
-# #
-def electric_field_FB(r,ai,R,Z,qi,alpha_el=alpha_el):
-    scalar=False
-    if len(np.shape(r))==0:
-        scalar=True
-        r=np.array([r])
-    E0=np.array([0])
-    if np.any(r<=R):
-        qr=np.einsum('i,j->ij',qi,r)
-        E0 = np.einsum('i,ij->j',ai/qi,spherical_jn(1,qr)) #-spherical_jn(0,qr,derivative=True) # faster with (np.sin(qr) - qr*np.cos(qr))/qr**2 but more precise like this
-    if np.any(r>R):
-        if np.size(E0)>1:
-            E0[np.where(r>R)]=(1/(4*pi))*Z/r[np.where(r>R)]**2
-        else:
-            E0=(1/(4*pi))*Z/r**2
-    if scalar:
-        E0=E0[0]
-    return np.sqrt(4*pi*alpha_el)*E0
 #
-def electric_field_FB_gen(ai,R,Z,qi,alpha_el=alpha_el):
-    def E_field(r):
-        return electric_field_FB(r,ai,R,Z,qi,alpha_el=alpha_el)
-    return E_field
-# #
+# TODO -> continue here ---------------------------------------------------------------------------------------------- <-----------------------------
+#
+#
+def electric_field_FB(ai,R,Z,qi,alpha_el=constants.alpha_el):
+    def electric_field(r,ai=ai,R=R,Z=Z,qi=qi,alpha_el=alpha_el):
+        r_arr = np.atleast_1d(r)
+        El = 0*r_arr
+        mask_r = np.where(r_arr<=R)
+        if np.any(r_arr<=R):
+            qr=np.einsum('i,j->ij',qi,r_arr[mask_r])
+            El[mask_r] = np.einsum('i,ij->j',ai/qi,spherical_jn(1,qr)) 
+        if np.any(r_arr>R):
+            El[~mask_r]=(1/(4*pi))*Z/r[~mask_r]**2
+        if np.isscalar(r):
+            El = El[0]
+        return np.sqrt(4*pi*alpha_el)*El
+    return electric_field
+#
+
+
+#
 # def electric_field_FB_uncertainty(r,ai,R,Z,qi,cov,alpha_el=alpha_el):
 #     scalar=False
 #     if len(np.shape(r))==0:

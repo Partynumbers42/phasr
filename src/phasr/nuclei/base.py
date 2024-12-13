@@ -58,7 +58,7 @@ class nucleus_base:
         #if self.calc_multipoles is None:
         #    self.calc_multipoles=['M0p','M0n']
         #
-        # initialize attributes
+        # initialize attributes # keep this generally ???
         self.total_charge = None
         self.weak_charge = None
         self.charge_radius = None
@@ -156,20 +156,16 @@ class nucleus_base:
         def charge_density_vec(r,El=El,d_El=d_El):
             thresh=1e-3
             rho0 = 1/np.sqrt(4*pi*constants.alpha_el)*3*d_El(0)
-            scalar=False
-            if len(np.shape(r))==0:
-                scalar=True
-                r=np.array([r])
-            rho=r*0+rho0
-            r_mask = np.where(r>=thresh) 
-            if np.any(r>=thresh):
-                rho[r_mask] = 1/np.sqrt(4*pi*constants.alpha_el)*((2/r[r_mask])*El(r[r_mask]) +  d_El(r[r_mask]))
-            if scalar:
+            r_arr = np.atleast_1d(r)
+            rho=r_arr*0+rho0
+            r_mask = np.where(r_arr>=thresh) 
+            if np.any(r_arr>=thresh):
+                rho[r_mask] = 1/np.sqrt(4*pi*constants.alpha_el)*((2/r_arr[r_mask])*El(r_arr[r_mask]) +  d_El(r_arr[r_mask]))
+            if np.isscalar(r):
                 rho=rho[0]
             return rho
         
         charge_density_spl = spline_field(charge_density_vec,"charge_density",self.name,rrange=self.rrange,renew=self.renew)
-        
         #
         # TODO add way to move r_crit back if rho<0,drho>0 beyond oscillatory 
         #
