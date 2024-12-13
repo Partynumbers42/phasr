@@ -29,55 +29,40 @@ class nucleus_FB(nucleus_base):
         #
         self.Vmin = electric_potential_FB_V0(self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
         #
+        # for jacobian for uncertainty propagation
+        self.total_charge_jacobian = total_charge_FB_jacob(self.qi,self.N_a)
+        self.charge_radius_sq_jacobian = charge_radius_sq_FB_jacob(self.Z,self.qi,self.N_a)
+        #
 
-# TODO -> change from gen methods, just one methdod. maybe online def foo(baa): return baa
+# TODO -> change from gen methods, just one methdod. maybe one line def foo(baa): return baa
 
-# FB
+#def error_prop(cov,jacob):
+#    return np.sqrt(np.einsum('i,ik,k->',jacob,cov,jacob))
+
+#
 def total_charge_FB(ai,qi,N):
     nu=np.arange(1,N+1)
     Qi = -(-1)**nu*nu*pi*ai/qi**3
     return 4*pi*np.sum(Qi)
-# #
-# def total_charge_FB_uncertainty(ai,qi,N,cov): # indep. of ai # no include_R
-#     nu=np.arange(1,N+1)
-#     dQi_dai = -(-1)**nu*nu*pi/qi**3
-#     J=dQi_dai
-#     dQi = np.einsum('i,ik,k->',J,cov,J)
-#     return 4*pi*dQi
 #
-def charge_radius_FB(ai,Z,qi,N):
+def total_charge_FB_jacob(qi,N):
     nu=np.arange(1,N+1)
-    Qi = (-1)**nu*nu*pi*(6-(nu*pi)**2)*ai/qi**5
-    return np.sqrt(4*pi*np.sum(Qi)/Z) # +0j np.real?
+    dQi_dai = -(-1)**nu*nu*pi/qi**3
+    dQ_dai=4*pi*dQi_dai
+    return dQ_dai
 #
 def charge_radius_sq_FB(ai,Z,qi,N):
     nu=np.arange(1,N+1)
     Qi = (-1)**nu*nu*pi*(6-(nu*pi)**2)*ai/qi**5
-    return 4*pi*np.sum(Qi)/Z # +0j np.real?
+    return 4*pi*np.sum(Qi)/Z
 #
-# def charge_radius_sq_FB_deriv(ai,Z,qi,N,R,cov):
-#     nu=np.arange(1,N+1)
-#     dQi_dai = (-1)**nu*nu*pi*(6-(nu*pi)**2)/qi**5
-#     drsq_dai = 4*pi*dQi_dai/Z
-#     return drsq_dai
-# #
-# def charge_radius_FB_uncertainty(ai,Z,qi,N,R,cov,include_R=False,return_deriv=False):
-#     r=charge_radius_FB(ai,Z,qi,N)
-#     nu=np.arange(1,N+1)
-#     dQi_dai = (-1)**nu*nu*pi*(6-(nu*pi)**2)/qi**5
-#     if include_R:
-#         dQi_dR = (-1)**nu*nu*pi*(6-(nu*pi)**2)*ai*(5/R)/qi**5
-#     drsq_dai = 4*pi*dQi_dai/Z
-#     if include_R:
-#         drsq_dR = 4*pi*np.sum(dQi_dR)/Z
-#     if include_R:
-#         Jsq=np.insert(drsq_dai,0,drsq_dR) #--------------------
-#     else:
-#         Jsq=drsq_dai
-#     J=Jsq/(2*r)
-#     dr=np.sqrt(np.einsum('i,ik,k->',J,cov,J))
-#     return dr
-#
+def charge_radius_sq_FB_jacob(Z,qi,N):
+    nu=np.arange(1,N+1)
+    dQi_dai = (-1)**nu*nu*pi*(6-(nu*pi)**2)/qi**5
+    drsq_dai = 4*pi*dQi_dai/Z
+    return drsq_dai
+    
+# TODO Barrett Moment
 # def Bi0(qi,R,k,alpha):
 #     return (1./qi)*np.imag(complex(gammainc(k+2,0,R*(alpha-1j*qi))/(alpha-1j*qi)**(k+2)))
 # Bi=np.vectorize(Bi0,excluded=[1,2,3])
@@ -90,7 +75,9 @@ def charge_radius_sq_FB(ai,Z,qi,N):
 #     J=dB_dai 
 #     dB = np.sqrt(np.einsum('i,ik,k->',J,cov,J)) 
 #     return dB
-#
+
+# TODO -> continue here ---------------------------------------------------------------------------------------------- <-----------------------------
+
 def charge_density_FB(r,ai,R,qi):
     scalar=False
     if len(np.shape(r))==0:
@@ -171,28 +158,28 @@ def charge_density_FB_gen(ai,R,qi):
 #         return charge_density_FB_uncertainty(r,ai,R,qi,cov)
 #     return charge_density_uncertainty
 # #
-# def electric_field_FB(r,ai,R,Z,qi,alpha_el=alpha_el):
-#     scalar=False
-#     if len(np.shape(r))==0:
-#         scalar=True
-#         r=np.array([r])
-#     E0=np.array([0])
-#     if np.any(r<=R):
-#         qr=np.einsum('i,j->ij',qi,r)
-#         E0 = np.einsum('i,ij->j',ai/qi,spherical_jn(1,qr)) #-spherical_jn(0,qr,derivative=True) # faster with (np.sin(qr) - qr*np.cos(qr))/qr**2 but more precise like this
-#     if np.any(r>R):
-#         if np.size(E0)>1:
-#             E0[np.where(r>R)]=(1/(4*pi))*Z/r[np.where(r>R)]**2
-#         else:
-#             E0=(1/(4*pi))*Z/r**2
-#     if scalar:
-#         E0=E0[0]
-#     return np.sqrt(4*pi*alpha_el)*E0
-# #
-# def electric_field_FB_gen(ai,R,Z,qi,alpha_el=alpha_el):
-#     def E_field(r):
-#         return electric_field_FB(r,ai,R,Z,qi,alpha_el=alpha_el)
-#     return E_field
+def electric_field_FB(r,ai,R,Z,qi,alpha_el=alpha_el):
+    scalar=False
+    if len(np.shape(r))==0:
+        scalar=True
+        r=np.array([r])
+    E0=np.array([0])
+    if np.any(r<=R):
+        qr=np.einsum('i,j->ij',qi,r)
+        E0 = np.einsum('i,ij->j',ai/qi,spherical_jn(1,qr)) #-spherical_jn(0,qr,derivative=True) # faster with (np.sin(qr) - qr*np.cos(qr))/qr**2 but more precise like this
+    if np.any(r>R):
+        if np.size(E0)>1:
+            E0[np.where(r>R)]=(1/(4*pi))*Z/r[np.where(r>R)]**2
+        else:
+            E0=(1/(4*pi))*Z/r**2
+    if scalar:
+        E0=E0[0]
+    return np.sqrt(4*pi*alpha_el)*E0
+#
+def electric_field_FB_gen(ai,R,Z,qi,alpha_el=alpha_el):
+    def E_field(r):
+        return electric_field_FB(r,ai,R,Z,qi,alpha_el=alpha_el)
+    return E_field
 # #
 # def electric_field_FB_uncertainty(r,ai,R,Z,qi,cov,alpha_el=alpha_el):
 #     scalar=False
@@ -255,9 +242,9 @@ def electric_potential_FB_gen(ai,R,Z,qi,alpha_el=constants.alpha_el):
         return electric_potential_FB(r,ai,R,Z,qi,alpha_el=alpha_el)
     return V_pot
 # #
-# def electric_potential_FB_V0(ai,R,Z,qi,alpha_el=alpha_el):
-#     V0 = -alpha_el*Z/R - 4*pi*alpha_el*np.sum(ai/qi**2)
-#     return V0
+def electric_potential_FB_V0(ai,R,Z,qi,alpha_el=alpha_el):
+    V0 = -alpha_el*Z/R - 4*pi*alpha_el*np.sum(ai/qi**2)
+    return V0
 # #
 # def formfactor_FB_uncertainty(q,ai,R,Z,qi,N,cov,return_cov=False): # include_R not included. R uncertainty not propagated
 #     scalar=False

@@ -187,8 +187,6 @@ class nucleus_base:
         # highenery continue
         self.electric_field = highenergycont_field(electric_field_spl,R=self.rrange[1]*0.95,n=2) # Asymptotic: 1/r^2
 
-# TODO -> fix these / make these faster / change cutoff for FB automatic Rmax = R ?
-
     def set_FF_from_rho(self):
         #
         Rs = range_seperator(self.rrange,self.charge_density)
@@ -454,7 +452,7 @@ def calc_radius(density,rrange,norm):
     else:
         integral_rsq = quad_seperator(lambda x: (x**4)*density(x),Rs)
         radius_sq = 4*pi*integral_rsq/norm
-        radius = np.sqrt(radius_sq)
+        radius = np.sqrt(radius_sq) if radius_sq>=0 else np.sqrt(radius_sq+0j)
     return radius_sq, radius
 
 def range_seperator(xrange,fct):
