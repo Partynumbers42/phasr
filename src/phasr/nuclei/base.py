@@ -58,16 +58,16 @@ class nucleus_base:
         #if self.calc_multipoles is None:
         #    self.calc_multipoles=['M0p','M0n']
         #
-        # initialize attributes # keep this generally ???
-        self.total_charge = None
-        self.weak_charge = None
-        self.charge_radius = None
-        self.charge_radius_sq = None
-        self.charge_density = None
-        self.electric_field = None
-        self.electric_potential = None
-        self.form_factor = None
-        self.Vmin = None
+        # initialize attributes # keep this generally ??? <--------------------
+        #self.total_charge = None
+        #self.weak_charge = None
+        #self.charge_radius = None
+        #self.charge_radius_sq = None
+        #self.charge_density = None
+        #self.electric_field = None
+        #self.electric_potential = None
+        #self.form_factor = None
+        #self.Vmin = None
         #
     def lookup_nucleus_mass(self):
         self.m = massofnucleusZN(self.Z,self.A-self.Z)

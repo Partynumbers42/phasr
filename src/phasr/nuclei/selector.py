@@ -7,11 +7,11 @@ from .parameterisations.coulomb import nucleus_coulomb
 def nucleus(name,Z,A,**args):
     args = {"name":name,"Z":Z,"A":A,**args}
     if ('ai' in args) and ('R' in args):
-            return nucleus_FB(**args)
+        return nucleus_FB(**args)
     elif ('Cs' in args):
         return nucleus_osz(**args)
     elif ('charge_density' in args) or  ('electric_field' in args) or  ('electric_potential' in args) or ('formfactor' in args):
-        return nucleus_num.(**args)
+        return nucleus_num(**args)
     else:
         return nucleus_coulomb(**args)
 

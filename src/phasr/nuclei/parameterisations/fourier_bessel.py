@@ -26,17 +26,17 @@ class nucleus_FB(nucleus_base):
         #
         # rework 
         #
-        self.electric_field = (self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
-        self.electric_potential = electric_potential_FB_gen(self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
-        self.form_factor = formfactor_FB_gen(self.ai,self.R,self.Z,self.qi,self.N_a)
+        #self.electric_field = (self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
+        #self.electric_potential = electric_potential_FB_gen(self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
+        #self.form_factor = formfactor_FB_gen(self.ai,self.R,self.Z,self.qi,self.N_a)
         #
-        self.Vmin = electric_potential_FB_V0(self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
+        #self.Vmin = electric_potential_FB_V0(self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
         #
         # for jacobian for uncertainty propagation
-        self.total_charge_jacobian = total_charge_FB_jacob(self.qi,self.N_a)
-        self.charge_radius_sq_jacobian = charge_radius_sq_FB_jacob(self.Z,self.qi,self.N_a)
+        #self.total_charge_jacobian = total_charge_FB_jacob(self.qi,self.N_a)
+        #self.charge_radius_sq_jacobian = charge_radius_sq_FB_jacob(self.Z,self.qi,self.N_a)
         #
-        self.charge_density_jacobian = charge_density_FB_jacob(self.R,self.qi,self.N)
+        #self.charge_density_jacobian = charge_density_FB_jacob(self.R,self.qi,self.N)
         
     # are these initialised in that case? <--- rework derivation from the base_nucleus class etc.
     def charge_density(self,r):
@@ -216,7 +216,7 @@ def electric_potential_FB_gen(ai,R,Z,qi,alpha_el=constants.alpha_el):
         return electric_potential_FB(r,ai,R,Z,qi,alpha_el=alpha_el)
     return V_pot
 # #
-def electric_potential_FB_V0(ai,R,Z,qi,alpha_el=alpha_el):
+def electric_potential_FB_V0(ai,R,Z,qi,alpha_el=constants.alpha_el):
     V0 = -alpha_el*Z/R - 4*pi*alpha_el*np.sum(ai/qi**2)
     return V0
 # #

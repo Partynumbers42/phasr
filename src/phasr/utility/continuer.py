@@ -1,4 +1,4 @@
-import numpy as np  # type: ignore
+import numpy as np
 
 def Tslope(t,val_crit,deriv_crit,limit):
     """T(t) ~ e^(-t)"""
