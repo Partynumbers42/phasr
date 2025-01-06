@@ -12,15 +12,7 @@ class nucleus_FB(nucleus_base):
         self.nucleus_type = "Fourier-Bessel"
         self.ai=ai
         self.R=R
-        self.N_a=len(ai)
-        self.qi=np.arange(1,self.N_a+1)*pi/self.R
-        #
-        self.rrange[1]=self.R 
-        self.qrange[1]=self.qi[-1]*constants.hc 
-        #
-        self.total_charge = total_charge_FB(self.ai,self.qi,self.N_a)
-        self.charge_radius_sq = charge_radius_sq_FB(self.ai,self.Z,self.qi,self.N_a)
-        self.charge_radius = np.sqrt(self.charge_radius_sq) if self.charge_radius_sq>=0 else np.sqrt(self.charge_radius_sq+0j)
+        self.update_dependencies()
         #
         #return charge_density_FB(r,self.ai,self.R,self.qi) # do it like this such that the functions is automatically updated when ai,R,qi change <------------------------------------------s TODO TODO TODO 
         #
@@ -37,8 +29,27 @@ class nucleus_FB(nucleus_base):
         #self.charge_radius_sq_jacobian = charge_radius_sq_FB_jacob(self.Z,self.qi,self.N_a)
         #
         #self.charge_density_jacobian = charge_density_FB_jacob(self.R,self.qi,self.N)
+    
+    def update_dependencies(self):
+        nucleus_base.update_dependencies(self)
+        self.N_a=len(self.ai)
+        self.qi=np.arange(1,self.N_a+1)*pi/self.R
+        self.rrange[1]=self.R 
+        self.qrange[1]=self.qi[-1]*constants.hc 
+        self.total_charge = total_charge_FB(self.ai,self.qi,self.N_a)
+        self.charge_radius_sq = charge_radius_sq_FB(self.ai,self.Z,self.qi,self.N_a)
+        self.charge_radius = np.sqrt(self.charge_radius_sq) if self.charge_radius_sq>=0 else np.sqrt(self.charge_radius_sq+0j)
+        # ADD V0
+    
+    def update_R(self,R):
+        self.R=R
+        self.update_dependencies()
+    
+    def update_ai(self,ai):
+        self.ai=ai
+        self.update_dependencies()    
         
-    # are these initialised in that case? <--- rework derivation from the base_nucleus class etc.
+    # add other functions here, overwrites base implementation (which should not be present)
     def charge_density(self,r):
         return charge_density_FB(r,self.ai,self.R,self.qi) # do it like this such that the functions is automatically updated when ai,R,qi change <------------------------------------------s TODO TODO TODO 
     #

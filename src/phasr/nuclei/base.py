@@ -35,10 +35,8 @@ class nucleus_base:
         self.parity=parity
         if (self.spin is None) or (self.parity is None):
             self.lookup_nucleus_JP()
-        #
         Qw_p=constants.Qw_p
         Qw_n=constants.Qw_n
-        #
         self.weak_charge = Qw
         if (self.weak_charge is None):
             self.weak_charge = self.Z*Qw_p + (self.A-self.Z)*Qw_n
@@ -58,7 +56,7 @@ class nucleus_base:
         #if self.calc_multipoles is None:
         #    self.calc_multipoles=['M0p','M0n']
         #
-        # initialize attributes # keep this generally ??? <--------------------
+        # initialize attributes <--- do not do like this, not overwritten by child class with function with the same name! 
         #self.total_charge = None
         #self.weak_charge = None
         #self.charge_radius = None
@@ -69,6 +67,33 @@ class nucleus_base:
         #self.form_factor = None
         #self.Vmin = None
         #
+        #nucleus_base.update_dependencies(self) #include if update_denpendencies becomes non-trivial on base level in the future
+        #
+    
+    def update_dependencies(self):
+        pass # extended/overwritten by subclass functions
+    
+    def update_name(self,name):
+        self.name=name
+    
+    def update_Z(self,Z):
+        self.Z=Z
+        self.update_dependencies()
+    
+    def update_A(self,A):
+        self.A=A
+        self.update_dependencies()
+    
+    def update_m(self,m):
+        self.m=m
+        self.update_dependencies()
+    
+    def update_weak_charge(self,Qw):
+        self.weak_charge=Qw
+        self.update_dependencies()
+    
+    # add update abundance, parity, spin, if necessary 
+    
     def lookup_nucleus_mass(self):
         self.m = massofnucleusZN(self.Z,self.A-self.Z)
 
