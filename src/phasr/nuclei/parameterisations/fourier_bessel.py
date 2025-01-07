@@ -5,6 +5,8 @@ import numpy as np
 pi = np.pi
 
 from scipy.special import spherical_jn
+from mpmath import gammainc
+
 
 class nucleus_FB(nucleus_base):
     def __init__(self,name,Z,A,ai,R,**args): #,R_cut=None,rho_cut=None
@@ -14,34 +16,27 @@ class nucleus_FB(nucleus_base):
         self.R=R
         self.update_dependencies()
         #
-        #return charge_density_FB(r,self.ai,self.R,self.qi) # do it like this such that the functions is automatically updated when ai,R,qi change <------------------------------------------s TODO TODO TODO 
-        #
-        # rework 
-        #
-        #self.electric_field = (self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
-        #self.electric_potential = electric_potential_FB_gen(self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
-        #self.form_factor = formfactor_FB_gen(self.ai,self.R,self.Z,self.qi,self.N_a)
-        #
-        #self.Vmin = electric_potential_FB_V0(self.ai,self.R,self.Z,self.qi,alpha_el=constants.alpha_el)
-        #
-        # for jacobian for uncertainty propagation
-        #self.total_charge_jacobian = total_charge_FB_jacob(self.qi,self.N_a)
-        #self.charge_radius_sq_jacobian = charge_radius_sq_FB_jacob(self.Z,self.qi,self.N_a)
-        #
-        #self.charge_density_jacobian = charge_density_FB_jacob(self.R,self.qi,self.N)
-    
+        
     def update_dependencies(self):
         nucleus_base.update_dependencies(self)
         self.N_a=len(self.ai)
         self.qi=np.arange(1,self.N_a+1)*pi/self.R
         self.rrange[1]=self.R 
         self.qrange[1]=self.qi[-1]*constants.hc 
+        #
         self.total_charge = total_charge_FB(self.ai,self.qi,self.N_a)
         if np.abs(self.total_charge - self.Z)/self.Z>1e-4:
             print('Warning total charge for '+self.name+' deviates more than 1e-4: Z='+str(self.Z)+', Q='+str(self.total_charge))
         self.charge_radius_sq = charge_radius_sq_FB(self.ai,self.total_charge,self.qi,self.N_a)
         self.charge_radius = np.sqrt(self.charge_radius_sq) if self.charge_radius_sq>=0 else np.sqrt(self.charge_radius_sq+0j)
         self.Vmin = electric_potential_V0_FB(self.ai,self.R,self.total_charge,self.qi,alpha_el=constants.alpha_el) # Rename to V0 ?
+        #
+        if (self.k_barrett is not None) and (self.alpha_barrett is not None):
+            self.barrett_moment = Barrett_moment_FB(self.ai,self.total_charge,self.qi,self.R,self.k_barrett,self.alpha_barrett)
+        #
+        self.total_charge_jacobian = total_charge_FB_jacob(self.qi,self.N_a)
+        self.charge_radius_sq_jacobian = charge_radius_sq_FB_jacob(self.total_charge,self.qi,self.N_a)
+        #
     
     def update_R(self,R):
         self.R=R
@@ -62,6 +57,9 @@ class nucleus_FB(nucleus_base):
     
     def form_factor(self,q):
         return form_factor_FB(q,self.ai,self.R,self.total_charge,self.qi,self.N_a)
+    
+    # def charge_density_jacobian(self,q): return charge_density_FB_jacob(q,self.R,self.qi,self.N) TODO
+    # ...
 
 #
 def total_charge_FB(ai,qi,N):
@@ -85,6 +83,20 @@ def charge_radius_sq_FB_jacob(Z,qi,N):
     dQi_dai = (-1)**nu*nu*pi*(6-(nu*pi)**2)/qi**5
     drsq_dai = 4*pi*dQi_dai/Z
     return drsq_dai
+#
+def Bi0(qi,R,k,alpha):
+    return (1./qi)*np.imag(complex(gammainc(k+2,0,R*(alpha-1j*qi))/(alpha-1j*qi)**(k+2)))
+Bi=np.vectorize(Bi0,excluded=[1,2,3])
+#
+def Barrett_moment_FB(ai,Z,qi,R,k_barrett,alpha_barrett):
+    return 4*pi*np.sum(ai*Bi(qi,R,k_barrett,alpha_barrett))/Z
+# #
+# def Barrett_moment_FB_uncertainty(ai,Z,qi,R,k,alpha,cov): # no include_R
+#     dB_dai=4*pi*Bi(qi,R,k,alpha)/Z    
+#     J=dB_dai 
+#     dB = np.sqrt(np.einsum('i,ik,k->',J,cov,J)) 
+#     return dB
+#
 #
 def electric_potential_V0_FB(ai,R,Z,qi,alpha_el=constants.alpha_el):
     V0 = -alpha_el*Z/R - 4*pi*alpha_el*np.sum(ai/qi**2)
@@ -142,38 +154,18 @@ def form_factor_FB(q,ai,R,Z,qi,N):
         F = F[0]
     return F/Z
 
-
-# TODO Barrett Moment
-# def Bi0(qi,R,k,alpha):
-#     return (1./qi)*np.imag(complex(gammainc(k+2,0,R*(alpha-1j*qi))/(alpha-1j*qi)**(k+2)))
-# Bi=np.vectorize(Bi0,excluded=[1,2,3])
-# #
-# def Barrett_moment_FB(ai,Z,qi,R,k,alpha):
-#     return 4*pi*np.sum(ai*Bi(qi,R,k,alpha))/Z
-# #
-# def Barrett_moment_FB_uncertainty(ai,Z,qi,R,k,alpha,cov): # no include_R
-#     dB_dai=4*pi*Bi(qi,R,k,alpha)/Z    
-#     J=dB_dai 
-#     dB = np.sqrt(np.einsum('i,ik,k->',J,cov,J)) 
-#     return dB
-
-# TODO write test functions for these aka one example nucleus
-
-# needs tests !!!
-#
-# needs tests !!!
-def charge_density_FB_jacob(R,qi,N):
-    def charge_density_jacob(r,R=R,qi=qi,N=N):
-        r_arr = np.atleast_1d(r)
-        drho_dai=np.zeros((N,len(r_arr)))
-        mask_r = np.where(r_arr<=R)
-        if np.any(r_arr<=R):
-            qr=np.einsum('i,j->ij',qi,r_arr[mask_r])
-            drho_dai = spherical_jn(0,qr)
-        if np.isscalar(r):
-            drho_dai=drho_dai[:,0] # right component???
-        return drho_dai
-    return charge_density_jacob
+# add jacobians (in a way that updates)
+# needs to be tested !!!
+def charge_density_FB_jacob(r,R,qi,N):
+    r_arr = np.atleast_1d(r)
+    drho_dai=np.zeros((N,len(r_arr)))
+    mask_r = r_arr<=R
+    if np.any(mask_r):
+        qr=np.einsum('i,j->ij',qi,r_arr[mask_r])
+        drho_dai = spherical_jn(0,qr)
+    if np.isscalar(r):
+        drho_dai=drho_dai[:,0] # right component???
+    return drho_dai
 #
 # def dcharge_density_dr_FB(r,ai,R,qi):
 #     scalar=False
@@ -198,12 +190,6 @@ def charge_density_FB_jacob(R,qi,N):
 #         return dcharge_density_dr_FB(r,ai,R,qi)
 #     return dcharge_density_dr
 #
-# TODO -> continue here ---------------------------------------------------------------------------------------------- <-----------------------------
-#
-#
-#
-
-
 #
 # def electric_field_FB_uncertainty(r,ai,R,Z,qi,cov,alpha_el=alpha_el):
 #     scalar=False

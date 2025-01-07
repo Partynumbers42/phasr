@@ -41,6 +41,14 @@ class nucleus_base:
         if (self.weak_charge is None):
             self.weak_charge = self.Z*Qw_p + (self.A-self.Z)*Qw_n
         #
+        if ('k' in args) and ('alpha' in args):
+            self.k_barrett = args['k']
+            self.alpha_barrett = args['alpha']
+        else:
+            self.k_barrett = None
+            self.alpha_barrett = None
+        # Add lookup mechanism/file where the values are saved?
+        #
         self.rrange=rrange #fm
         self.qrange=qrange #MeV
         #
@@ -56,16 +64,6 @@ class nucleus_base:
         #if self.calc_multipoles is None:
         #    self.calc_multipoles=['M0p','M0n']
         #
-        # initialize attributes <--- do not do like this, not overwritten by child class with function with the same name! 
-        #self.total_charge = None
-        #self.weak_charge = None
-        #self.charge_radius = None
-        #self.charge_radius_sq = None
-        #self.charge_density = None
-        #self.electric_field = None
-        #self.electric_potential = None
-        #self.form_factor = None
-        #self.Vmin = None
         #
         #nucleus_base.update_dependencies(self) #include if update_denpendencies becomes non-trivial on base level in the future
         #
