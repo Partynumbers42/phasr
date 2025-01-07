@@ -478,7 +478,7 @@ def range_seperator(xrange,fct):
     Xmin_int=xrange[0]
     if fct(xrange[1]+xrange[2])==0:
         Xmax_int=xrange[1]
-        return [Xmin_int, Xmax_int]
+        return np.array([Xmin_int, Xmax_int])
     else:
         Xmax_int=np.inf
         Xsep_int=xrange[1]
@@ -527,7 +527,7 @@ def highenergycont_rho(field_spl,R,val,t): # often val=0, t=0
 def highenergycutoff_field(field_spl,R,val=np.nan):
     # For r>R return val (default:nan)
     def field_ultimate(r,R1=R):
-        field=r*val
+        field=r*0+val
         if np.any(r<=R1):
             field = field_spl(r)
         if np.size(field)>1:

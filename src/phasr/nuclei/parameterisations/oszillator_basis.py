@@ -7,7 +7,7 @@ pi = np.pi
 class nucleus_osz(nucleus_base):
     def __init__(self,name,Z,A,Cs,**args): #,R_cut=None,rho_cut=None
         nucleus_base.__init__(self,name,Z,A,**args)
-        self.nucleus_type = "Shell-Model"
+        self.nucleus_type = "shell-model"
         self.Cs=Cs
         self.update_dependencies()
 

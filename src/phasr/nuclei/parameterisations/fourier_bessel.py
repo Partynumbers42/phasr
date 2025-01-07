@@ -10,7 +10,7 @@ from mpmath import gammainc
 class nucleus_FB(nucleus_base):
     def __init__(self,name,Z,A,ai,R,**args): #,R_cut=None,rho_cut=None
         nucleus_base.__init__(self,name,Z,A,**args)
-        self.nucleus_type = "Fourier-Bessel"
+        self.nucleus_type = "fourier-bessel"
         self.ai=ai
         self.R=R
         self.update_dependencies()
@@ -184,7 +184,7 @@ def electric_potential_FB_jacob(r,R,qi,N,alpha_el=constants.alpha_el):
         dV_dai = dV_dai[:,0]
     return dV_dai
 
-def form_factor_FB(q,ai,R,qi,Z,N):
+def form_factor_FB(q,ai,R,qi,Z,N): # TODO remove singularities at q=qi by calculating limit or averaging left and right of singularity
     q=q/constants.hc
     q_arr = np.atleast_1d(q)
     N_q=len(q_arr)
@@ -193,6 +193,12 @@ def form_factor_FB(q,ai,R,qi,Z,N):
     qi_grid=np.tile(qi,(N_q,1)).transpose()
     denom=q_grid**2-qi_grid**2
     F= 4*pi*R*spherical_jn(0,q_arr*R)*np.einsum('i,ij->j',ai*(-1)**nu,1./denom)
+    # overwrite singularities numerically
+    for q_c in qi:
+        eps = 1e-6
+        mask_q = np.abs(q_arr-q_c)/q_c < eps
+        if np.any(mask_q):
+            F[mask_q]= (Z*form_factor_FB((q_arr[mask_q]-4*eps*q_c)*constants.hc,ai,R,qi,Z,N) + Z*form_factor_FB((q_arr[mask_q]+4*eps*q_c)*constants.hc,ai,R,qi,Z,N))/2
     if np.isscalar(q):
         F = F[0]
     return F/Z
