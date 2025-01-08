@@ -7,7 +7,6 @@ import numpy as np
 pi = np.pi
 
 from scipy.integrate import quad
-
 from scipy.special import spherical_jn
 
 from ..utility.math import derivative as deriv
@@ -139,6 +138,11 @@ class nucleus_base:
             norm=self.weak_charge
         self.weak_radius_sq, self.weak_radius = calc_radius(self.charge_density_dict['rhow0'],self.rrange,norm)
 
+    def set_barrett_moment(self,norm=None):
+        if norm is None:
+            norm=self.total_charge
+        self.barrett_moment = calc_barrett_moment(self.charge_density,self.rrange,self.k_barrett,self.alpha_barrett,norm)
+
     def set_Vmin(self):
         if not self.barebone:
             self.Vmin = np.min(self.electric_potential(np.arange(*self.rrange)))
@@ -210,7 +214,7 @@ class nucleus_base:
         #
         Rs = range_seperator(self.rrange,self.charge_density)
         #
-        if self.total_charge is None:
+        if not hasattr(self,'total_charge'):
             self.set_total_charge()
         #
         def form_factor_0(q,rho=self.charge_density,Z=self.total_charge):
@@ -294,7 +298,7 @@ class nucleus_base:
     #                 # exponential decay for rho
     #                 self.charge_density_dict[key_rho] = highenergycont_rho(charge_density_spl,R=self.rrange[1],val=0,t=0)
     #                 #
-    #                 if L==0 and (self.charge_density is None):
+    #                 if L==0 and (self.charge_density is None): # -> hasattr
     #                     #print('overwrite L=0 self.charge_density')
     #                     self.charge_density = copy.copy(self.charge_density_dict[key_rho])
     #             #
@@ -365,18 +369,22 @@ class nucleus_base:
     #             # exponential decay for rho
     #             self.charge_density_dict[key0] = highenergycont_rho(multipole_density_spl,R=self.rrange[1],val=0,t=0)
                 
-    #             if key0=='M0p':# and (self.charge_density_Mp is None):
+    #             if key0=='M0p':# and (self.charge_density_Mp is None): # -> nasattr
     #                 self.charge_density_Mp = copy.copy(self.charge_density_dict[key0])
                 
-    #             if key0=='M0n':# and (self.charge_density_Mn is None):
+    #             if key0=='M0n':# and (self.charge_density_Mn is None): # -> hasattr
     #                 self.charge_density_Mn = copy.copy(self.charge_density_dict[key0])
         
     
     def set_scalars_from_rho(self):
-        if self.total_charge is None:
+        if not hasattr(self,"total_charge"):
             self.set_total_charge()
-        if (self.charge_radius is None) and (self.charge_radius_sq) is None:
+        if (not hasattr(self,"charge_radius")) or (not hasattr(self,"charge_radius_sq")):
             self.set_charge_radius()
+        if (self.k_barrett is not None) and (self.alpha_barrett is not None):
+            if not hasattr(self,"barrett_moment"):
+                self.set_barrett_moment()
+        #
         # try:
         #     if self.charge_density_Mp is not None:
         #         self.set_proton_radius()
@@ -395,67 +403,25 @@ class nucleus_base:
             
     def fill_gaps(self):
         
-        if self.charge_density is None:
-            if self.form_factor is not None:    
+        if not hasattr(self,"charge_density"):
+            if hasattr(self,"electric_field"):
+                self.set_rho_from_El()
+            elif hasattr(self,"electric_potential"):
+                self.set_El_from_V()
+                self.set_rho_from_El()
+            elif hasattr(self,"form_factor"):
                 self.set_rho_from_FF()
             else:
-                if self.electric_field is None:
-                    if self.electric_potential is None:
-                        raise ValueError("Not enough information to deduce the charge density")
-                    self.set_El_from_V()
-                self.set_rho_from_El()
-                
-        if self.electric_potential is None:
-            if self.electric_field is None:
-                if self.charge_density is None:
-                    if self.form_factor is None:
-                        raise ValueError("Not enough information to deduce the electric potential")
-                    self.set_rho_from_FF()
-                self.set_El_from_rho()
+                raise ValueError("Need at least one input out of charge_density, electric_field, electric_potential and form_factor to deduce the others")
+        
+        if not hasattr(self,"electric field"):
+            self.set_El_from_rho()
+
+        if not hasattr(self,"electric_potential"):
             self.set_V_from_El()
         
-        if self.form_factor is None:
-            if self.charge_density is None:
-                if self.electric_field is None:
-                    if self.electric_potential is None:
-                        raise ValueError("Not enough information to deduce the form factor")
-                    self.set_El_from_V()
-                self.set_rho_from_El()
+        if not hasattr(self,"form_factor"):
             self.set_FF_from_rho()
-
-        if self.electric_field is None:
-            if self.electric_potential is not None:
-                self.set_El_from_V()
-            else:
-                if self.charge_density is None:
-                    if self.form_factor is not None:
-                        raise ValueError("Not enough information to deduce the electric field")
-                    self.set_rho_from_FF()
-                self.set_El_from_rho()   
-        
-    # def fill_gaps(self):
-    #     while self.electric_potential is None:
-    #         while self.electric_field is None:
-    #             while self.charge_density is None:
-    #                 while self.form_factor is None:
-    #                     raise ValueError('no structure (FF,rho,El,V) given to start from')
-    #                 self.set_rho_from_FF()
-    #             self.set_El_from_rho()
-    #         self.set_V_from_El()
-        
-    #     while self.form_factor is None:
-    #         while self.charge_density is None:
-    #             while self.electric_field is None:
-    #                 while self.electric_potential is None:
-    #                     raise ValueError('no structure (FF,rho,El,V) given to start from')
-    #                 raise ValueError('still need to add this, sorry') #self.set_El_from_V()
-    #             raise ValueError('still need to add this, sorry') #self.set_rho_from_El()
-    #         self.set_FF_from_rho()
-
-    #     if self.charge_density is None:
-    #         self.set_rho_from_FF()
-    #     if self.electric_field is None:
-    #         self.set_El_from_rho()
 
 def calc_charge(density,rrange):
     Rs = range_seperator(rrange,density)
@@ -473,6 +439,15 @@ def calc_radius(density,rrange,norm):
         radius_sq = 4*pi*integral_rsq/norm
         radius = np.sqrt(radius_sq) if radius_sq>=0 else np.sqrt(radius_sq+0j)
     return radius_sq, radius
+
+def calc_barrett_moment(density,rrange,k_barrett,alpha_barrett,norm):
+    Rs = range_seperator(rrange,density)
+    if norm==0:
+        barrett=np.inf
+    else:
+        integral_barrett = quad_seperator(lambda x: (x**(2+k_barrett))*np.exp(-alpha_barrett*x)*density(x),Rs)
+        barrett = 4*pi*integral_barrett/norm
+    return barrett
 
 def range_seperator(xrange,fct):
     Xmin_int=xrange[0]

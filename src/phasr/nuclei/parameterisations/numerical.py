@@ -8,33 +8,28 @@ class nucleus_num(nucleus_base):
     def __init__(self,name,Z,A,**args): #,R_cut=None,rho_cut=None
         nucleus_base.__init__(self,name,Z,A,**args)
         self.nucleus_type = "numerical"
+        if 'charge_density' in args:
+            self.charge_density =  args['charge_density']
+        if 'electric_field' in args:
+            self.electric_field =  args['electric_field']
+        if 'electric_potential' in args:
+            self.electric_potential =  args['electric_potential']
+        if 'form_factor' in args:
+            self.form_factor =  args['form_factor']
         self.update_dependencies()
 
-#     def update_dependencies(self):
-#         nucleus_base.update_dependencies(self)
-#         self.N_a=len(self.ai)
-#         self.qi=np.arange(1,self.N_a+1)*pi/self.R
-#         self.rrange[1]=self.R 
-#         self.qrange[1]=self.qi[-1]*constants.hc 
-#         #
-#         self.total_charge = total_charge_FB(self.ai,self.qi,self.N_a)
-#         self.total_charge_jacobian = total_charge_FB_jacob(self.qi,self.N_a)
-#         #
-#         if np.abs(self.total_charge - self.Z)/self.Z>1e-4:
-#             print('Warning total charge for '+self.name+' deviates more than 1e-4: Z='+str(self.Z)+', Q='+str(self.total_charge))
-#         #
-#         self.charge_radius_sq = charge_radius_sq_FB(self.ai,self.qi,self.total_charge,self.N_a)
-#         self.charge_radius_sq_jacobian = charge_radius_sq_FB_jacob(self.qi,self.total_charge,self.N_a)
-#         self.charge_radius = np.sqrt(self.charge_radius_sq) if self.charge_radius_sq>=0 else np.sqrt(self.charge_radius_sq+0j)
-#         self.charge_radius_jacobian = self.charge_radius_sq_jacobian/(2*self.charge_radius)
-#         #
-#         self.Vmin = electric_potential_V0_FB(self.ai,self.R,self.qi,self.total_charge,alpha_el=constants.alpha_el)
-#         self.Vmin_jacobian = electric_potential_V0_FB_jacob(self.qi,alpha_el=constants.alpha_el)
-#         #
-#         if (self.k_barrett is not None) and (self.alpha_barrett is not None):
-#             self.barrett_moment = Barrett_moment_FB(self.ai,self.R,self.qi,self.total_charge,self.k_barrett,self.alpha_barrett)
-#             self.barrett_moment_jacobian = Barrett_moment_FB_jacob(self.R,self.qi,self.total_charge,self.k_barrett,self.alpha_barrett)
-
+    def update_dependencies(self):
+        nucleus_base.update_dependencies(self)
+        #
+        self.set_scalars_from_rho()
+        if np.abs(self.total_charge - self.Z)/self.Z>1e-4:
+            print('Warning total charge for '+self.name+' deviates more than 1e-4: Z='+str(self.Z)+', Q='+str(self.total_charge))
+        #
+        if self.calc:
+            self.fill_gaps()
+            if not hasattr(self,'Vmin'):
+                self.set_Vmin()
+        #
 #     def update_R(self,R):
 #         self.R=R
 #         self.update_dependencies()
