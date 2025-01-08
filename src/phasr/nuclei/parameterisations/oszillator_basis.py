@@ -12,3 +12,7 @@ class nucleus_osz(nucleus_base):
         self.update_dependencies()
 
 # TODO / to reimagine, also how the parametrisation is stored, is Cs the best choice/ name, etc.
+# also how to store all the formfactors
+
+# do something like this for the other multipoles 
+# for key in [Fch0,Fch2,..,Fmag1,FM0p,...]: setattr(self,key,fct[key])

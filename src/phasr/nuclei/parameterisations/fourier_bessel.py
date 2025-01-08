@@ -13,14 +13,17 @@ class nucleus_FB(nucleus_base):
         self.nucleus_type = "fourier-bessel"
         self.ai=ai
         self.R=R
+        #
+        # add ai_proton, R_proton, etc as options? 
+        #
         self.update_dependencies()
 
     def update_dependencies(self):
         nucleus_base.update_dependencies(self)
         self.N_a=len(self.ai)
         self.qi=np.arange(1,self.N_a+1)*pi/self.R
-        self.rrange[1]=self.R 
-        self.qrange[1]=self.qi[-1]*constants.hc 
+        #self.rrange[1]=self.R 
+        #self.qrange[1]=self.qi[-1]*constants.hc 
         #
         self.total_charge = total_charge_FB(self.ai,self.qi,self.N_a)
         self.total_charge_jacobian = total_charge_FB_jacob(self.qi,self.N_a)

@@ -23,8 +23,7 @@ class constants():
     # weak charge per proton/neutron
     Qw_p=0.0710#(4) old:0.0714
     Qw_n=-0.9891#(3) old:-0.9900
-    #sinsq_theta_w=0.23121#(4) #MS bar, right value
-
+    
     # decay constants
     fpi=130.2/np.sqrt(2.)
     fK=155.7/np.sqrt(2.)
@@ -61,7 +60,7 @@ class masses():
 class trafos():
     #
     hc = constants.hc
-    alpha_el = constants.hc
+    alpha_el = constants.alpha_el
     mmu = masses.mmu
     #
     cmsq_to_mub = 1e30

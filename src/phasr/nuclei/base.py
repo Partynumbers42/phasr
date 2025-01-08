@@ -1,21 +1,11 @@
-from .. import constants
+from .. import constants, masses
 from ..physical_constants.iaea_nds import massofnucleusZN, abundanceofnucleusZN, JPofnucleusZN
-from ..utility import calcandspline
-from ..utility.continuer import highenergycontinuation_exp, highenergycontinuation_poly
 
 import numpy as np
 pi = np.pi
 
-from scipy.integrate import quad
-from scipy.special import spherical_jn
-
-from ..utility.math import derivative as deriv
-
 class nucleus_base:
-    def __init__(self,name,Z, A, m=None, abundance=None, spin=None, parity=None, Qw=None, 
-                 rrange=[0.,20.,0.02], qrange=[0.,1000.,1.],
-                 pickleable=False, calc=None, renew=False, save=True,
-                 #barebone=False, pickleable=False, renew=False, calc=None, calc_multipoles=None, 
+    def __init__(self,name,Z, A, m=None, abundance=None, spin=None, parity=None,# weak_charge=None,
                  #spline_hyp1f1=None, fp=False, ap_dps=15, 
                  **args):
         #
@@ -36,39 +26,41 @@ class nucleus_base:
             self.lookup_nucleus_JP()
         Qw_p=constants.Qw_p
         Qw_n=constants.Qw_n
-        self.weak_charge = Qw
-        if (self.weak_charge is None):
-            self.weak_charge = self.Z*Qw_p + (self.A-self.Z)*Qw_n
+        self.Qw = self.Z*Qw_p + (self.A-self.Z)*Qw_n
+        #self.weak_charge = weak_charge # remove option to provide weak_charge?
+        #if (self.weak_charge is None):
+        #    self.weak_charge = self.Qw 
         #
-        if ('k' in args) and ('alpha' in args):
-            self.k_barrett = args['k']
-            self.alpha_barrett = args['alpha']
+        if ('k_barrett' in args) and ('alpha_barrett' in args):
+            self.k_barrett = args['k_barrett']
+            self.alpha_barrett = args['alpha_barrett']
         else:
             self.k_barrett = None
             self.alpha_barrett = None
-        # Add lookup mechanism/file where the values are saved?
+        # Add lookup mechanism/file where the k, alpha values are saved?
         #
-        self.rrange=rrange #fm
-        self.qrange=qrange #MeV
+        if 'form_factor_dict' in args:
+            form_factor_dict=args['form_factor_dict']
+            # Expected keys: FM0p, FM0n, FM2p, FM2n, ... , FDelta1p, ...
+            for key in form_factor_dict:
+                setattr(self,key,form_factor_dict[key])
         #
-        self.pickleable=pickleable # no structures, only simple data types 
-        self.renew=renew # overwrite existing calculations 
-        self.save=save
-        self.calc=calc
+        if 'density_dict' in args:
+            density_dict=args['density_dict']
+            # Expected keys: rhoM0p, rhoM0n, rhoM2p, rhoM2n, ... 
+            for key in density_dict:
+                setattr(self,key,density_dict[key])
         #
-        #self.barebone=barebone # only params, Q, V(r), V(0) 
-        #if self.renew:
-        #    self.calc=True
-        #self.calc_multipoles = calc_multipoles
-        #if self.calc_multipoles is None:
-        #    self.calc_multipoles=['M0p','M0n']
+        # remaining keywords are made attributes, do i want this???
+        #for key in args:
+        #    if not hasattr(self,key,args[key]):
+        #        setattr(self,key,args[key])
         #
-        #
-        #nucleus_base.update_dependencies(self) #include if update_denpendencies becomes non-trivial on base level in the future
+        nucleus_base.update_dependencies(self)
         #
     
     def update_dependencies(self):
-        pass # extended/overwritten by subclass functions
+        pass
     
     def update_name(self,name):
         self.name=name
@@ -85,12 +77,18 @@ class nucleus_base:
         self.m=m
         self.update_dependencies()
     
-    def update_weak_charge(self,Qw):
-        self.weak_charge=Qw
+    def update_spin(self,spin):
+        self.spin=spin
         self.update_dependencies()
-    
-    # add update abundance, parity, spin, if necessary 
-    
+
+    def update_parity(self,parity):
+        self.parity=parity
+        self.update_dependencies()
+
+    def update_abundance(self,abundance):
+        self.abundance=abundance
+        self.update_dependencies()
+
     def lookup_nucleus_mass(self):
         self.m = massofnucleusZN(self.Z,self.A-self.Z)
 
@@ -106,406 +104,73 @@ class nucleus_base:
             if self.parity is not None and P!=self.parity:
                 raise ValueError('looked up parity P='+str(P)+' different to present one P='+str(self.parity))
             self.spin, self.parity = J, P
-
-    def wanna_calc(self,quantity_name='Some quantity'):
-        if self.calc is None:
-            yn=input(quantity_name+" of "+self.name+" is not available analytically, do you want to calculate it (you won't be asked again for others)? (y/n): ")
-            if yn=='n' or yn=='no' or yn=='No' or yn=='N':
-                self.calc=False
-            else:
-                self.calc=True
     
-    def set_total_charge(self):
-        self.total_charge=calc_charge(self.charge_density,self.rrange)
+    def Fch(self,q,L):
         
-    def set_charge_radius(self,norm=None):
-        if norm is None:
-            norm=self.total_charge
-        self.charge_radius_sq, self.charge_radius = calc_radius(self.charge_density,self.rrange,norm)
-   
-    def set_proton_radius(self,norm=None):
-        if norm is None:
-            norm=self.Z
-        self.proton_radius_sq, self.proton_radius = calc_radius(self.charge_density_Mp,self.rrange,norm)
-   
-    def set_neutron_radius(self,norm=None):
-        if norm is None:
-            norm=self.A-self.Z
-        self.neutron_radius_sq, self.neutron_radius = calc_radius(self.charge_density_Mn,self.rrange,norm)
- 
-    def set_weak_radius(self,norm=None):
-        if norm is None:
-            norm=self.weak_charge
-        self.weak_radius_sq, self.weak_radius = calc_radius(self.charge_density_dict['rhow0'],self.rrange,norm)
+        if L>=2*self.spin+1:
+            raise ValueError('This nucleus has a maximum L of '+str(2*self.spin))
 
-    def set_barrett_moment(self,norm=None):
-        if norm is None:
-            norm=self.total_charge
-        self.barrett_moment = calc_barrett_moment(self.charge_density,self.rrange,self.k_barrett,self.alpha_barrett,norm)
+        if L%2==1:
+            raise ValueError('Fch only nonzero for even L')
+        
+        if not (hasattr(self,'FM'+str(L)+'p') and hasattr(self,'FM'+str(L)+'n') and hasattr(self,'FPhipp'+str(L)+'p') and hasattr(self,'FPhipp'+str(L)+'n')):
+            raise ValueError('Missing multipoles to evaluate Fch'+str(L))
+        
+        FMLp=getattr(self,'FM'+str(L)+'p')
+        FMLn=getattr(self,'FM'+str(L)+'n')
+        FPhippLp=getattr(self,'FPhipp'+str(L)+'p')
+        FPhippLn=getattr(self,'FPhipp'+str(L)+'n')
+        return Fch_composition(q,FMLp,FMLn,FPhippLp,FPhippLn,self.Z)
+        
+    def Fmag(self,q,L):
+        
+        if L>=2*self.spin+1:
+            raise ValueError('This nucleus has a maximum L of '+str(2*self.spin))
 
-    def set_Vmin(self):
-        if not self.barebone:
-            self.Vmin = np.min(self.electric_potential(np.arange(*self.rrange)))
-        else:
-            self.Vmin = self.electric_potential(self.rrange[0])
+        if L%2==0:
+            raise ValueError('Fmag only nonzero for odd L')
 
-    def set_El_from_rho(self):
-        #
-        def electric_field_0(r,rho=self.charge_density):
-            charge_r = quad_seperator(lambda x: (x**2)*rho(x),[0,r])
-            return np.sqrt(4*pi*constants.alpha_el)/(r**2)*charge_r if r!=0. else 0.  # as long as rho(0) finite follows E(0)=0, #*e=np.sqrt(4*pi*alpha_el)
-        # vectorize
-        electric_field_vec = np.vectorize(electric_field_0)
-        # spline
-        electric_field_spl = spline_field(electric_field_vec,"electric_field",self.name,rrange=self.rrange,renew=self.renew)
-        # highenery continue
-        self.electric_field = highenergycont_field(electric_field_spl,R=self.rrange[1]*0.95,n=2) # Asymptotic: 1/r^2
-
-    def set_V_from_El(self):
-        #
-        Rs0 = range_seperator(self.rrange,self.electric_field)
-        def electric_potential_0(r,El=self.electric_field):
-            Rs=np.array([r,*Rs0[Rs0>r]])
-            potential_r = quad_seperator(El,Rs)
-            return - np.sqrt(4*pi*constants.alpha_el)*potential_r #*e=np.sqrt(4*pi*alpha_el)
-        # vectorize
-        electric_potential_vec = np.vectorize(electric_potential_0)
-        # spline
-        electric_potential_spl = spline_field(electric_potential_vec,"electric_potential",self.name,rrange=self.rrange,renew=self.renew)
-        # highenery continue
-        self.electric_potential = highenergycont_field(electric_potential_spl,R=self.rrange[1]*0.95*0.95,n=1) # Asymptotic: 1/r
-
-    def set_rho_from_El(self):
+        if not (hasattr(self,'FDelta'+str(L)+'p') and hasattr(self,'FSigmap'+str(L)+'p') and hasattr(self,'FSigmap'+str(L)+'n')):
+            raise ValueError('Missing multipoles to evaluate Fmag'+str(L))
         
-        El = self.electric_field
-        d_El = deriv(El,1e-6)
-        
-        def charge_density_vec(r,El=El,d_El=d_El):
-            thresh=1e-3
-            rho0 = 1/np.sqrt(4*pi*constants.alpha_el)*3*d_El(0)
-            r_arr = np.atleast_1d(r)
-            rho=r_arr*0+rho0
-            r_mask = np.where(r_arr>=thresh) 
-            if np.any(r_arr>=thresh):
-                rho[r_mask] = 1/np.sqrt(4*pi*constants.alpha_el)*((2/r_arr[r_mask])*El(r_arr[r_mask]) +  d_El(r_arr[r_mask]))
-            if np.isscalar(r):
-                rho=rho[0]
-            return rho
-        
-        charge_density_spl = spline_field(charge_density_vec,"charge_density",self.name,rrange=self.rrange,renew=self.renew)
-        #
-        # TODO add way to move r_crit back if rho<0,drho>0 beyond oscillatory 
-        #
-        # highenergy exponential decay for rho
-        self.charge_density = highenergycont_rho(charge_density_spl,R=self.rrange[1],val=0,t=0)
-        
-    def set_El_from_V(self):
-        
-        d_V = deriv(self.electric_potential,1e-6)
-        
-        def electric_field_vec(r,d_V=d_V):
-            return 1/np.sqrt(4*pi*constants.alpha_el) * d_V(r)
-        
-        electric_field_spl = spline_field(electric_field_vec,"electric_field",self.name,rrange=self.rrange,renew=self.renew)
-        # highenery continue
-        self.electric_field = highenergycont_field(electric_field_spl,R=self.rrange[1]*0.95,n=2) # Asymptotic: 1/r^2
-
-    def set_FF_from_rho(self):
-        #
-        Rs = range_seperator(self.rrange,self.charge_density)
-        #
-        if not hasattr(self,'total_charge'):
-            self.set_total_charge()
-        #
-        def form_factor_0(q,rho=self.charge_density,Z=self.total_charge):
-            form_factor_int = quad_seperator(lambda r: (r**2)*rho(r)*spherical_jn(0,q/constants.hc*r),Rs)
-            return 4*pi*form_factor_int/Z
-        # vectorize
-        form_factor_vec = np.vectorize(form_factor_0)
-        # spline
-        form_factor_spl = spline_field(form_factor_vec,"form_factor",self.name,rrange=self.qrange,renew=self.renew)
-        # highenery cut off at qmax
-        self.form_factor = highenergycutoff_field(form_factor_spl,R=self.qrange[1],val=0) # Asymptotic: cutoff to 0
-
-    def set_rho_from_FF(self):
-        #
-        # problematic if FF has difficult/oscillatory highenergy behaviour.
-        #
-        Qs = range_seperator(self.qrange,self.form_factor)
-        #
-        def charge_density_0(r,FF=self.form_factor,norm=self.Z): #use Z here b/c total_charge is not known b/c rho is not known
-            rho_int=quad_seperator(lambda q: (q**2)*FF(q)*spherical_jn(0,r/constants.hc*q)/constants.hc**3,Qs) 
-            return 4*pi*rho_int*norm/(2*pi)**3
-        # vectorize
-        charge_density_vec = np.vectorize(charge_density_0)
-        # spline
-        charge_density_spl = spline_field(charge_density_vec,"charge_density",self.name,rrange=self.rrange,renew=self.renew)
-        # highenery cut off at rmax
-        #self.charge_density = highenergycutoff_field(charge_density_spl,R=self.rrange[1],val=0)        
-        #
-        # TODO add way to move r_crit back if rho<0,drho>0 beyond oscillatory        
-        #
-        # highenergy exponential decay for rho
-        self.charge_density = highenergycont_rho(charge_density_spl,R=self.rrange[1],val=0,t=0)  # Asymptotic: exp(-r)
+        FDeltaLp=getattr(self,'FDelta'+str(L)+'p')
+        FSigmapLp=getattr(self,'FSigmap'+str(L)+'p')
+        FSigmapLn=getattr(self,'FSigmap'+str(L)+'n')
+        return Fmag_composition(q,FDeltaLp,FSigmapLp,FSigmapLn)
     
-    # TODO <-- clean implementation of rho_dict vs FF_dict / maybe separate, rho, E, V and FF ?
-    #
-    # def set_rho_dict_from_FF_dict(self):
-    #     #
-    #     self.wanna_calc('Charge densities (L>=0)')
-    #     if not self.calc:# or self.spin==0: # reconsider this here
-    #         return None
-    #     #
-    #     self.charge_density_dict = {}
-    #     #
-    #     #
-    #     for L in np.arange(0,2*self.spin+1,1,dtype=int):
-    #         #
-    #         #print(L)
-    #         #
-    #         key_Fch='Fch'+str(L)+'c'
-    #         key_Fmag='Fmag'+str(L)+'c'
-    #         key_Fw='Fw'+str(L)+'c'
-    #         key_rho='rho'+str(L)
-    #         key_j='j'+str(L)+str(L)+'imag'
-    #         key_rhow='rhow'+str(L)
-    #         #
-                
-    #         if L%2==0 and (key_Fch in self.form_factor_dict):
-    #             #
-    #             #print('calc even L='+str(L))
-    #             #
-    #             if L==0 and (self.charge_density is not None):
-    #                 print('set L=0 from self.charge density')
-    #                 self.charge_density_dict[key_rho]=self.charge_density
-    #             else:     
-    #                 Fch = self.form_factor_dict[key_Fch]
-    #                 #
-    #                 if Fch(self.qrange[1]+self.qrange[2])==0:
-    #                     Qmax_int=self.qrange[1]
-    #                 else:
-    #                     Qmax_int=np.inf
-    #                 #
-    #                 #print(Qmax_int)
-    #                 #
-    #                 def charge_density_0(r,FF=Fch,norm=self.total_charge):
-    #                     rho_int=quad(lambda q: (q**2)*FF(q*hc)*spherical_jn(L,r*q),self.qrange[0]/hc,Qmax_int/hc,limit=1000) 
-    #                     return 4*pi*rho_int[0]*norm/(2*pi)**3
-    #                 # vectorize
-    #                 charge_density_vec = np.vectorize(charge_density_0)
-    #                 # spline
-    #                 charge_density_spl = spline_field(charge_density_vec,"charge_density_L"+str(L),self.name,rrange=self.rrange,renew=self.renew)
-    #                 # exponential decay for rho
-    #                 self.charge_density_dict[key_rho] = highenergycont_rho(charge_density_spl,R=self.rrange[1],val=0,t=0)
-    #                 #
-    #                 if L==0 and (self.charge_density is None): # -> hasattr
-    #                     #print('overwrite L=0 self.charge_density')
-    #                     self.charge_density = copy.copy(self.charge_density_dict[key_rho])
-    #             #
-    #             Fw = self.form_factor_dict[key_Fw]
-    #             #
-    #             if Fw(self.qrange[1]+self.qrange[2])==0:
-    #                 Qmax_int=self.qrange[1]
-    #             else:
-    #                 Qmax_int=np.inf
-    #             #
-    #             def weak_density_0(r,FF=Fw,norm=self.weak_charge):
-    #                 rhow_int=quad(lambda q: (q**2)*FF(q*hc)*spherical_jn(L,r*q),self.qrange[0]/hc,Qmax_int/hc,limit=1000) 
-    #                 return 4*pi*rhow_int[0]*norm/(2*pi)**3
-    #             # vectorize
-    #             weak_density_vec = np.vectorize(weak_density_0)
-    #             # spline
-    #             weak_density_spl = spline_field(weak_density_vec,"weak_density_L"+str(L),self.name,rrange=self.rrange,renew=self.renew)
-    #             # exponential decay for rho
-    #             self.charge_density_dict[key_rhow] = highenergycont_rho(weak_density_spl,R=self.rrange[1],val=0,t=0)
-    #             #
-    #         elif L%2==1 and (key_Fmag in self.form_factor_dict):
-    #             #
-    #             #print('calc odd L='+str(L))
-    #             #
-    #             Fmag = self.form_factor_dict[key_Fmag]
-    #             #
-    #             if Fmag(self.qrange[1]+self.qrange[2])==0:
-    #                 Qmax_int=self.qrange[1]
-    #             else:
-    #                 Qmax_int=np.inf
-    #             #
-    #             # FF is assumed to be purely imaginary !!!
-    #             def charge_current_0(r,FF=Fmag):
-    #                 j_int=quad(lambda q: (q**2)*np.imag(FF(q*hc))*spherical_jn(L,r*q),self.qrange[0]/hc,Qmax_int/hc,limit=1000) 
-    #                 return 4*pi*j_int[0]/(2*pi)**3
-    #             # vectorize
-    #             charge_current_vec = np.vectorize(charge_current_0)
-    #             # spline
-    #             charge_current_spl = spline_field(charge_current_vec,"charge_current_L"+str(L),self.name,rrange=self.rrange,renew=self.renew)
-    #             # exponential decay for rho
-    #             self.charge_density_dict[key_j] = highenergycont_rho(charge_current_spl,R=self.rrange[1],val=0,t=0)
-    #             #
+    def Fw(self,q,L):
         
-    #     for key_FF in self.multipoles_keys:
-            
-    #         key0=key_FF[1:] # extract name
-    #         L = int(key_FF[-2]) #extract L for bessel fct
-            
-    #         if key0 in self.calc_multipoles:
-    #             key_rho = 'rho'+key0
-    #             FF = self.form_factor_dict[key_FF+'c'] # only with CMS corrections
-                
-    #             if FF(self.qrange[1]+self.qrange[2])==0:
-    #                 Qmax_int=self.qrange[1]
-    #             else:
-    #                 Qmax_int=np.inf
-    #             #
-    #             #print(Qmax_int)
-    #             #
-    #             def multipole_density_0(r,FF=FF):
-    #                 rho_int=quad(lambda q: (q**2)*FF(q*hc)*spherical_jn(L,r*q),self.qrange[0]/hc,Qmax_int/hc,limit=1000) 
-    #                 #print(rho_int[0],rho_int[1])
-    #                 return 4*pi*rho_int[0]/(2*pi)**3
-    #             # vectorize
-    #             multipole_density_vec = np.vectorize(multipole_density_0)
-    #             # spline
-    #             multipole_density_spl = spline_field(multipole_density_vec,"density_"+key0,self.name,rrange=self.rrange,renew=self.renew)
-    #             # exponential decay for rho
-    #             self.charge_density_dict[key0] = highenergycont_rho(multipole_density_spl,R=self.rrange[1],val=0,t=0)
-                
-    #             if key0=='M0p':# and (self.charge_density_Mp is None): # -> nasattr
-    #                 self.charge_density_Mp = copy.copy(self.charge_density_dict[key0])
-                
-    #             if key0=='M0n':# and (self.charge_density_Mn is None): # -> hasattr
-    #                 self.charge_density_Mn = copy.copy(self.charge_density_dict[key0])
+        if L>=2*self.spin+1:
+            raise ValueError('This nucleus has a maximum L of '+str(2*self.spin))
+
+        if L%2==1:
+            raise ValueError('Fch only nonzero for even L')
         
-    
-    def set_scalars_from_rho(self):
-        if not hasattr(self,"total_charge"):
-            self.set_total_charge()
-        if (not hasattr(self,"charge_radius")) or (not hasattr(self,"charge_radius_sq")):
-            self.set_charge_radius()
-        if (self.k_barrett is not None) and (self.alpha_barrett is not None):
-            if not hasattr(self,"barrett_moment"):
-                self.set_barrett_moment()
-        #
-        # try:
-        #     if self.charge_density_Mp is not None:
-        #         self.set_proton_radius()
-        # except: 
-        #     pass
-        # try:
-        #     if self.charge_density_Mn is not None:
-        #         self.set_neutron_radius()
-        # except: 
-        #     pass
-        # try:
-        #     if self.charge_density_dict['rhow0'] is not None:
-        #         self.set_weak_radius()
-        # except: 
-        #     pass
-            
-    def fill_gaps(self):
+        if not (hasattr(self,'FM'+str(L)+'p') and hasattr(self,'FM'+str(L)+'n') and hasattr(self,'FPhipp'+str(L)+'p') and hasattr(self,'FPhipp'+str(L)+'n')):
+            raise ValueError('Missing multipoles to evaluate Fch'+str(L))
         
-        if not hasattr(self,"charge_density"):
-            if hasattr(self,"electric_field"):
-                self.set_rho_from_El()
-            elif hasattr(self,"electric_potential"):
-                self.set_El_from_V()
-                self.set_rho_from_El()
-            elif hasattr(self,"form_factor"):
-                self.set_rho_from_FF()
-            else:
-                raise ValueError("Need at least one input out of charge_density, electric_field, electric_potential and form_factor to deduce the others")
-        
-        if not hasattr(self,"electric field"):
-            self.set_El_from_rho()
+        FMLp=getattr(self,'FM'+str(L)+'p')
+        FMLn=getattr(self,'FM'+str(L)+'n')
+        FPhippLp=getattr(self,'FPhipp'+str(L)+'p')
+        FPhippLn=getattr(self,'FPhipp'+str(L)+'n')
+        return Fw_composition(q,FMLp,FMLn,FPhippLp,FPhippLn,self.weak_charge)
 
-        if not hasattr(self,"electric_potential"):
-            self.set_V_from_El()
-        
-        if not hasattr(self,"form_factor"):
-            self.set_FF_from_rho()
+def Fch_composition(q,FM_p,FM_n,FPhipp_p,FPhipp_n,Z,rsqp=constants.rsq_p/constants.hc**2,rqsn=constants.rsq_n/constants.hc**2,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
+    return 1/Z * \
+    ( (1-(rsqp/6)*q**2-((q**2)/(8*mN**2)))*FM_p(q) \
+     - (rqsn/6)*(q**2)*FM_n(q) \
+     + ((1+2*kp)/(4*mN**2))*(q**2)*FPhipp_p(q) \
+     + ((2*kn)/(4*mN**2))*(q**2)*FPhipp_n(q) )
 
-def calc_charge(density,rrange):
-    Rs = range_seperator(rrange,density)
-    integral_Q = quad_seperator(lambda x: (x**2)*density(x),Rs)
-    Q = 4*pi*integral_Q
-    return Q
+def Fmag_composition(q,FDelta_p,FSigmap_p,FSigmap_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
+    return (-1j*q/mN)*( FDelta_p(q) \
+     - ((1+kp)/2)*FSigmap_p(q) \
+     - (kn/2)*FSigmap_n(q) )
 
-def calc_radius(density,rrange,norm):
-    Rs = range_seperator(rrange,density)
-    if norm==0:
-        radius=np.inf
-        radius_sq=np.inf
-    else:
-        integral_rsq = quad_seperator(lambda x: (x**4)*density(x),Rs)
-        radius_sq = 4*pi*integral_rsq/norm
-        radius = np.sqrt(radius_sq) if radius_sq>=0 else np.sqrt(radius_sq+0j)
-    return radius_sq, radius
-
-def calc_barrett_moment(density,rrange,k_barrett,alpha_barrett,norm):
-    Rs = range_seperator(rrange,density)
-    if norm==0:
-        barrett=np.inf
-    else:
-        integral_barrett = quad_seperator(lambda x: (x**(2+k_barrett))*np.exp(-alpha_barrett*x)*density(x),Rs)
-        barrett = 4*pi*integral_barrett/norm
-    return barrett
-
-def range_seperator(xrange,fct):
-    Xmin_int=xrange[0]
-    if fct(xrange[1]+xrange[2])==0:
-        Xmax_int=xrange[1]
-        return np.array([Xmin_int, Xmax_int])
-    else:
-        Xmax_int=np.inf
-        Xsep_int=xrange[1]
-        return np.array([Xmin_int, Xsep_int, Xmax_int])
-
-def quad_seperator(integrand,Rs):
-    # Splits the integral according to Rs
-    integral = 0
-    for i in range(len(Rs)-1):
-        Rmin = Rs[i]
-        Rmax = Rs[i+1]
-        integrali = quad(integrand,Rmin,Rmax,limit=1000)[0]
-        integral += integrali 
-    return integral
-
-def spline_field(field,fieldtype,name,rrange,renew):
-    field_spl=calcandspline(field, rrange, "./test/"+fieldtype+"_"+name+".txt",dtype=float,renew=renew) # <- change path TODO
-    return field_spl
-
-def highenergycont_field(field_spl,R,n):
-    def field_ultimate(r,R1=R):
-        E_crit=field_spl(R1)
-        dE=deriv(field_spl,1e-6)
-        dE_crit=dE(R1)
-        field=highenergycontinuation_poly(r,R1,E_crit,dE_crit,0,n=n)
-        if np.any(r<=R1):
-            field = field_spl(r)
-        if np.size(field)>1:
-            field[np.where(r>R1)]=highenergycontinuation_poly(r[np.where(r>R1)],R1,E_crit,dE_crit,0,n=n)
-        return field
-    return field_ultimate
-#
-def highenergycont_rho(field_spl,R,val,t): # often val=0, t=0
-    def field_ultimate(r,R1=R):
-        E_crit=field_spl(R1)
-        dE=deriv(field_spl,1e-6)
-        dE_crit=dE(R1)
-        field=highenergycontinuation_exp(r,R1,E_crit,dE_crit,val,t=t)
-        if np.any(r<=R1):
-            field = field_spl(r)
-        if np.size(field)>1:
-            field[np.where(r>R1)]=highenergycontinuation_exp(r[np.where(r>R1)],R1,E_crit,dE_crit,val,t=t)
-        return field
-    return field_ultimate
-#
-def highenergycutoff_field(field_spl,R,val=np.nan):
-    # For r>R return val (default:nan)
-    def field_ultimate(r,R1=R):
-        field=r*0+val
-        if np.any(r<=R1):
-            field = field_spl(r)
-        if np.size(field)>1:
-            field[np.where(r>R1)]=r[np.where(r>R1)]*val
-        return field
-    return field_ultimate
+def Fw_composition(q,FM_p,FM_n,FPhipp_p,FPhipp_n,Qw,Qw_p=constants.Qw_p,Qw_n=constants.Qw_n,rsqp=constants.rsq_p/constants.hc**2,rsqn=constants.rsq_n/constants.hc**2,rsqsN=constants.rsq_sN/constants.hc**2,kp=constants.kappa_p,kn=constants.kappa_n,ksN=constants.kappa_sN,mN=masses.mN):
+    #Z*Qw_p + (A-Z)*Qw_n
+    return 1/Qw * \
+    ( (Qw_p*(1-(rsqp/6)*q**2-((q**2)/(8*mN**2))) + Qw_n*(-(rsqn/6)*q**2-(rsqsN/6)*q**2))*FM_p(q) \
+     + (Qw_n*(1-(rsqp/6)*q**2-(rsqsN/6)*q**2-((q**2)/(8*mN**2))) + Qw_p*(-(rsqn/6)*q**2))*FM_n(q) \
+     + ((Qw_p*(1+2*kp)+Qw_n*(2*kn+2*ksN))/(4*mN**2))*(q**2)*FPhipp_p(q) \
+     + ((Qw_n*(1+2*kp+2*ksN)+Qw_p*(2*kn))/(4*mN**2))*(q**2)*FPhipp_n(q) )
