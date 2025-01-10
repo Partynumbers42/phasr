@@ -134,7 +134,7 @@ class nucleus_base:
                 raise ValueError('looked up parity P='+str(P)+' different to present one P='+str(self.parity))
             self.spin, self.parity = J, P
     
-    def Fch(self,q,L):
+    def Fch(self,q,L=0):
         
         if L>=2*self.spin+1:
             raise ValueError('This nucleus has a maximum L of '+str(2*self.spin))
@@ -151,7 +151,7 @@ class nucleus_base:
         FPhippLn=getattr(self,'FPhipp'+str(L)+'n')
         return Fch_composition(q,FMLp,FMLn,FPhippLp,FPhippLn,self.Z)
         
-    def Fmag(self,q,L):
+    def Fmag(self,q,L=0):
         
         if L>=2*self.spin+1:
             raise ValueError('This nucleus has a maximum L of '+str(2*self.spin))
@@ -167,7 +167,7 @@ class nucleus_base:
         FSigmapLn=getattr(self,'FSigmap'+str(L)+'n')
         return Fmag_composition(q,FDeltaLp,FSigmapLp,FSigmapLn)
     
-    def Fw(self,q,L):
+    def Fw(self,q,L=0):
         
         if L>=2*self.spin+1:
             raise ValueError('This nucleus has a maximum L of '+str(2*self.spin))
@@ -184,7 +184,7 @@ class nucleus_base:
         FPhippLn=getattr(self,'FPhipp'+str(L)+'n')
         return Fw_composition(q,FMLp,FMLn,FPhippLp,FPhippLn,self.weak_charge)
     
-    def rhoch(self,r,L):
+    def rhoch(self,r,L=0):
         
         if L>=2*self.spin+1:
             raise ValueError('This nucleus has a maximum L of '+str(2*self.spin))
@@ -224,8 +224,8 @@ class nucleus_base:
         j1SigmapLp=getattr(self,'j1Sigmap'+str(L)+'p')
         j1SigmapLn=getattr(self,'j1Sigmap'+str(L)+'n')
         return jmag_composition(r,j1DeltaLp,j1SigmapLp,j1SigmapLn)
-    
-    def rhow(self,r,L):
+
+    def rhow(self,r,L=0):
         
         if L>=2*self.spin+1:
             raise ValueError('This nucleus has a maximum L of '+str(2*self.spin))

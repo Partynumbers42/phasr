@@ -171,143 +171,23 @@ class nucleus_num(nucleus_base):
             multipoles = [S+str(L)+nuc for S in ['M','Phipp'] for nuc in ['p','n']]
             for multipole in multipoles:
                 if hasattr(self,'F'+multipole):
-                    setattr(self,'rho'+multipole,fourier_transform_mom_to_pos(getattr(self,'F'+multipole),multipole+'_'+self.name,self.qrange,self.rrange,L=L,norm=1,renew=self.renew))
+                    FF = getattr(self,'F'+multipole)
+                    rho = fourier_transform_mom_to_pos(FF,multipole+'_'+self.name,self.qrange,self.rrange,L=L,norm=1,renew=self.renew)
+                    setattr(self,'rho'+multipole,rho)
+                    def q2FF(q): return q**2 * FF(q)
+                    rho2 = fourier_transform_mom_to_pos(q2FF,multipole+'_q2_'+self.name,self.qrange,self.rrange,L=L,norm=1,renew=self.renew)
+                    setattr(self,'rho2'+multipole,rho2)
+        self.update_dependencies()
 
     def set_form_factor_dict_from_density_dict(self):
         for L in np.arange(0,2*self.spin+1,2,dtype=int):
             multipoles = [S+str(L)+nuc for S in ['M','Phipp'] for nuc in ['p','n']]
             for multipole in multipoles:
                 if hasattr(self,'rho'+multipole):
-                    setattr(self,'F'+multipole,fourier_transform_pos_to_mom(getattr(self,'rho'+multipole),multipole+'_'+self.name,self.rrange,self.qrange,L=L,norm=1,renew=self.renew))
-
-
-    # TODO <-- clean implementation of rho_dict vs FF_dict / maybe separate, rho, E, V and FF ?
-    #
-    # def set_rho_dict_from_FF_dict(self):
-    #     #
-    #     self.wanna_calc('Charge densities (L>=0)')
-    #     if not self.calc:# or self.spin==0: # reconsider this here
-    #         return None
-    #     #
-    #     self.charge_density_dict = {}
-    #     #
-    #     #
-    #     for L in np.arange(0,2*self.spin+1,1,dtype=int):
-    #         #
-    #         #print(L)
-    #         #
-    #         key_Fch='Fch'+str(L)+'c'
-    #         key_Fmag='Fmag'+str(L)+'c'
-    #         key_Fw='Fw'+str(L)+'c'
-    #         key_rho='rho'+str(L)
-    #         key_j='j'+str(L)+str(L)+'imag'
-    #         key_rhow='rhow'+str(L)
-    #         #
-                
-    #         if L%2==0 and (key_Fch in self.form_factor_dict):
-    #             #
-    #             #print('calc even L='+str(L))
-    #             #
-    #             if L==0 and (self.charge_density is not None):
-    #                 print('set L=0 from self.charge density')
-    #                 self.charge_density_dict[key_rho]=self.charge_density
-    #             else:     
-    #                 Fch = self.form_factor_dict[key_Fch]
-    #                 #
-    #                 if Fch(self.qrange[1]+self.qrange[2])==0:
-    #                     Qmax_int=self.qrange[1]
-    #                 else:
-    #                     Qmax_int=np.inf
-    #                 #
-    #                 #print(Qmax_int)
-    #                 #
-    #                 def charge_density_0(r,FF=Fch,norm=self.total_charge):
-    #                     rho_int=quad(lambda q: (q**2)*FF(q*hc)*spherical_jn(L,r*q),self.qrange[0]/hc,Qmax_int/hc,limit=1000) 
-    #                     return 4*pi*rho_int[0]*norm/(2*pi)**3
-    #                 # vectorize
-    #                 charge_density_vec = np.vectorize(charge_density_0)
-    #                 # spline
-    #                 charge_density_spl = spline_field(charge_density_vec,"charge_density_L"+str(L),self.name,rrange=self.rrange,renew=self.renew)
-    #                 # exponential decay for rho
-    #                 self.charge_density_dict[key_rho] = highenergycont_rho(charge_density_spl,R=self.rrange[1],val=0,t=0)
-    #                 #
-    #                 if L==0 and (self.charge_density is None): # -> hasattr
-    #                     #print('overwrite L=0 self.charge_density')
-    #                     self.charge_density = copy.copy(self.charge_density_dict[key_rho])
-    #             #
-    #             Fw = self.form_factor_dict[key_Fw]
-    #             #
-    #             if Fw(self.qrange[1]+self.qrange[2])==0:
-    #                 Qmax_int=self.qrange[1]
-    #             else:
-    #                 Qmax_int=np.inf
-    #             #
-    #             def weak_density_0(r,FF=Fw,norm=self.weak_charge):
-    #                 rhow_int=quad(lambda q: (q**2)*FF(q*hc)*spherical_jn(L,r*q),self.qrange[0]/hc,Qmax_int/hc,limit=1000) 
-    #                 return 4*pi*rhow_int[0]*norm/(2*pi)**3
-    #             # vectorize
-    #             weak_density_vec = np.vectorize(weak_density_0)
-    #             # spline
-    #             weak_density_spl = spline_field(weak_density_vec,"weak_density_L"+str(L),self.name,rrange=self.rrange,renew=self.renew)
-    #             # exponential decay for rho
-    #             self.charge_density_dict[key_rhow] = highenergycont_rho(weak_density_spl,R=self.rrange[1],val=0,t=0)
-    #             #
-    #         elif L%2==1 and (key_Fmag in self.form_factor_dict):
-    #             #
-    #             #print('calc odd L='+str(L))
-    #             #
-    #             Fmag = self.form_factor_dict[key_Fmag]
-    #             #
-    #             if Fmag(self.qrange[1]+self.qrange[2])==0:
-    #                 Qmax_int=self.qrange[1]
-    #             else:
-    #                 Qmax_int=np.inf
-    #             #
-    #             # FF is assumed to be purely imaginary !!!
-    #             def charge_current_0(r,FF=Fmag):
-    #                 j_int=quad(lambda q: (q**2)*np.imag(FF(q*hc))*spherical_jn(L,r*q),self.qrange[0]/hc,Qmax_int/hc,limit=1000) 
-    #                 return 4*pi*j_int[0]/(2*pi)**3
-    #             # vectorize
-    #             charge_current_vec = np.vectorize(charge_current_0)
-    #             # spline
-    #             charge_current_spl = spline_field(charge_current_vec,"charge_current_L"+str(L),self.name,rrange=self.rrange,renew=self.renew)
-    #             # exponential decay for rho
-    #             self.charge_density_dict[key_j] = highenergycont_rho(charge_current_spl,R=self.rrange[1],val=0,t=0)
-    #             #
-        
-    #     for key_FF in self.multipoles_keys:
-            
-    #         key0=key_FF[1:] # extract name
-    #         L = int(key_FF[-2]) #extract L for bessel fct
-            
-    #         if key0 in self.calc_multipoles:
-    #             key_rho = 'rho'+key0
-    #             FF = self.form_factor_dict[key_FF+'c'] # only with CMS corrections
-                
-    #             if FF(self.qrange[1]+self.qrange[2])==0:
-    #                 Qmax_int=self.qrange[1]
-    #             else:
-    #                 Qmax_int=np.inf
-    #             #
-    #             #print(Qmax_int)
-    #             #
-    #             def multipole_density_0(r,FF=FF):
-    #                 rho_int=quad(lambda q: (q**2)*FF(q*hc)*spherical_jn(L,r*q),self.qrange[0]/hc,Qmax_int/hc,limit=1000) 
-    #                 #print(rho_int[0],rho_int[1])
-    #                 return 4*pi*rho_int[0]/(2*pi)**3
-    #             # vectorize
-    #             multipole_density_vec = np.vectorize(multipole_density_0)
-    #             # spline
-    #             multipole_density_spl = spline_field(multipole_density_vec,"density_"+key0,self.name,rrange=self.rrange,renew=self.renew)
-    #             # exponential decay for rho
-    #             self.charge_density_dict[key0] = highenergycont_rho(multipole_density_spl,R=self.rrange[1],val=0,t=0)
-                
-    #             if key0=='M0p':# and (self.charge_density_Mp is None): # -> nasattr
-    #                 self.charge_density_Mp = copy.copy(self.charge_density_dict[key0])
-                
-    #             if key0=='M0n':# and (self.charge_density_Mn is None): # -> hasattr
-    #                 self.charge_density_Mn = copy.copy(self.charge_density_dict[key0])
-        
+                    rho = getattr(self,'rho'+multipole)
+                    FF = fourier_transform_pos_to_mom(rho,multipole+'_'+self.name,self.rrange,self.qrange,L=L,norm=1,renew=self.renew)
+                    setattr(self,'F'+multipole,FF)
+        self.update_dependencies()
     
     def set_scalars_from_rho(self):
         if not hasattr(self,"total_charge"):
