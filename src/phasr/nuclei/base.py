@@ -5,8 +5,7 @@ import numpy as np
 pi = np.pi
 
 class nucleus_base:
-    def __init__(self,name,Z, A, m=None, abundance=None, spin=None, parity=None,# weak_charge=None,
-                 #spline_hyp1f1=None, fp=False, ap_dps=15, 
+    def __init__(self,name,Z, A, m=None, abundance=None, spin=None, parity=None,# weak_charge=None,#spline_hyp1f1=None, fp=False, ap_dps=15, 
                  **args):
         #
         self.nucleus_type = "base"
@@ -31,9 +30,6 @@ class nucleus_base:
         if ('k_barrett' in args) and ('alpha_barrett' in args):
             self.k_barrett = args['k_barrett']
             self.alpha_barrett = args['alpha_barrett']
-        else:
-            self.k_barrett = None
-            self.alpha_barrett = None
         #
         if 'form_factor_dict' in args:
             form_factor_dict=args['form_factor_dict']
@@ -67,7 +63,7 @@ class nucleus_base:
 
         if (not hasattr(self,'neutron_density')) and hasattr(self,'rhoM0n'):
             self.neutron_density = self.rhoM0n
-
+        
         if (not hasattr(self,'rho_M0n')) and hasattr(self,'neutron_density'):
             self.rhoM0n = self.neutron_density
         

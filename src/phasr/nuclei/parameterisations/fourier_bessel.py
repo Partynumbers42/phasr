@@ -8,7 +8,7 @@ from scipy.special import spherical_jn
 from mpmath import gammainc
 
 class nucleus_FB(nucleus_base):
-    def __init__(self,name,Z,A,ai,R,**args): #,R_cut=None,rho_cut=None
+    def __init__(self,name,Z,A,ai,R,**args): 
         nucleus_base.__init__(self,name,Z,A,**args)
         self.nucleus_type = "fourier-bessel"
         self.ai=ai
@@ -39,7 +39,7 @@ class nucleus_FB(nucleus_base):
         self.Vmin = electric_potential_V0_FB(self.ai,self.R,self.qi,self.total_charge,alpha_el=constants.alpha_el)
         self.Vmin_jacobian = electric_potential_V0_FB_jacob(self.qi,alpha_el=constants.alpha_el)
         #
-        if (self.k_barrett is not None) and (self.alpha_barrett is not None):
+        if hasattr(self,'k_barrett') and hasattr(self,'alpha_barrett'):
             self.barrett_moment = Barrett_moment_FB(self.ai,self.R,self.qi,self.total_charge,self.k_barrett,self.alpha_barrett)
             self.barrett_moment_jacobian = Barrett_moment_FB_jacob(self.R,self.qi,self.total_charge,self.k_barrett,self.alpha_barrett)
 

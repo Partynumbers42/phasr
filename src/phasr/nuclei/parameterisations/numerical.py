@@ -46,9 +46,8 @@ class nucleus_num(nucleus_base):
             if np.abs(self.weak_charge - self.Qw)/self.Qw>1e-4:
                 print('Warning weak_charge for '+self.name+' deviates more than 1e-4: Qw='+str(self.Qw)+', Qw(num)='+str(self.weak_charge))
         #
-        if hasattr(self,'electric_potential'):
-            if not hasattr(self,'Vmin'):
-                self.set_Vmin()
+        if hasattr(self,'electric_potential') and (not hasattr(self,'Vmin')):
+            self.set_Vmin()
         
     def update_rrange(self,rrange):
         self.rrange=rrange
@@ -194,18 +193,14 @@ class nucleus_num(nucleus_base):
             self.set_total_charge()
         if (not hasattr(self,"charge_radius")) or (not hasattr(self,"charge_radius_sq")):
             self.set_charge_radius()
-        if (self.k_barrett is not None) and (self.alpha_barrett is not None):
-            if not hasattr(self,"barrett_moment"):
-                self.set_barrett_moment()
-        if hasattr(self,'rhoM0p'):
-            if (not hasattr(self,'proton_radius')) or (not hasattr(self,'proton_radius_sq')):
-                self.set_proton_radius()
-        if hasattr(self,'rhoM0n'):
-            if (not hasattr(self,'neutron_radius')) or (not hasattr(self,'neutron_radius_sq')):
-                self.set_neutron_radius()
-        if hasattr(self,'weak_density'):
-            if (not hasattr(self,'weak_radius')) or (not hasattr(self,'weak_radius_sq')):
-                self.set_weak_radius()
+        if (hasattr(self,'k_barrett') and hasattr(self,'alpha_barrett')) and (not hasattr(self,"barrett_moment")):
+            self.set_barrett_moment()
+        if hasattr(self,'rhoM0p') and ((not hasattr(self,'proton_radius')) or (not hasattr(self,'proton_radius_sq'))):
+            self.set_proton_radius()
+        if hasattr(self,'rhoM0n') and ((not hasattr(self,'neutron_radius')) or (not hasattr(self,'neutron_radius_sq'))):
+            self.set_neutron_radius()
+        if hasattr(self,'weak_density') and ((not hasattr(self,'weak_radius')) or (not hasattr(self,'weak_radius_sq'))):
+            self.set_weak_radius()
     
     def fill_gaps(self):
         
