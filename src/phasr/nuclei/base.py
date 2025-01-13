@@ -64,20 +64,22 @@ class nucleus_base:
     
     def update_dependencies(self):
 
+        if (not hasattr(self,'rho_M0p')) and hasattr(self,'proton_density'):
+            self.rhoM0p = self.proton_density
+            self.multipoles = list(np.unique(self.multipoles+["M0p"]))
+
+        if (not hasattr(self,'rho_M0n')) and hasattr(self,'neutron_density'):
+            self.rhoM0n = self.neutron_density
+            self.multipoles = list(np.unique(self.multipoles+["M0n"]))
+        
         if hasattr(self,"multipoles"):
             self.update_basis_representations()
 
         if (not hasattr(self,'proton_density')) and hasattr(self,'rhoM0p'):
             self.proton_density = self.rhoM0p
-
-        if (not hasattr(self,'rho_M0p')) and hasattr(self,'proton_density'):
-            self.rhoM0p = self.proton_density
-
+        
         if (not hasattr(self,'neutron_density')) and hasattr(self,'rhoM0n'):
             self.neutron_density = self.rhoM0n
-        
-        if (not hasattr(self,'rho_M0n')) and hasattr(self,'neutron_density'):
-            self.rhoM0n = self.neutron_density
         
         if (not hasattr(self,'form_factor')) and (hasattr(self,'FM0p') and hasattr(self,'FM0n') and hasattr(self,'FPhipp0p') and hasattr(self,'FPhipp0n')):
             def F0ch(q): return self.Fch(q,0)
@@ -91,8 +93,33 @@ class nucleus_base:
             def rho0w(r): return self.rhow(r,0)
             self.weak_density = rho0w
         
-        if hasattr(self,"multipoles"):
-            self.update_basis_representations()
+        if (not hasattr(self,'electric_field')) and (hasattr(self,'ElM0p') and hasattr(self,'El2M0p') and hasattr(self,'El2M0n') and hasattr(self,'El2Phipp0p') and hasattr(self,'El2Phipp0n')):
+            def Elch(r): return self.Elch(r)
+            self.electric_field = Elch
+        
+        if (not hasattr(self,'electric_potential')) and (hasattr(self,'VM0p') and hasattr(self,'V2M0p') and hasattr(self,'V2M0n') and hasattr(self,'V2Phipp0p') and hasattr(self,'V2Phipp0n')):
+            def Vch(r): return self.Vch(r)
+            self.electric_potential = Vch
+    
+    def update_basis_representations(self):
+        for structure in ['F','rho','El','V','rho2','El2','V2']:
+            for multipole in [key[:-1] for key in self.multipoles]:
+                    if (hasattr(self,structure+multipole+'0') and hasattr(self,structure+multipole+'1')):
+                        for nuc in ['p','n']:
+                            if not hasattr(self,structure+multipole+nuc):
+                                F0 = getattr(self,structure+multipole+'0')
+                                F1 = getattr(self,structure+multipole+'1')
+                                def Fnuc(q,F0=F0,F1=F1,nuc=nuc): return Isospin_basis_to_nucleon_basis(F0(q),F1(q),nuc)
+                                setattr(self,structure+multipole+nuc,Fnuc)
+                                self.multipoles = list(np.unique(self.multipoles+[multipole+nuc]))
+                    if (hasattr(self,structure+multipole+'p') and hasattr(self,structure+multipole+'n')):
+                        for iso in ['0','1']:
+                            if not hasattr(self,structure+multipole+iso):
+                                Fp = getattr(self,structure+multipole+'p')
+                                Fn = getattr(self,structure+multipole+'n')
+                                def Fiso(q,Fp=Fp,Fn=Fn,iso=iso): return Nucleon_basis_to_isospin_basis(Fp(q),Fn(q),iso)
+                                setattr(self,structure+multipole+iso,Fiso)
+                                self.multipoles = list(np.unique(self.multipoles+[multipole+iso]))
 
     def update_name(self,name):
         self.name=name
@@ -144,23 +171,6 @@ class nucleus_base:
             if self.parity is not None and P!=self.parity:
                 raise ValueError('looked up parity P='+str(P)+' different to present one P='+str(self.parity))
             self.spin, self.parity = J, P
-
-    def update_basis_representations(self):
-        for multipole in [key[:-1] for key in self.multipoles]:
-                if (hasattr(self,'F'+multipole+'0') and hasattr(self,'F'+multipole+'1')):
-                    for nuc in ['p','n']:
-                        if not hasattr(self,'F'+multipole+nuc):
-                            F0 = getattr(self,'F'+multipole+'0')
-                            F1 = getattr(self,'F'+multipole+'1')
-                            def Fnuc(q,F0=F0,F1=F1,nuc=nuc): return Isospin_basis_to_nucleon_basis(F0(q),F1(q),nuc)
-                            setattr(self,'F'+multipole+nuc,Fnuc)
-                if (hasattr(self,'F'+multipole+'p') and hasattr(self,'F'+multipole+'n')):
-                    for iso in ['0','1']:
-                        if not hasattr(self,'F'+multipole+iso):
-                            Fp = getattr(self,'F'+multipole+'p')
-                            Fn = getattr(self,'F'+multipole+'n')
-                            def Fiso(q,Fp=Fp,Fn=Fn,iso=iso): return Nucleon_basis_to_isospin_basis(Fp(q),Fn(q),iso)
-                            setattr(self,'F'+multipole+iso,Fiso)
 
     def Fch(self,q,L=0):
         
@@ -271,6 +281,32 @@ class nucleus_base:
         rho2PhippLp=getattr(self,'rho2Phipp'+str(L)+'p')
         rho2PhippLn=getattr(self,'rho2Phipp'+str(L)+'n')
         return rhow_composition(r,rhoMLp,rhoMLn,rho2MLp,rho2MLn,rho2PhippLp,rho2PhippLn)
+    
+    # move to osz ?
+    def Elch(self,r):
+        L=0
+        if not (hasattr(self,'ElM'+str(L)+'p') and hasattr(self,'El2M'+str(L)+'n') and hasattr(self,'El2M'+str(L)+'n') and hasattr(self,'El2Phipp'+str(L)+'p') and hasattr(self,'El2Phipp'+str(L)+'n')):
+            raise ValueError('Missing multipoles to evaluate Elch'+str(L))
+        
+        ElMLp=getattr(self,'ElM'+str(L)+'p')
+        El2MLp=getattr(self,'El2M'+str(L)+'p')
+        El2MLn=getattr(self,'El2M'+str(L)+'n')
+        El2PhippLp=getattr(self,'El2Phipp'+str(L)+'p')
+        El2PhippLn=getattr(self,'El2Phipp'+str(L)+'n')
+        return rhoch_composition(r,ElMLp,El2MLp,El2MLn,El2PhippLp,El2PhippLn)
+
+    def Vch(self,r):
+        L=0
+        if not (hasattr(self,'VM'+str(L)+'p') and hasattr(self,'V2M'+str(L)+'n') and hasattr(self,'V2M'+str(L)+'n') and hasattr(self,'V2Phipp'+str(L)+'p') and hasattr(self,'V2Phipp'+str(L)+'n')):
+            raise ValueError('Missing multipoles to evaluate Vch'+str(L))
+        
+        VMLp=getattr(self,'VM'+str(L)+'p')
+        V2MLp=getattr(self,'V2M'+str(L)+'p')
+        V2MLn=getattr(self,'V2M'+str(L)+'n')
+        V2PhippLp=getattr(self,'V2Phipp'+str(L)+'p')
+        V2PhippLn=getattr(self,'V2Phipp'+str(L)+'n')
+        return rhoch_composition(r,VMLp,V2MLp,V2MLn,V2PhippLp,V2PhippLn)
+
 
 def Isospin_basis_to_nucleon_basis(F0,F1,nuc):
     if nuc=='p':
