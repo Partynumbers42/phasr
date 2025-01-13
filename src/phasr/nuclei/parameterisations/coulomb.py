@@ -20,7 +20,7 @@ class nucleus_coulomb(nucleus_base):
         #
         self.Vmin = -np.inf
         #
-        if (self.k_barrett is not None) and (self.alpha_barrett is not None):
+        if hasattr(self,"k_barrett") and hasattr(self,"alpha_barrett"):
             self.barrett_moment = 0
     
     def charge_density(self,r):

@@ -33,14 +33,23 @@ class nucleus_base:
         #
         if 'form_factor_dict' in args:
             form_factor_dict=args['form_factor_dict']
-            #self.multipoles_form_factor = [key[1:] for key in form_factor_dict]
-            # Expected keys: FM0p, FM0n, FM2p, FM2n, ... , FDelta1p, ... , FSigmap1n, ...
+            multipoles_form_factor = [key[1:] for key in form_factor_dict]
+            if hasattr(self,"multipoles"):
+                self.multipoles = list(np.unique(self.multipoles+multipoles_form_factor))
+            else:
+                self.multipoles = multipoles_form_factor
+            # Expected for numerical inputs keys: FM0p, FM0n, FM2p, FM2n, ... , FDelta1p, ... , FSigmap1n, ...
             for key in form_factor_dict:
                 setattr(self,key,form_factor_dict[key])
         #
         if 'density_dict' in args:
             density_dict=args['density_dict']
-            #self.multipoles_charge_density = [key[3:] for key in density_dict]
+            multipoles_charge_density = [key[3:] for key in density_dict]
+            if hasattr(self,"multipoles"):
+                self.multipoles = list(np.unique(self.multipoles+multipoles_charge_density))
+            else:
+                self.multipoles = multipoles_charge_density
+            
             # Expected keys: rhoM0p, rhoM0n, rhoM2p, rhoM2n, ... , rho2M0p, rho2M0n, ... (rho are F.T. of F(q), rho2 are F.T. of q^2 F(q), ...)
             for key in density_dict:
                 setattr(self,key,density_dict[key])
@@ -54,7 +63,10 @@ class nucleus_base:
         #
     
     def update_dependencies(self):
-        
+
+        if hasattr(self,"multipoles"):
+            self.update_basis_representations()
+
         if (not hasattr(self,'proton_density')) and hasattr(self,'rhoM0p'):
             self.proton_density = self.rhoM0p
 
@@ -68,16 +80,19 @@ class nucleus_base:
             self.rhoM0n = self.neutron_density
         
         if (not hasattr(self,'form_factor')) and (hasattr(self,'FM0p') and hasattr(self,'FM0n') and hasattr(self,'FPhipp0p') and hasattr(self,'FPhipp0n')):
-            def Fch(q): return self.Fch(q,0)
-            self.form_factor = Fch
+            def F0ch(q): return self.Fch(q,0)
+            self.form_factor = F0ch
         
         if (not hasattr(self,'charge_density')) and (hasattr(self,'rhoM0p') and hasattr(self,'rho2M0p') and hasattr(self,'rho2M0n') and hasattr(self,'rho2Phipp0p') and hasattr(self,'rho2Phipp0n')):
-            def rhoch(r): return self.rhoch(r,0)
-            self.charge_density = rhoch
+            def rho0ch(r): return self.rhoch(r,0)
+            self.charge_density = rho0ch
         
         if (not hasattr(self,'weak_density')) and (hasattr(self,'rhoM0p') and hasattr(self,'rhoM0n') and hasattr(self,'rho2M0p') and hasattr(self,'rho2M0n') and hasattr(self,'rho2Phipp0p') and hasattr(self,'rho2Phipp0n')):
-            def rhow(r): return self.rhow(r,0)
-            self.weak_density = rhow
+            def rho0w(r): return self.rhow(r,0)
+            self.weak_density = rho0w
+        
+        if hasattr(self,"multipoles"):
+            self.update_basis_representations()
 
     def update_name(self,name):
         self.name=name
@@ -129,7 +144,24 @@ class nucleus_base:
             if self.parity is not None and P!=self.parity:
                 raise ValueError('looked up parity P='+str(P)+' different to present one P='+str(self.parity))
             self.spin, self.parity = J, P
-    
+
+    def update_basis_representations(self):
+        for multipole in [key[:-1] for key in self.multipoles]:
+                if (hasattr(self,'F'+multipole+'0') and hasattr(self,'F'+multipole+'1')):
+                    for nuc in ['p','n']:
+                        if not hasattr(self,'F'+multipole+nuc):
+                            F0 = getattr(self,'F'+multipole+'0')
+                            F1 = getattr(self,'F'+multipole+'1')
+                            def Fnuc(q,F0=F0,F1=F1,nuc=nuc): return Isospin_basis_to_nucleon_basis(F0(q),F1(q),nuc)
+                            setattr(self,'F'+multipole+nuc,Fnuc)
+                if (hasattr(self,'F'+multipole+'p') and hasattr(self,'F'+multipole+'n')):
+                    for iso in ['0','1']:
+                        if not hasattr(self,'F'+multipole+iso):
+                            Fp = getattr(self,'F'+multipole+'p')
+                            Fn = getattr(self,'F'+multipole+'n')
+                            def Fiso(q,Fp=Fp,Fn=Fn,iso=iso): return Nucleon_basis_to_isospin_basis(Fp(q),Fn(q),iso)
+                            setattr(self,'F'+multipole+iso,Fiso)
+
     def Fch(self,q,L=0):
         
         if L>=2*self.spin+1:
@@ -240,6 +272,24 @@ class nucleus_base:
         rho2PhippLn=getattr(self,'rho2Phipp'+str(L)+'n')
         return rhow_composition(r,rhoMLp,rhoMLn,rho2MLp,rho2MLn,rho2PhippLp,rho2PhippLn)
 
+def Isospin_basis_to_nucleon_basis(F0,F1,nuc):
+    if nuc=='p':
+        pm=+1
+    elif nuc=='n':
+        pm=-1
+    else:
+        raise ValueError("Needs nuc='p','n'")
+    return (F0 + pm*F1)/2
+
+def Nucleon_basis_to_isospin_basis(Fp,Fn,iso):
+    if iso=='0':
+        pm=+1
+    elif iso=='1':
+        pm=-1
+    else:
+        raise ValueError("Needs I=0,1")
+    return Fp + pm*Fn
+
 def Fch_composition(q,FM_p,FM_n,FPhipp_p,FPhipp_n,Z,rsqp=constants.rsq_p,rsqn=constants.rsq_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
     rsqp/=constants.hc**2
     rsqn/=constants.hc**2
@@ -267,8 +317,8 @@ def Fw_composition(q,FM_p,FM_n,FPhipp_p,FPhipp_n,Qw,Qw_p=constants.Qw_p,Qw_n=con
 
 def rhoch_composition(r,rhoM_p,rho2M_p,rho2M_n,rho2Phipp_p,rho2Phipp_n,rsqp=constants.rsq_p,rqsn=constants.rsq_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
     # rho are F.T. of F(q), rho2 are F.T. of q^2 F(q), ...
-    mN/=constants.hc
-    return 1/(2*pi**2) * \
+    mN/=constants.hc #check norm: *1/(2*pi**2)?
+    return 1 * \
     ( rhoM_p(r) - ((rsqp/6)+(1./(8*mN**2)))*rho2M_p(r) \
      - (rqsn/6)*rho2M_n(r) \
      + ((1+2*kp)/(4*mN**2))*rho2Phipp_p(r) \
@@ -276,15 +326,15 @@ def rhoch_composition(r,rhoM_p,rho2M_p,rho2M_n,rho2Phipp_p,rho2Phipp_n,rsqp=cons
 
 def jmag_composition(r,j1Delta_p,j1Sigmap_p,j1Sigmap_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
     # j1 are F.T. of q^1 F(q)
-    mN/=constants.hc
-    return 1/(2*pi**2)*(-1j/mN)*( j1Delta_p(r) \
+    mN/=constants.hc #check norm: *1/(2*pi**2)?
+    return 1*(-1j/mN)*( j1Delta_p(r) \
      - ((1+kp)/2)*j1Sigmap_p(r) \
      - (kn/2)*j1Sigmap_n(r) )
 
 def rhow_composition(r,rhoM_p,rhoM_n,rho2M_p,rho2M_n,rho2Phipp_p,rho2Phipp_n,Qw_p=constants.Qw_p,Qw_n=constants.Qw_n,rsqp=constants.rsq_p,rsqn=constants.rsq_n,rsqsN=constants.rsq_sN,kp=constants.kappa_p,kn=constants.kappa_n,ksN=constants.kappa_sN,mN=masses.mN):
     # rho are F.T. of F(q), rho2 are F.T. of q^2 F(q), ...
-    mN/=constants.hc
-    return 1/(2*pi**2) * \
+    mN/=constants.hc #check norm: *1/(2*pi**2)?
+    return 1 * \
     ( Qw_p*rhoM_p(r) - (Qw_p*((rsqp/6)+(1./(8*mN**2))) + Qw_n*((rsqn/6)+(rsqsN/6)))*rho2M_p(r) \
      + Qw_n*rhoM_n(r) - (Qw_n*((rsqp/6)+(rsqsN/6)+(1./(8*mN**2))) + Qw_p*(rsqn/6))*rho2M_n(r) \
      + ((Qw_p*(1+2*kp)+Qw_n*(2*kn+2*ksN))/(4*mN**2))*rho2Phipp_p(r) \

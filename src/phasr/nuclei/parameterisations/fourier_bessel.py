@@ -14,7 +14,7 @@ class nucleus_FB(nucleus_base):
         self.ai=ai
         self.R=R
         #
-        # add ai_proton, R_proton, etc as options? 
+        # add ai_proton, R_proton, etc as options? Maybe via formfactor_dict, charge_density_dict
         #
         self.update_dependencies()
 
