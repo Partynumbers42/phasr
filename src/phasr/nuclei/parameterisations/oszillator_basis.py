@@ -31,10 +31,8 @@ class nucleus_osz(nucleus_base):
             setattr(self,'F'+multipole,struc)
             #
             if multipole in [S+str(L)+nuc for L in np.arange(0,2*self.spin+1,2,dtype=int) for S in ['M','Phipp'] for nuc in ['p','n']]:
-                #
                 L=int(multipole[-2])
-                #
-                def rho(q,multipole=multipole): return density_osz(q,getattr(self,'Ci_'+multipole),self.b_osz,L=L)
+                def rho(q,multipole=multipole,L=L): return density_osz(q,getattr(self,'Ci_'+multipole),self.b_osz,L=L)
                 setattr(self,'rho'+multipole,rho)
                 #
             if multipole in [S+'0'+nuc for S in ['M','Phipp'] for nuc in ['p','n']]:
@@ -104,8 +102,10 @@ def density_osz(r,Ci,b,L=0,q_order=0):
     k=np.arange(N_i)
     k_grid=np.tile(k,(N_z,1)).transpose()
     z_grid=np.tile(z,(N_i,1))
-    hyp1f1_grid= 2**k_grid*gamma(3./2.+q_order/2.+k_grid+L/2.)*hyp1f1(3./2.+q_order/2.+k_grid+L/2.,3./2.+L,-z_grid)
-    density = 2**(2+q_order)*r**L*((np.sqrt(pi)/2)/gamma(3./2.+L))*np.einsum('i,ij->j',Ci,hyp1f1_grid)/b**(3+q_order+L)
+    #hyp1f1_grid= 2**k_grid*gamma(3./2.+q_order/2.+k_grid)*hyp1f1(3./2.+q_order/2.+k_grid,3./2.,-z_grid)
+    #density = 2**(2+q_order)*np.einsum('i,ij->j',Ci,hyp1f1_grid)/b**(3+q_order)
+    hyp1f1_grid= 2**k_grid*gamma(3./2.+q_order/2.+k_grid+L/2)*hyp1f1(3./2.+q_order/2.+k_grid+L/2,3./2.+L,-z_grid)
+    density = 2**(2+q_order)*(r**L)*((np.sqrt(pi)/2)/gamma(3./2.+L))*np.einsum('i,ij->j',Ci,hyp1f1_grid)/b**(3+q_order+L)
     #
     if np.isscalar(r):
         density=density[0]

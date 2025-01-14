@@ -36,13 +36,12 @@ class nucleus_num(nucleus_base):
     def update_dependencies(self):
         nucleus_base.update_dependencies(self)
         #
-        if hasattr(self,'charge_density'):
-            self.set_scalars_from_rho()
+        self.set_scalars_from_rho()
+        if hasattr(self,'total_charge'):
             if np.abs(self.total_charge - self.Z)/self.Z>1e-4:
                 print('Warning total charge for '+self.name+' deviates more than 1e-4: Z='+str(self.Z)+', Q(num)='+str(self.total_charge))
         #
-        if hasattr(self,'weak_density'):
-            self.set_weak_charge()
+        if hasattr(self,'weak_charge'):
             if np.abs(self.weak_charge - self.Qw)/self.Qw>1e-4:
                 print('Warning weak_charge for '+self.name+' deviates more than 1e-4: Qw='+str(self.Qw)+', Qw(num)='+str(self.weak_charge))
         #
@@ -189,17 +188,19 @@ class nucleus_num(nucleus_base):
         self.update_dependencies()
     
     def set_scalars_from_rho(self):
-        if not hasattr(self,"total_charge"):
+        if hasattr(self,'charge_density'):
+            #if not hasattr(self,"total_charge"):
             self.set_total_charge()
-        if (not hasattr(self,"charge_radius")) or (not hasattr(self,"charge_radius_sq")):
+            #if (not hasattr(self,"charge_radius")) or (not hasattr(self,"charge_radius_sq")):
             self.set_charge_radius()
-        if (hasattr(self,'k_barrett') and hasattr(self,'alpha_barrett')) and (not hasattr(self,"barrett_moment")):
-            self.set_barrett_moment()
-        if hasattr(self,'rhoM0p') and ((not hasattr(self,'proton_radius')) or (not hasattr(self,'proton_radius_sq'))):
+            if (hasattr(self,'k_barrett') and hasattr(self,'alpha_barrett')):# and (not hasattr(self,"barrett_moment")):
+                self.set_barrett_moment()
+        if hasattr(self,'rhoM0p'):# and ((not hasattr(self,'proton_radius')) or (not hasattr(self,'proton_radius_sq'))):
             self.set_proton_radius()
-        if hasattr(self,'rhoM0n') and ((not hasattr(self,'neutron_radius')) or (not hasattr(self,'neutron_radius_sq'))):
+        if hasattr(self,'rhoM0n'):# and ((not hasattr(self,'neutron_radius')) or (not hasattr(self,'neutron_radius_sq'))):
             self.set_neutron_radius()
-        if hasattr(self,'weak_density') and ((not hasattr(self,'weak_radius')) or (not hasattr(self,'weak_radius_sq'))):
+        if hasattr(self,'weak_density'):# and ((not hasattr(self,'weak_radius')) or (not hasattr(self,'weak_radius_sq'))):
+            self.set_weak_charge()
             self.set_weak_radius()
     
     def fill_gaps(self):
