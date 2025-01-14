@@ -1,10 +1,11 @@
 from ... import constants
 from ..base import nucleus_base
+from ...utility.basis_change import Isospin_basis_to_nucleon_basis, Nucleon_basis_to_isospin_basis
 
 import numpy as np
 pi = np.pi
 
-from scipy.special import spherical_jn, gamma, hyp1f1
+from scipy.special import gamma, hyp1f1
 
 class nucleus_osz(nucleus_base):
     def __init__(self,name,Z,A,Ci_dict,**args): #,R_cut=None,rho_cut=None
@@ -28,17 +29,21 @@ class nucleus_osz(nucleus_base):
         for multipole in self.multipoles:
             def struc(q,multipole=multipole): return structure_function_osz(q,getattr(self,'Ci_'+multipole),self.b_osz)
             setattr(self,'F'+multipole,struc)
-        for multipole in self.multipoles:
-            # Only for L=0
-            if multipole in [S+'0'+nuc for S in ['M','Phipp'] for nuc in ['p','n']]:
+            #
+            if multipole in [S+str(L)+nuc for L in np.arange(0,2*self.spin+1,2,dtype=int) for S in ['M','Phipp'] for nuc in ['p','n']]:
                 #
-                def rho(q,multipole=multipole): return density_L0_osz(q,getattr(self,'Ci_'+multipole),self.b_osz)
+                L=int(multipole[-2])
+                #
+                def rho(q,multipole=multipole): return density_osz(q,getattr(self,'Ci_'+multipole),self.b_osz,L=L)
                 setattr(self,'rho'+multipole,rho)
                 #
-                def El(q,multipole=multipole): return field_L0_osz(q,getattr(self,'Ci_'+multipole),self.b_osz)
+            if multipole in [S+'0'+nuc for S in ['M','Phipp'] for nuc in ['p','n']]:
+                # only for L=0
+                #
+                def El(q,multipole=multipole): return field_osz(q,getattr(self,'Ci_'+multipole),self.b_osz)
                 setattr(self,'El'+multipole,El)
                 #
-                def V(q,multipole=multipole): return potential_L0_osz(q,getattr(self,'Ci_'+multipole),self.b_osz)
+                def V(q,multipole=multipole): return potential_osz(q,getattr(self,'Ci_'+multipole),self.b_osz)
                 setattr(self,'V'+multipole,V)
             #
         nucleus_base.update_dependencies(self)
@@ -64,24 +69,6 @@ class nucleus_osz(nucleus_base):
                         Ciiso = Nucleon_basis_to_isospin_basis(Cip,Cin,iso)
                         setattr(self,'Ci_'+multipole+iso,Ciiso)
                         self.multipoles = list(np.unique(self.multipoles+[multipole+iso]))
-    
-def Isospin_basis_to_nucleon_basis(F0,F1,nuc):
-    if nuc=='p':
-        pm=+1
-    elif nuc=='n':
-        pm=-1
-    else:
-        raise ValueError("Needs nuc='p','n'")
-    return (F0 + pm*F1)/2
-
-def Nucleon_basis_to_isospin_basis(Fp,Fn,iso):
-    if iso=='0':
-        pm=+1
-    elif iso=='1':
-        pm=-1
-    else:
-        raise ValueError("Needs I=0,1")
-    return Fp + pm*Fn
 
 def b_osz_shell_model(A): #oszillation length
     return 197.327/np.sqrt(938.919*(45.*A**(-1./3.)-25.*A**(-2./3.)))
@@ -106,8 +93,7 @@ def structure_function_osz(q,Ci,b):
         Fstructure = Fstructure[0]
     return Fstructure
 
-def density_L0_osz(r,Ci,b,q_order=0):
-    # only valid for L=0
+def density_osz(r,Ci,b,L=0,q_order=0):
     #
     r_arr = np.atleast_1d(r)
     #
@@ -118,15 +104,15 @@ def density_L0_osz(r,Ci,b,q_order=0):
     k=np.arange(N_i)
     k_grid=np.tile(k,(N_z,1)).transpose()
     z_grid=np.tile(z,(N_i,1))
-    hyp1f1_grid= 2**k_grid*gamma(3./2.+q_order/2.+k_grid)*hyp1f1(3./2.+q_order/2.+k_grid,3./2.,-z_grid)
-    density = 2**(2+q_order)*np.einsum('i,ij->j',Ci,hyp1f1_grid)/b**(3+q_order)
+    hyp1f1_grid= 2**k_grid*gamma(3./2.+q_order/2.+k_grid+L/2.)*hyp1f1(3./2.+q_order/2.+k_grid+L/2.,3./2.+L,-z_grid)
+    density = 2**(2+q_order)*r**L*((np.sqrt(pi)/2)/gamma(3./2.+L))*np.einsum('i,ij->j',Ci,hyp1f1_grid)/b**(3+q_order+L)
     #
     if np.isscalar(r):
         density=density[0]
     #
     return density/(2*pi**2)
 
-def field_L0_osz(r,Ci,b,q_order=0,alpha_el=constants.alpha_el):
+def field_osz(r,Ci,b,q_order=0,alpha_el=constants.alpha_el):
     # only valid for L=0
     #
     r_arr = np.atleast_1d(r)
@@ -146,7 +132,7 @@ def field_L0_osz(r,Ci,b,q_order=0,alpha_el=constants.alpha_el):
     #
     return field/(2*pi**2)
 
-def potential_L0_osz(r,Ci,b,q_order=0,alpha_el=constants.alpha_el):
+def potential_osz(r,Ci,b,q_order=0,alpha_el=constants.alpha_el):
     # only valid for L=0
     #
     r_arr = np.atleast_1d(r)
@@ -165,7 +151,7 @@ def potential_L0_osz(r,Ci,b,q_order=0,alpha_el=constants.alpha_el):
         potential=potential[0]
     return potential/(2*pi**2)
 
-def potential0_L0_osz(Ci,b,q_order=0,alpha_el=constants.alpha_el):
+def potential0_osz(Ci,b,q_order=0,alpha_el=constants.alpha_el):
     # only valid for L=0
     N_i=len(Ci)
     k=np.arange(N_i)
@@ -173,7 +159,7 @@ def potential0_L0_osz(Ci,b,q_order=0,alpha_el=constants.alpha_el):
     #
     return potential0/(2*pi**2)
 
-def r_sq_L0_osz(Ci,b,q_order=0):
+def r_sq_osz(Ci,b,q_order=0):
     # only valid for L=0
     if q_order==0:
         rsq=3.*(Ci[0]-2*Ci[1])*pi**2*b**2
@@ -187,7 +173,7 @@ def r_sq_L0_osz(Ci,b,q_order=0):
         raise ValueError("invalid value for q_order")
     return rsq/(2*pi**2)
 
-def total_charge_L0_osz(Ci,q_order=0):
+def total_charge_osz(Ci,q_order=0):
     # only valid for L=0
     if q_order==0:
         Q=Ci[0]

@@ -173,9 +173,9 @@ class nucleus_num(nucleus_base):
                     FF = getattr(self,'F'+multipole)
                     rho = fourier_transform_mom_to_pos(FF,multipole+'_'+self.name,self.qrange,self.rrange,L=L,norm=1,renew=self.renew)
                     setattr(self,'rho'+multipole,rho)
-                    def q2FF(q): return q**2 * FF(q)
-                    rho2 = fourier_transform_mom_to_pos(q2FF,multipole+'_q2_'+self.name,self.qrange,self.rrange,L=L,norm=1,renew=self.renew)
-                    setattr(self,'rho2'+multipole,rho2)
+                    #def q2FF(q): return q**2 * FF(q)
+                    #rho2 = fourier_transform_mom_to_pos(q2FF,multipole+'_q2_'+self.name,self.qrange,self.rrange,L=L,norm=1,renew=self.renew)
+                    #setattr(self,'rho2'+multipole,rho2)
         self.update_dependencies()
 
     def set_form_factor_dict_from_density_dict(self):

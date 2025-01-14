@@ -1,6 +1,6 @@
 from .. import constants, masses
 from ..physical_constants.iaea_nds import massofnucleusZN, abundanceofnucleusZN, JPofnucleusZN
-#from .parameterisations.oszillator_basis import Isospin_basis_to_nucleon_basis, Nucleon_basis_to_isospin_basis
+#from ..utility.basis_change import Isospin_basis_to_nucleon_basis, Nucleon_basis_to_isospin_basis
 from ..utility.math import radial_laplace
 
 import numpy as np
@@ -52,14 +52,9 @@ class nucleus_base:
             else:
                 self.multipoles = multipoles_charge_density
             
-            # Expected keys: rhoM0p, rhoM0n, rhoM2p, rhoM2n, ... , rho2M0p, rho2M0n, ... (rho are F.T. of F(q), rho2 are F.T. of q^2 F(q), ...)
+            # Expected keys: rhoM0p, rhoM0n, rhoPhipp0p, rhoPhipp0n, ...
             for key in density_dict:
                 setattr(self,key,density_dict[key])
-        #
-        # remaining keywords are made attributes, do i want this???
-        #for key in args:
-        #    if not hasattr(self,key,args[key]):
-        #        setattr(self,key,args[key])
         #
         nucleus_base.update_dependencies(self)
         #
@@ -103,6 +98,7 @@ class nucleus_base:
             def Vch(r): return self.Vch(r)
             self.electric_potential = Vch
     
+    # introduce this option again?
     # def update_basis_representations(self):
     #     for structure in ['F']:
     #         for multipole in [key[:-1] for key in self.multipoles]:
