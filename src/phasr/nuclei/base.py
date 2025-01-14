@@ -1,5 +1,7 @@
 from .. import constants, masses
 from ..physical_constants.iaea_nds import massofnucleusZN, abundanceofnucleusZN, JPofnucleusZN
+#from .parameterisations.oszillator_basis import Isospin_basis_to_nucleon_basis, Nucleon_basis_to_isospin_basis
+from ..utility.math import radial_laplace
 
 import numpy as np
 pi = np.pi
@@ -72,8 +74,8 @@ class nucleus_base:
             self.rhoM0n = self.neutron_density
             self.multipoles = list(np.unique(self.multipoles+["M0n"]))
         
-        if hasattr(self,"multipoles"):
-            self.update_basis_representations()
+        #if hasattr(self,"multipoles"):
+        #    self.update_basis_representations()
 
         if (not hasattr(self,'proton_density')) and hasattr(self,'rhoM0p'):
             self.proton_density = self.rhoM0p
@@ -85,41 +87,41 @@ class nucleus_base:
             def F0ch(q): return self.Fch(q,0)
             self.form_factor = F0ch
         
-        if (not hasattr(self,'charge_density')) and (hasattr(self,'rhoM0p') and hasattr(self,'rho2M0p') and hasattr(self,'rho2M0n') and hasattr(self,'rho2Phipp0p') and hasattr(self,'rho2Phipp0n')):
-            def rho0ch(r): return self.rhoch(r,0)
-            self.charge_density = rho0ch
+        if (not hasattr(self,'charge_density')) and (hasattr(self,'rhoM0p') and hasattr(self,'rhoM0n') and hasattr(self,'rhoPhipp0p') and hasattr(self,'rhoPhipp0n')):
+            def rhoch(r): return self.rhoch(r)
+            self.charge_density = rhoch
         
-        if (not hasattr(self,'weak_density')) and (hasattr(self,'rhoM0p') and hasattr(self,'rhoM0n') and hasattr(self,'rho2M0p') and hasattr(self,'rho2M0n') and hasattr(self,'rho2Phipp0p') and hasattr(self,'rho2Phipp0n')):
-            def rho0w(r): return self.rhow(r,0)
-            self.weak_density = rho0w
+        if (not hasattr(self,'weak_density')) and (hasattr(self,'rhoM0p') and hasattr(self,'rhoM0n') and hasattr(self,'rhoPhipp0p') and hasattr(self,'rhoPhipp0n')):
+            def rhow(r): return self.rhow(r)
+            self.weak_density = rhow
         
-        if (not hasattr(self,'electric_field')) and (hasattr(self,'ElM0p') and hasattr(self,'El2M0p') and hasattr(self,'El2M0n') and hasattr(self,'El2Phipp0p') and hasattr(self,'El2Phipp0n')):
+        if (not hasattr(self,'electric_field')) and (hasattr(self,'ElM0p') and hasattr(self,'ElM0n') and hasattr(self,'ElPhipp0p') and hasattr(self,'ElPhipp0n')):
             def Elch(r): return self.Elch(r)
             self.electric_field = Elch
         
-        if (not hasattr(self,'electric_potential')) and (hasattr(self,'VM0p') and hasattr(self,'V2M0p') and hasattr(self,'V2M0n') and hasattr(self,'V2Phipp0p') and hasattr(self,'V2Phipp0n')):
+        if (not hasattr(self,'electric_potential')) and (hasattr(self,'VM0p') and hasattr(self,'VM0n') and hasattr(self,'VPhipp0p') and hasattr(self,'VPhipp0n')):
             def Vch(r): return self.Vch(r)
             self.electric_potential = Vch
     
-    def update_basis_representations(self):
-        for structure in ['F','rho','El','V','rho2','El2','V2']:
-            for multipole in [key[:-1] for key in self.multipoles]:
-                    if (hasattr(self,structure+multipole+'0') and hasattr(self,structure+multipole+'1')):
-                        for nuc in ['p','n']:
-                            if not hasattr(self,structure+multipole+nuc):
-                                F0 = getattr(self,structure+multipole+'0')
-                                F1 = getattr(self,structure+multipole+'1')
-                                def Fnuc(q,F0=F0,F1=F1,nuc=nuc): return Isospin_basis_to_nucleon_basis(F0(q),F1(q),nuc)
-                                setattr(self,structure+multipole+nuc,Fnuc)
-                                self.multipoles = list(np.unique(self.multipoles+[multipole+nuc]))
-                    if (hasattr(self,structure+multipole+'p') and hasattr(self,structure+multipole+'n')):
-                        for iso in ['0','1']:
-                            if not hasattr(self,structure+multipole+iso):
-                                Fp = getattr(self,structure+multipole+'p')
-                                Fn = getattr(self,structure+multipole+'n')
-                                def Fiso(q,Fp=Fp,Fn=Fn,iso=iso): return Nucleon_basis_to_isospin_basis(Fp(q),Fn(q),iso)
-                                setattr(self,structure+multipole+iso,Fiso)
-                                self.multipoles = list(np.unique(self.multipoles+[multipole+iso]))
+    # def update_basis_representations(self):
+    #     for structure in ['F']:
+    #         for multipole in [key[:-1] for key in self.multipoles]:
+    #                 if (hasattr(self,structure+multipole+'0') and hasattr(self,structure+multipole+'1')):
+    #                     for nuc in ['p','n']:
+    #                         if not hasattr(self,structure+multipole+nuc):
+    #                             F0 = getattr(self,structure+multipole+'0')
+    #                             F1 = getattr(self,structure+multipole+'1')
+    #                             def Fnuc(q,F0=F0,F1=F1,nuc=nuc): return Isospin_basis_to_nucleon_basis(F0(q),F1(q),nuc)
+    #                             setattr(self,structure+multipole+nuc,Fnuc)
+    #                             self.multipoles = list(np.unique(self.multipoles+[multipole+nuc]))
+    #                 if (hasattr(self,structure+multipole+'p') and hasattr(self,structure+multipole+'n')):
+    #                     for iso in ['0','1']:
+    #                         if not hasattr(self,structure+multipole+iso):
+    #                             Fp = getattr(self,structure+multipole+'p')
+    #                             Fn = getattr(self,structure+multipole+'n')
+    #                             def Fiso(q,Fp=Fp,Fn=Fn,iso=iso): return Nucleon_basis_to_isospin_basis(Fp(q),Fn(q),iso)
+    #                             setattr(self,structure+multipole+iso,Fiso)
+    #                             self.multipoles = list(np.unique(self.multipoles+[multipole+iso]))
 
     def update_name(self,name):
         self.name=name
@@ -222,109 +224,51 @@ class nucleus_base:
         FPhippLn=getattr(self,'FPhipp'+str(L)+'n')
         return Fw_composition(q,FMLp,FMLn,FPhippLp,FPhippLn,self.weak_charge)
     
-    def rhoch(self,r,L=0):
-        
-        if L>=2*self.spin+1:
-            raise ValueError('This nucleus has a maximum L of '+str(2*self.spin))
-
-        if L%2==1:
-            raise ValueError('rhoch only nonzero for even L')
-        
-        if not (hasattr(self,'rhoM'+str(L)+'p') and hasattr(self,'rho2M'+str(L)+'n') and hasattr(self,'rho2M'+str(L)+'n') and hasattr(self,'rho2Phipp'+str(L)+'p') and hasattr(self,'rho2Phipp'+str(L)+'n')):
+    def rhoch(self,r):
+        L=0
+        # For L>0 the "F.T." (with j_L) with and q^2 is non-trivial to write in terms of rho_L (for L=0 - laplace of rho) 
+        if not (hasattr(self,'rhoM'+str(L)+'p') and hasattr(self,'rhoM'+str(L)+'n') and hasattr(self,'rhoPhipp'+str(L)+'p') and hasattr(self,'rhoPhipp'+str(L)+'n')):
             raise ValueError('Missing multipoles to evaluate rhoch'+str(L))
         
         rhoMLp=getattr(self,'rhoM'+str(L)+'p')
-        rho2MLp=getattr(self,'rho2M'+str(L)+'p')
-        rho2MLn=getattr(self,'rho2M'+str(L)+'n')
-        rho2PhippLp=getattr(self,'rho2Phipp'+str(L)+'p')
-        rho2PhippLn=getattr(self,'rho2Phipp'+str(L)+'n')
-        return rhoch_composition(r,rhoMLp,rho2MLp,rho2MLn,rho2PhippLp,rho2PhippLn)
+        rhoMLn=getattr(self,'rhoM'+str(L)+'n')
+        rhoPhippLp=getattr(self,'rhoPhipp'+str(L)+'p')
+        rhoPhippLn=getattr(self,'rhoPhipp'+str(L)+'n')
+        return rho0ch_composition(r,rhoMLp,rhoMLn,rhoPhippLp,rhoPhippLn)
 
-    def jmag(self,r,L,Lp=None):
-        #weak current j_LL' for L=L'
-        
-        if Lp is None:
-            Lp=L
-
-        if L!=Lp:
-            raise ValueError("No implementation for j_LL' for L!=L'")
-        
-        if L>=2*self.spin+1:
-            raise ValueError('This nucleus has a maximum L of '+str(2*self.spin))
-
-        if L%2==0:
-            raise ValueError('jmag only nonzero for odd L')
-
-        if not (hasattr(self,'j1Delta'+str(L)+'p') and hasattr(self,'j1Sigmap'+str(L)+'p') and hasattr(self,'j1Sigmap'+str(L)+'n')):
-            raise ValueError('Missing multipoles to evaluate jmag'+str(L))
-        
-        j1DeltaLp=getattr(self,'j1Delta'+str(L)+'p')
-        j1SigmapLp=getattr(self,'j1Sigmap'+str(L)+'p')
-        j1SigmapLn=getattr(self,'j1Sigmap'+str(L)+'n')
-        return jmag_composition(r,j1DeltaLp,j1SigmapLp,j1SigmapLn)
-
-    def rhow(self,r,L=0):
-        
-        if L>=2*self.spin+1:
-            raise ValueError('This nucleus has a maximum L of '+str(2*self.spin))
-
-        if L%2==1:
-            raise ValueError('rhow only nonzero for even L')
-        
-        if not (hasattr(self,'rhoM'+str(L)+'p') and hasattr(self,'rhoM'+str(L)+'n') and hasattr(self,'rho2M'+str(L)+'p') and hasattr(self,'rho2M'+str(L)+'n') and hasattr(self,'rho2Phipp'+str(L)+'p') and hasattr(self,'rho2Phipp'+str(L)+'n')):
-            raise ValueError('Missing multipoles to evaluate Fch'+str(L))
+    def rhow(self,r):
+        L=0
+        # For L>0 the "F.T." (with j_L) with and q^2 is non-trivial to write in terms of rho_L (for L=0 - laplace of rho) 
+        if not (hasattr(self,'rhoM'+str(L)+'p') and hasattr(self,'rhoM'+str(L)+'n') and hasattr(self,'rhoPhipp'+str(L)+'p') and hasattr(self,'rhoPhipp'+str(L)+'n')):
+            raise ValueError('Missing multipoles to evaluate rhow'+str(L))
         
         rhoMLp=getattr(self,'rhoM'+str(L)+'p')
         rhoMLn=getattr(self,'rhoM'+str(L)+'n')
-        rho2MLp=getattr(self,'rho2M'+str(L)+'p')
-        rho2MLn=getattr(self,'rho2M'+str(L)+'n')
-        rho2PhippLp=getattr(self,'rho2Phipp'+str(L)+'p')
-        rho2PhippLn=getattr(self,'rho2Phipp'+str(L)+'n')
-        return rhow_composition(r,rhoMLp,rhoMLn,rho2MLp,rho2MLn,rho2PhippLp,rho2PhippLn)
+        rhoPhippLp=getattr(self,'rhoPhipp'+str(L)+'p')
+        rhoPhippLn=getattr(self,'rhoPhipp'+str(L)+'n')
+        return rho0w_composition(r,rhoMLp,rhoMLn,rhoPhippLp,rhoPhippLn)
     
-    # move to osz ?
     def Elch(self,r):
         L=0
-        if not (hasattr(self,'ElM'+str(L)+'p') and hasattr(self,'El2M'+str(L)+'n') and hasattr(self,'El2M'+str(L)+'n') and hasattr(self,'El2Phipp'+str(L)+'p') and hasattr(self,'El2Phipp'+str(L)+'n')):
+        if not (hasattr(self,'ElM'+str(L)+'p') and hasattr(self,'ElM'+str(L)+'n') and hasattr(self,'ElPhipp'+str(L)+'p') and hasattr(self,'ElPhipp'+str(L)+'n')):
             raise ValueError('Missing multipoles to evaluate Elch'+str(L))
         
         ElMLp=getattr(self,'ElM'+str(L)+'p')
-        El2MLp=getattr(self,'El2M'+str(L)+'p')
-        El2MLn=getattr(self,'El2M'+str(L)+'n')
-        El2PhippLp=getattr(self,'El2Phipp'+str(L)+'p')
-        El2PhippLn=getattr(self,'El2Phipp'+str(L)+'n')
-        return rhoch_composition(r,ElMLp,El2MLp,El2MLn,El2PhippLp,El2PhippLn)
+        ElMLn=getattr(self,'ElM'+str(L)+'n')
+        ElPhippLp=getattr(self,'ElPhipp'+str(L)+'p')
+        ElPhippLn=getattr(self,'ElPhipp'+str(L)+'n')
+        return rho0ch_composition(r,ElMLp,ElMLn,ElPhippLp,ElPhippLn)
 
     def Vch(self,r):
         L=0
-        if not (hasattr(self,'VM'+str(L)+'p') and hasattr(self,'V2M'+str(L)+'n') and hasattr(self,'V2M'+str(L)+'n') and hasattr(self,'V2Phipp'+str(L)+'p') and hasattr(self,'V2Phipp'+str(L)+'n')):
+        if not (hasattr(self,'VM'+str(L)+'p') and hasattr(self,'VM'+str(L)+'n') and hasattr(self,'VPhipp'+str(L)+'p') and hasattr(self,'VPhipp'+str(L)+'n')):
             raise ValueError('Missing multipoles to evaluate Vch'+str(L))
         
         VMLp=getattr(self,'VM'+str(L)+'p')
-        V2MLp=getattr(self,'V2M'+str(L)+'p')
-        V2MLn=getattr(self,'V2M'+str(L)+'n')
-        V2PhippLp=getattr(self,'V2Phipp'+str(L)+'p')
-        V2PhippLn=getattr(self,'V2Phipp'+str(L)+'n')
-        return rhoch_composition(r,VMLp,V2MLp,V2MLn,V2PhippLp,V2PhippLn)
-
-
-def Isospin_basis_to_nucleon_basis(F0,F1,nuc):
-    if nuc=='p':
-        pm=+1
-    elif nuc=='n':
-        pm=-1
-    else:
-        raise ValueError("Needs nuc='p','n'")
-    return (F0 + pm*F1)/2
-
-def Nucleon_basis_to_isospin_basis(Fp,Fn,iso):
-    if iso=='0':
-        pm=+1
-    elif iso=='1':
-        pm=-1
-    else:
-        raise ValueError("Needs I=0,1")
-    return Fp + pm*Fn
+        VMLn=getattr(self,'VM'+str(L)+'n')
+        VPhippLp=getattr(self,'VPhipp'+str(L)+'p')
+        VPhippLn=getattr(self,'VPhipp'+str(L)+'n')
+        return rho0ch_composition(r,VMLp,VMLn,VPhippLp,VPhippLn)
 
 def Fch_composition(q,FM_p,FM_n,FPhipp_p,FPhipp_n,Z,rsqp=constants.rsq_p,rsqn=constants.rsq_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
     rsqp/=constants.hc**2
@@ -351,8 +295,35 @@ def Fw_composition(q,FM_p,FM_n,FPhipp_p,FPhipp_n,Qw,Qw_p=constants.Qw_p,Qw_n=con
      + ((Qw_p*(1+2*kp)+Qw_n*(2*kn+2*ksN))/(4*mN**2))*(q**2)*FPhipp_p(q) \
      + ((Qw_n*(1+2*kp+2*ksN)+Qw_p*(2*kn))/(4*mN**2))*(q**2)*FPhipp_n(q) )
 
-def rhoch_composition(r,rhoM_p,rho2M_p,rho2M_n,rho2Phipp_p,rho2Phipp_n,rsqp=constants.rsq_p,rqsn=constants.rsq_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
-    # rho are F.T. of F(q), rho2 are F.T. of q^2 F(q), ...
+def rho0ch_composition(r,rhoM_p,rhoM_n,rhoPhipp_p,rhoPhipp_n,rsqp=constants.rsq_p,rqsn=constants.rsq_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
+    # only valid for L=0
+    mN/=constants.hc 
+    def rho2M_p(r): return -radial_laplace(rhoM_p)(r)
+    def rho2M_n(r): return -radial_laplace(rhoM_n)(r)
+    def rho2Phipp_p(r): return -radial_laplace(rhoPhipp_p)(r)
+    def rho2Phipp_n(r): return -radial_laplace(rhoPhipp_n)(r)
+    return 1 * \
+    ( rhoM_p(r) - ((rsqp/6)+(1./(8*mN**2)))*rho2M_p(r) \
+     - (rqsn/6)*rho2M_n(r) \
+     + ((1+2*kp)/(4*mN**2))*rho2Phipp_p(r) \
+     + ((2*kn)/(4*mN**2))*rho2Phipp_n(r) )
+
+def rho0w_composition(r,rhoM_p,rhoM_n,rhoPhipp_p,rhoPhipp_n,Qw_p=constants.Qw_p,Qw_n=constants.Qw_n,rsqp=constants.rsq_p,rsqn=constants.rsq_n,rsqsN=constants.rsq_sN,kp=constants.kappa_p,kn=constants.kappa_n,ksN=constants.kappa_sN,mN=masses.mN):
+    # only valid for L=0
+    mN/=constants.hc
+    def rho2M_p(r): return -radial_laplace(rhoM_p)(r)
+    def rho2M_n(r): return -radial_laplace(rhoM_n)(r)
+    def rho2Phipp_p(r): return -radial_laplace(rhoPhipp_p)(r)
+    def rho2Phipp_n(r): return -radial_laplace(rhoPhipp_n)(r)
+    return 1 * \
+    ( Qw_p*rhoM_p(r) - (Qw_p*((rsqp/6)+(1./(8*mN**2))) + Qw_n*((rsqn/6)+(rsqsN/6)))*rho2M_p(r) \
+     + Qw_n*rhoM_n(r) - (Qw_n*((rsqp/6)+(rsqsN/6)+(1./(8*mN**2))) + Qw_p*(rsqn/6))*rho2M_n(r) \
+     + ((Qw_p*(1+2*kp)+Qw_n*(2*kn+2*ksN))/(4*mN**2))*rho2Phipp_p(r) \
+     + ((Qw_n*(1+2*kp+2*ksN)+Qw_p*(2*kn))/(4*mN**2))*rho2Phipp_n(r) )
+
+# unused
+def rhoch_composition_alt(r,rhoM_p,rho2M_p,rho2M_n,rho2Phipp_p,rho2Phipp_n,rsqp=constants.rsq_p,rqsn=constants.rsq_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
+    # rho are "F.T." (using the correct L in j_L) of F(q), rho2 are F.T. of q^2 F(q), ...
     mN/=constants.hc #check norm: *1/(2*pi**2)?
     return 1 * \
     ( rhoM_p(r) - ((rsqp/6)+(1./(8*mN**2)))*rho2M_p(r) \
@@ -360,15 +331,15 @@ def rhoch_composition(r,rhoM_p,rho2M_p,rho2M_n,rho2Phipp_p,rho2Phipp_n,rsqp=cons
      + ((1+2*kp)/(4*mN**2))*rho2Phipp_p(r) \
      + ((2*kn)/(4*mN**2))*rho2Phipp_n(r) )
 
-def jmag_composition(r,j1Delta_p,j1Sigmap_p,j1Sigmap_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
-    # j1 are F.T. of q^1 F(q)
+def jmag_composition_alt(r,j1Delta_p,j1Sigmap_p,j1Sigmap_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
+    # j1 are "F.T." (using the correct L in j_L) of q^1 F(q)
     mN/=constants.hc #check norm: *1/(2*pi**2)?
     return 1*(-1j/mN)*( j1Delta_p(r) \
      - ((1+kp)/2)*j1Sigmap_p(r) \
      - (kn/2)*j1Sigmap_n(r) )
 
-def rhow_composition(r,rhoM_p,rhoM_n,rho2M_p,rho2M_n,rho2Phipp_p,rho2Phipp_n,Qw_p=constants.Qw_p,Qw_n=constants.Qw_n,rsqp=constants.rsq_p,rsqn=constants.rsq_n,rsqsN=constants.rsq_sN,kp=constants.kappa_p,kn=constants.kappa_n,ksN=constants.kappa_sN,mN=masses.mN):
-    # rho are F.T. of F(q), rho2 are F.T. of q^2 F(q), ...
+def rhow_composition_alt(r,rhoM_p,rhoM_n,rho2M_p,rho2M_n,rho2Phipp_p,rho2Phipp_n,Qw_p=constants.Qw_p,Qw_n=constants.Qw_n,rsqp=constants.rsq_p,rsqn=constants.rsq_n,rsqsN=constants.rsq_sN,kp=constants.kappa_p,kn=constants.kappa_n,ksN=constants.kappa_sN,mN=masses.mN):
+    # rho are "F.T." (using the correct L in j_L) of F(q), rho2 are F.T. of q^2 F(q), ...
     mN/=constants.hc #check norm: *1/(2*pi**2)?
     return 1 * \
     ( Qw_p*rhoM_p(r) - (Qw_p*((rsqp/6)+(1./(8*mN**2))) + Qw_n*((rsqn/6)+(rsqsN/6)))*rho2M_p(r) \
