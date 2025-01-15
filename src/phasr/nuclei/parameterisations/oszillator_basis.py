@@ -1,4 +1,4 @@
-from ... import constants
+from ... import constants, masses
 from ..base import nucleus_base
 from ...utility.basis_change import Isospin_basis_to_nucleon_basis, Nucleon_basis_to_isospin_basis
 
@@ -15,7 +15,7 @@ class nucleus_osz(nucleus_base):
         for multipole in Ci_dict:
             setattr(self,'Ci_'+multipole,Ci_dict[multipole])
         #
-        self.update_Ci_basis()
+        self.update_Ci_basis() # nuc <-> iso
         #
         if "b_osz" in args:
             self.b_osz = args["b_osz"]
@@ -32,22 +32,102 @@ class nucleus_osz(nucleus_base):
             #
             if multipole in [S+str(L)+nuc for L in np.arange(0,2*self.spin+1,2,dtype=int) for S in ['M','Phipp'] for nuc in ['p','n']]:
                 L=int(multipole[-2])
-                def rho(q,multipole=multipole,L=L): return density_osz(q,getattr(self,'Ci_'+multipole),self.b_osz,L=L)
+                def rho(r,multipole=multipole,L=L): return density_osz(r,getattr(self,'Ci_'+multipole),self.b_osz,L=L)
                 setattr(self,'rho'+multipole,rho)
                 #
             if multipole in [S+'0'+nuc for S in ['M','Phipp'] for nuc in ['p','n']]:
                 # only for L=0
                 #
-                def El(q,multipole=multipole): return field_osz(q,getattr(self,'Ci_'+multipole),self.b_osz)
+                def El(r,multipole=multipole): return field_osz(r,getattr(self,'Ci_'+multipole),self.b_osz)
                 setattr(self,'El'+multipole,El)
                 #
-                def V(q,multipole=multipole): return potential_osz(q,getattr(self,'Ci_'+multipole),self.b_osz)
+                def V(r,multipole=multipole): return potential_osz(r,getattr(self,'Ci_'+multipole),self.b_osz)
                 setattr(self,'V'+multipole,V)
             #
+        # rewrite directly as fcts?
+        if hasattr(self,'rhoM0p') and hasattr(self,'rhoM0n') and hasattr(self,'rhoPhipp0p') and hasattr(self,'rhoPhipp0n'):
+            rhoMLp=getattr(self,'rhoM0p')
+            rhoMLn=getattr(self,'rhoM0n')
+            def rho2MLp(r): return density_osz(r,getattr(self,'Ci_M0p'),self.b_osz,L=0,q_order=2)
+            def rho2MLn(r): return density_osz(r,getattr(self,'Ci_M0n'),self.b_osz,L=0,q_order=2)
+            def rho2PhippLp(r): return density_osz(r,getattr(self,'Ci_Phipp0p'),self.b_osz,L=0,q_order=2)
+            def rho2PhippLn(r): return density_osz(r,getattr(self,'Ci_Phipp0n'),self.b_osz,L=0,q_order=2)
+            def rhoch(r): return rhoch_composition_osz(r,rhoMLp,rho2MLp,rho2MLn,rho2PhippLp,rho2PhippLn)
+            setattr(self,'charge_density',rhoch)
+            def rhow(r): return rhow_composition_osz(r,rhoMLp,rhoMLn,rho2MLp,rho2MLn,rho2PhippLp,rho2PhippLn)
+            setattr(self,'weak_density',rhow)
+        
+        if hasattr(self,'ElM0p') and hasattr(self,'ElM0n') and hasattr(self,'ElPhipp0p') and hasattr(self,'ElPhipp0n'):
+            ElMLp=getattr(self,'ElM0p')
+            def El2MLp(r): return field_osz(r,getattr(self,'Ci_M0p'),self.b_osz,q_order=2)
+            def El2MLn(r): return field_osz(r,getattr(self,'Ci_M0n'),self.b_osz,q_order=2)
+            def El2PhippLp(r): return field_osz(r,getattr(self,'Ci_Phipp0p'),self.b_osz,q_order=2)
+            def El2PhippLn(r): return field_osz(r,getattr(self,'Ci_Phipp0n'),self.b_osz,q_order=2)
+            def Elch(r): return rhoch_composition_osz(r,ElMLp,El2MLp,El2MLn,El2PhippLp,El2PhippLn)
+            setattr(self,'electric_field',Elch)
+        
+        if hasattr(self,'VM0p') and hasattr(self,'VM0n') and hasattr(self,'VPhipp0p') and hasattr(self,'VPhipp0n'):
+            VMLp=getattr(self,'VM0p')
+            def V2MLp(r): return potential_osz(r,getattr(self,'Ci_M0p'),self.b_osz,q_order=2)
+            def V2MLn(r): return potential_osz(r,getattr(self,'Ci_M0n'),self.b_osz,q_order=2)
+            def V2PhippLp(r): return potential_osz(r,getattr(self,'Ci_Phipp0p'),self.b_osz,q_order=2)
+            def V2PhippLn(r): return potential_osz(r,getattr(self,'Ci_Phipp0n'),self.b_osz,q_order=2)
+            def Vch(r): return rhoch_composition_osz(r,VMLp,V2MLp,V2MLn,V2PhippLp,V2PhippLn)
+            setattr(self,'electric_potential',Vch)
+        
+        if hasattr(self,'rhoM0p'):
+            self.proton_radius_sq=r_sq_osz(getattr(self,'Ci_M0p'),self.b_osz)
+            self.proton_radius = np.sqrt(self.proton_radius_sq) if self.proton_radius_sq>=0 else np.sqrt(self.proton_radius_sq+0j)
+        if hasattr(self,'rhoM0n'):
+            self.neutron_radius_sq=r_sq_osz(getattr(self,'Ci_M0n'),self.b_osz)
+            self.neutron_radius = np.sqrt(self.neutron_radius_sq) if self.neutron_radius_sq>=0 else np.sqrt(self.neutron_radius_sq+0j)
+        if hasattr(self,'charge_density'):
+            self.total_charge=total_charge_osz(getattr(self,'Ci_M0p'))
+            self.set_charge_radius_sq()
+            self.charge_radius = np.sqrt(self.charge_radius_sq) if self.charge_radius_sq>=0 else np.sqrt(self.charge_radius_sq+0j)
+        if hasattr(self,'weak_density'):
+            self.weak_charge=constants.Qw_p*total_charge_osz(getattr(self,'Ci_M0p')) + constants.Qw_n*total_charge_osz(getattr(self,'Ci_M0n'))
+            self.set_weak_radius_sq()
+            self.weak_radius = np.sqrt(self.weak_radius_sq) if self.weak_radius_sq>=0 else np.sqrt(self.weak_radius_sq+0j)
+        
         nucleus_base.update_dependencies(self)
-        #
-        # add radius, total charge, etc.
-        # maybe remove some attributes (e.g. isospin basis) to declutter
+
+    def set_charge_radius_sq(self,rsqp=constants.rsq_p,rqsn=constants.rsq_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
+        # only valid for L=0
+        mN/=constants.hc 
+        QM_p=total_charge_osz(getattr(self,'Ci_M0p'))
+        QM_n=total_charge_osz(getattr(self,'Ci_M0p'))
+        QPhipp_p=total_charge_osz(getattr(self,'Ci_Phipp0p'))
+        QPhipp_n=total_charge_osz(getattr(self,'Ci_Phipp0p'))
+        rsqM_p=r_sq_osz(getattr(self,'Ci_M0p'),self.b_osz)
+        rsq2M_p=r_sq_osz(getattr(self,'Ci_M0p'),self.b_osz,q_order=2)
+        rsq2M_n=r_sq_osz(getattr(self,'Ci_M0n'),self.b_osz,q_order=2)
+        rsq2Phipp_p=r_sq_osz(getattr(self,'Ci_Phipp0p'),self.b_osz,q_order=2)
+        rsq2Phipp_n=r_sq_osz(getattr(self,'Ci_Phipp0n'),self.b_osz,q_order=2)
+        self.charge_radius_sq = 1/self.total_charge * \
+        ( QM_p*rsqM_p - ((rsqp/6)+(1./(8*mN**2)))*QM_p*rsq2M_p \
+        - (rqsn/6)*QM_n*rsq2M_n \
+        + ((1+2*kp)/(4*mN**2))*QPhipp_p*rsq2Phipp_p \
+        + ((2*kn)/(4*mN**2))*QPhipp_n*rsq2Phipp_n )
+    
+    def set_weak_radius_sq(self,Qw_p=constants.Qw_p,Qw_n=constants.Qw_n,rsqp=constants.rsq_p,rqsn=constants.rsq_n,rsqn=constants.rsq_n,rsqsN=constants.rsq_sN,kp=constants.kappa_p,kn=constants.kappa_n,ksN=constants.kappa_sN,mN=masses.mN):
+        # only valid for L=0
+        mN/=constants.hc 
+        QM_p=total_charge_osz(getattr(self,'Ci_M0p'))
+        QM_n=total_charge_osz(getattr(self,'Ci_M0p'))
+        QPhipp_p=total_charge_osz(getattr(self,'Ci_Phipp0p'))
+        QPhipp_n=total_charge_osz(getattr(self,'Ci_Phipp0p'))
+        rsqM_p=r_sq_osz(getattr(self,'Ci_M0p'),self.b_osz)
+        rsqM_n=r_sq_osz(getattr(self,'Ci_M0n'),self.b_osz)
+        rsq2M_p=r_sq_osz(getattr(self,'Ci_M0p'),self.b_osz,q_order=2)
+        rsq2M_n=r_sq_osz(getattr(self,'Ci_M0n'),self.b_osz,q_order=2)
+        rsq2Phipp_p=r_sq_osz(getattr(self,'Ci_Phipp0p'),self.b_osz,q_order=2)
+        rsq2Phipp_n=r_sq_osz(getattr(self,'Ci_Phipp0n'),self.b_osz,q_order=2)
+        self.weak_radius_sq = 1/self.weak_charge * \
+        ( Qw_p*QM_p*rsqM_p - (Qw_p*((rsqp/6)+(1./(8*mN**2))) + Qw_n*((rsqn/6)+(rsqsN/6)))*QM_p*rsq2M_p \
+        + Qw_n*QM_n*rsqM_n - (Qw_n*((rsqp/6)+(rsqsN/6)+(1./(8*mN**2))) + Qw_p*(rsqn/6))*QM_n*rsq2M_n \
+        + ((Qw_p*(1+2*kp)+Qw_n*(2*kn+2*ksN))/(4*mN**2))*QPhipp_p*rsq2Phipp_p \
+        + ((Qw_n*(1+2*kp+2*ksN)+Qw_p*(2*kn))/(4*mN**2))*QPhipp_p*rsq2Phipp_n )
     
     def update_Ci_basis(self):
         for multipole in np.unique([key[:-1] for key in self.multipoles]):
@@ -162,16 +242,16 @@ def potential0_osz(Ci,b,q_order=0,alpha_el=constants.alpha_el):
 def r_sq_osz(Ci,b,q_order=0):
     # only valid for L=0
     if q_order==0:
-        rsq=3.*(Ci[0]-2*Ci[1])*pi**2*b**2
+        rsq=3./2.*(Ci[0]-2*Ci[1])*b**2
     elif q_order==1:
         raise ValueError("q_order=1 does not converge")
     elif q_order==2:
-        rsq=-12*Ci[0]*pi**2
+        rsq=-6*Ci[0]
     elif q_order>=2:
         rsq=0
     else:
         raise ValueError("invalid value for q_order")
-    return rsq/(2*pi**2)
+    return rsq/total_charge_osz(Ci)
 
 def total_charge_osz(Ci,q_order=0):
     # only valid for L=0
@@ -182,3 +262,29 @@ def total_charge_osz(Ci,q_order=0):
     else:
         raise ValueError("invalid value for q_order")
     return Q
+
+def rhoch_composition_osz(r,rhoM_p,rho2M_p,rho2M_n,rho2Phipp_p,rho2Phipp_n,rsqp=constants.rsq_p,rqsn=constants.rsq_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
+    # rho are "F.T." (using the correct L in j_L) of F(q), rho2 are F.T. of q^2 F(q), ...
+    mN/=constants.hc
+    return 1 * \
+    ( rhoM_p(r) - ((rsqp/6)+(1./(8*mN**2)))*rho2M_p(r) \
+     - (rqsn/6)*rho2M_n(r) \
+     + ((1+2*kp)/(4*mN**2))*rho2Phipp_p(r) \
+     + ((2*kn)/(4*mN**2))*rho2Phipp_n(r) )
+
+def rhow_composition_osz(r,rhoM_p,rhoM_n,rho2M_p,rho2M_n,rho2Phipp_p,rho2Phipp_n,Qw_p=constants.Qw_p,Qw_n=constants.Qw_n,rsqp=constants.rsq_p,rsqn=constants.rsq_n,rsqsN=constants.rsq_sN,kp=constants.kappa_p,kn=constants.kappa_n,ksN=constants.kappa_sN,mN=masses.mN):
+    # rho are "F.T." (using the correct L in j_L) of F(q), rho2 are F.T. of q^2 F(q), ...
+    mN/=constants.hc
+    return 1 * \
+    ( Qw_p*rhoM_p(r) - (Qw_p*((rsqp/6)+(1./(8*mN**2))) + Qw_n*((rsqn/6)+(rsqsN/6)))*rho2M_p(r) \
+     + Qw_n*rhoM_n(r) - (Qw_n*((rsqp/6)+(rsqsN/6)+(1./(8*mN**2))) + Qw_p*(rsqn/6))*rho2M_n(r) \
+     + ((Qw_p*(1+2*kp)+Qw_n*(2*kn+2*ksN))/(4*mN**2))*rho2Phipp_p(r) \
+     + ((Qw_n*(1+2*kp+2*ksN)+Qw_p*(2*kn))/(4*mN**2))*rho2Phipp_n(r) )
+
+# currently unused
+# def jmag_composition_osz(r,j1Delta_p,j1Sigmap_p,j1Sigmap_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
+#     # j1 are "F.T." (using the correct L in j_L) of q^1 F(q)
+#     mN/=constants.hc
+#     return 1*(-1j/mN)*( j1Delta_p(r) \
+#      - ((1+kp)/2)*j1Sigmap_p(r) \
+#      - (kn/2)*j1Sigmap_n(r) )

@@ -219,7 +219,7 @@ class nucleus_base:
         FPhippLp=getattr(self,'FPhipp'+str(L)+'p')
         FPhippLn=getattr(self,'FPhipp'+str(L)+'n')
         return Fw_composition(q,FMLp,FMLn,FPhippLp,FPhippLn,self.weak_charge)
-    
+
     def rhoch(self,r):
         L=0
         # For L>0 the "F.T." (with j_L) with and q^2 is non-trivial to write in terms of rho_L (for L=0 - laplace of rho) 
@@ -245,6 +245,9 @@ class nucleus_base:
         return rho0w_composition(r,rhoMLp,rhoMLn,rhoPhippLp,rhoPhippLn)
     
     def Elch(self,r):
+        
+        # might lead to sign errors for r->0
+        
         L=0
         if not (hasattr(self,'ElM'+str(L)+'p') and hasattr(self,'ElM'+str(L)+'n') and hasattr(self,'ElPhipp'+str(L)+'p') and hasattr(self,'ElPhipp'+str(L)+'n')):
             raise ValueError('Missing multipoles to evaluate Elch'+str(L))
@@ -316,29 +319,3 @@ def rho0w_composition(r,rhoM_p,rhoM_n,rhoPhipp_p,rhoPhipp_n,Qw_p=constants.Qw_p,
      + Qw_n*rhoM_n(r) - (Qw_n*((rsqp/6)+(rsqsN/6)+(1./(8*mN**2))) + Qw_p*(rsqn/6))*rho2M_n(r) \
      + ((Qw_p*(1+2*kp)+Qw_n*(2*kn+2*ksN))/(4*mN**2))*rho2Phipp_p(r) \
      + ((Qw_n*(1+2*kp+2*ksN)+Qw_p*(2*kn))/(4*mN**2))*rho2Phipp_n(r) )
-
-# unused, valid for L>0 if inputs for the higher terms are correct
-# def rhoch_composition(r,rhoM_p,rho2M_p,rho2M_n,rho2Phipp_p,rho2Phipp_n,rsqp=constants.rsq_p,rqsn=constants.rsq_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
-#     # rho are "F.T." (using the correct L in j_L) of F(q), rho2 are F.T. of q^2 F(q), ...
-#     mN/=constants.hc #check norm: *1/(2*pi**2)?
-#     return 1 * \
-#     ( rhoM_p(r) - ((rsqp/6)+(1./(8*mN**2)))*rho2M_p(r) \
-#      - (rqsn/6)*rho2M_n(r) \
-#      + ((1+2*kp)/(4*mN**2))*rho2Phipp_p(r) \
-#      + ((2*kn)/(4*mN**2))*rho2Phipp_n(r) )
-
-# def jmag_composition(r,j1Delta_p,j1Sigmap_p,j1Sigmap_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
-#     # j1 are "F.T." (using the correct L in j_L) of q^1 F(q)
-#     mN/=constants.hc #check norm: *1/(2*pi**2)?
-#     return 1*(-1j/mN)*( j1Delta_p(r) \
-#      - ((1+kp)/2)*j1Sigmap_p(r) \
-#      - (kn/2)*j1Sigmap_n(r) )
-
-# def rhow_composition(r,rhoM_p,rhoM_n,rho2M_p,rho2M_n,rho2Phipp_p,rho2Phipp_n,Qw_p=constants.Qw_p,Qw_n=constants.Qw_n,rsqp=constants.rsq_p,rsqn=constants.rsq_n,rsqsN=constants.rsq_sN,kp=constants.kappa_p,kn=constants.kappa_n,ksN=constants.kappa_sN,mN=masses.mN):
-#     # rho are "F.T." (using the correct L in j_L) of F(q), rho2 are F.T. of q^2 F(q), ...
-#     mN/=constants.hc #check norm: *1/(2*pi**2)?
-#     return 1 * \
-#     ( Qw_p*rhoM_p(r) - (Qw_p*((rsqp/6)+(1./(8*mN**2))) + Qw_n*((rsqn/6)+(rsqsN/6)))*rho2M_p(r) \
-#      + Qw_n*rhoM_n(r) - (Qw_n*((rsqp/6)+(rsqsN/6)+(1./(8*mN**2))) + Qw_p*(rsqn/6))*rho2M_n(r) \
-#      + ((Qw_p*(1+2*kp)+Qw_n*(2*kn+2*ksN))/(4*mN**2))*rho2Phipp_p(r) \
-#      + ((Qw_n*(1+2*kp+2*ksN)+Qw_p*(2*kn))/(4*mN**2))*rho2Phipp_n(r) )
