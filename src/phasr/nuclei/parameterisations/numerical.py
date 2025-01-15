@@ -311,7 +311,7 @@ def quad_seperator(integrand,Rs):
     return integral
 
 def spline_field(field,fieldtype,name,rrange,renew):
-    field_spl=calcandspline(field, rrange, "./test/"+fieldtype+"_"+name+".txt",dtype=float,renew=renew) # <- change path and file name TODO
+    field_spl=calcandspline(field, rrange, fieldtype+"_"+name,dtype=float,renew=renew)
     return field_spl
 
 def highenergycont_field(field_spl,R,n):
