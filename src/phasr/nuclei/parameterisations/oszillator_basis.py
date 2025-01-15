@@ -83,16 +83,16 @@ class nucleus_osz(nucleus_base):
             self.neutron_radius = np.sqrt(self.neutron_radius_sq) if self.neutron_radius_sq>=0 else np.sqrt(self.neutron_radius_sq+0j)
         if hasattr(self,'charge_density'):
             self.total_charge=total_charge_osz(getattr(self,'Ci_M0p'))
-            self.set_charge_radius_sq()
+            self.set_charge_radius_sq_osz()
             self.charge_radius = np.sqrt(self.charge_radius_sq) if self.charge_radius_sq>=0 else np.sqrt(self.charge_radius_sq+0j)
         if hasattr(self,'weak_density'):
             self.weak_charge=constants.Qw_p*total_charge_osz(getattr(self,'Ci_M0p')) + constants.Qw_n*total_charge_osz(getattr(self,'Ci_M0n'))
-            self.set_weak_radius_sq()
+            self.set_weak_radius_sq_osz()
             self.weak_radius = np.sqrt(self.weak_radius_sq) if self.weak_radius_sq>=0 else np.sqrt(self.weak_radius_sq+0j)
         
         nucleus_base.update_dependencies(self)
 
-    def set_charge_radius_sq(self,rsqp=constants.rsq_p,rqsn=constants.rsq_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
+    def set_charge_radius_sq_osz(self,rsqp=constants.rsq_p,rqsn=constants.rsq_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
         # only valid for L=0
         mN/=constants.hc 
         QM_p=total_charge_osz(getattr(self,'Ci_M0p'))
@@ -110,7 +110,7 @@ class nucleus_osz(nucleus_base):
         + ((1+2*kp)/(4*mN**2))*QPhipp_p*rsq2Phipp_p \
         + ((2*kn)/(4*mN**2))*QPhipp_n*rsq2Phipp_n )
     
-    def set_weak_radius_sq(self,Qw_p=constants.Qw_p,Qw_n=constants.Qw_n,rsqp=constants.rsq_p,rqsn=constants.rsq_n,rsqn=constants.rsq_n,rsqsN=constants.rsq_sN,kp=constants.kappa_p,kn=constants.kappa_n,ksN=constants.kappa_sN,mN=masses.mN):
+    def set_weak_radius_sq_osz(self,Qw_p=constants.Qw_p,Qw_n=constants.Qw_n,rsqp=constants.rsq_p,rqsn=constants.rsq_n,rsqn=constants.rsq_n,rsqsN=constants.rsq_sN,kp=constants.kappa_p,kn=constants.kappa_n,ksN=constants.kappa_sN,mN=masses.mN):
         # only valid for L=0
         mN/=constants.hc 
         QM_p=total_charge_osz(getattr(self,'Ci_M0p'))
