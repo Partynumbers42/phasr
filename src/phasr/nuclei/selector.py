@@ -1,8 +1,8 @@
 from .base import nucleus_base
 from .parameterisations.fourier_bessel import nucleus_FB
-from .parameterisations.fermi import nucleus_fermi
-from .parameterisations.gauss import nucleus_gauss
 from .parameterisations.oszillator_basis import nucleus_osz
+from .parameterisations.fermi import nucleus_fermi
+from .parameterisations.basic import nucleus_gauss, nucleus_uniform
 from .parameterisations.numerical import nucleus_num
 from .parameterisations.coulomb import nucleus_coulomb
 
@@ -16,6 +16,8 @@ def nucleus(name,Z,A,**args):
         return nucleus_fermi(**args)
     elif ('b' in args):
         return nucleus_gauss(**args)
+    elif ('rc' in args):
+        return nucleus_uniform(**args)
     elif ('charge_density' in args) or  ('electric_field' in args) or  ('electric_potential' in args) or ('form_factor' in args) or ('form_factor_dict' in args) or ('density_dict' in args):
         return nucleus_num(**args)
     else:

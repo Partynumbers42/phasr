@@ -29,6 +29,9 @@ class nucleus_fermi(nucleus_base):
         nucleus_base.update_dependencies(self)
         self.charge_radius_sq = charge_radius_sq_fermi(self.c,self.z,self.w)
         self.charge_radius = np.sqrt(self.charge_radius_sq) if self.charge_radius_sq>=0 else np.sqrt(self.charge_radius_sq+0j)
+        #
+        if hasattr(self,'electric_potential') and (not hasattr(self,'Vmin')):
+            self.Vmin = self.nucleus_num.Vmin
     
     def set_electric_field_from_charge_density(self):
         self.nucleus_num.set_electric_field_from_charge_density()
@@ -47,6 +50,7 @@ class nucleus_fermi(nucleus_base):
         self.form_factor = self.nucleus_num.form_factor
         self.electric_field = self.nucleus_num.electric_field
         self.electric_potential = self.nucleus_num.electric_potential
+        self.update_dependencies()
 
     def charge_density(self,r):
         return charge_density_fermi(r,self.c,self.z,self.w,self.total_charge)
