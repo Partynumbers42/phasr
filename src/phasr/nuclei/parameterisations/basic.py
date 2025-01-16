@@ -37,7 +37,7 @@ class nucleus_gauss(nucleus_base):
         return electric_potential_gauss(r,self.b,self.total_charge)
 
 def charge_density_gauss(r,b,Z):
-    return Z*np.exp(-(r/b)**2)/(pi*np.sqrt(pi)*b**3)
+    return Z*np.exp(-(r/b)**2)/(np.sqrt(pi**3)*b**3)
 
 def charge_radius_sq_gauss(b):
     return (3./2.)*b**2

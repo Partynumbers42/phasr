@@ -33,6 +33,7 @@ class nucleus_base:
             self.k_barrett = args['k_barrett']
             self.alpha_barrett = args['alpha_barrett']
         #
+        # move to numcerical?
         if 'form_factor_dict' in args:
             form_factor_dict=args['form_factor_dict']
             multipoles_form_factor = [key[1:] for key in form_factor_dict]
