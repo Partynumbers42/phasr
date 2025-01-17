@@ -1,26 +1,28 @@
 from .. import constants
+from ..config import local_paths
 from base import radial_dirac_eq, initial_values
 
 from ..utility.math import optimise_radius_highenergy_continuation
+from ..utility.spliner import saveandload
 
 import numpy as np
 pi = np.pi
 
 from scipy.integrate import solve_ivp
 
-def flipE(nucleus,energy_limit_lower,enery_limit_upper,kappa,mass,subdivisions=100,beginning_radius=1e-12,asymptotic_radius=2.5,atol=1e-6,rtol=1e-3,method='DOP853'):
+def flipE(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,subdivisions=100,beginning_radius=1e-12,asymptotic_radius=2.5,atol=1e-6,rtol=1e-3,method='DOP853'):
 
     V0=nucleus.Vmin
     V=nucleus.electric_potential
     Z=nucleus.Z
     nucleus_type=nucleus.nucleus_type
-    m=mass
+    m=lepton_mass
     
     enery_limit_lower_new=energy_limit_lower
-    enery_limit_upper_new=enery_limit_upper
+    enery_limit_upper_new=energy_limit_upper
 
     first=True
-    for energy in np.linspace(energy_limit_lower,enery_limit_upper,subdivisions):
+    for energy in np.linspace(energy_limit_lower,energy_limit_upper,subdivisions):
 
         def DGL(r,fct): return radial_dirac_eq(r,fct,potential=V,energy=energy,mass=m,kappa=kappa)
         initials=initial_values(beginning_radius=beginning_radius,electric_potential_V0=V0,energy=energy,mass=m,kappa=kappa,Z=Z,nucleus_type=nucleus_type)
@@ -41,18 +43,63 @@ def flipE(nucleus,energy_limit_lower,enery_limit_upper,kappa,mass,subdivisions=1
     
     raise  ValueError("No sign flip found between energy_limit_lower and enery_limit_upper, adjust energyrange or increase subdivisions")
 
-class groundstate():
-    def __init__(self,nucleus,kappa,mass,energy_limit_lower=None,energy_limit_upper=0.,subdivisions=50,hauptquantenzahl=None,scale_initial=1e0,increase_tol_for_high_kappa=True,optimize=True,rmin_max=1e-3,kappa_crit=7,E_prescision=1e-12,rmin_Z=1e-12,rmax_Z=20,rcrit_Z=15,rinf_Z=800,rshow=None,rpres_Z=1e-2,atol=1e-12,rtol=1e-9,units='alpha m',renew=False,verbose=True,method='DOP853',verboseLoad=True,save=True):
+def findE(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,subdivisions=100,energy_precision=1e-12,beginning_radius=1e-12,asymptotic_radius=2.5,atol=1e-6,rtol=1e-3,method='DOP853',verbose=True):
+    
+    if verbose:
+        print('Searching for boundstate in the range of: [',energy_limit_lower,',',energy_limit_upper,']')
+    energy=-np.inf
+    
+    if energy_limit_upper<=energy_limit_lower:
+        raise ValueError("lower energy limit needs to be smaller than upper energy limit")
+    while (energy_limit_upper-energy_limit_lower)>energy_precision:
+        energy_limit_lower, energy_limit_upper = flipE(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,subdivisions=subdivisions,beginning_radius=beginning_radius,asymptotic_radius=asymptotic_radius,atol=atol,rtol=rtol,method=method)
+        energy=(energy_limit_upper+energy_limit_lower)/2
+        if verbose:
+            print('[',energy_limit_lower,',',energy_limit_upper,']->',energy)
+    
+    return energy
+
+class boundstates():
+    def __init__(self,nucleus,kappa,lepton_mass,
+                 bindingenergy_limit_lower=None, bindingenergy_limit_upper=0.,subdivisions=50,
+                 method='DOP853',
+                 #principal_quantum_number_max=None,
+                 energy_prescision=1e-12,
+                 #scale_initial=1e0,increase_tol_for_high_kappa=True,optimize=True,rmin_max=1e-3,kappa_crit=7,E_prescision=1e-12,rmin_Z=1e-12,rmax_Z=20,rcrit_Z=15,rinf_Z=800,rshow=None,rpres_Z=1e-2,atol=1e-12,rtol=1e-9,units='alpha m',
+                 renew=False,verbose=True,verboseLoad=True,save=True):
         
-        self.energy = None # TODO
+        self.name = nucleus.name
+        self.nucleus_type = nucleus.nucleus_type
+        V0=nucleus.Vmin
+        V=nucleus.electric_potential
+        Z=nucleus.Z
+        self.lepton_mass=lepton_mass
+
+        if bindingenergy_limit_lower==None:
+            if V0!=-np.inf:
+                bindingenergy_limit_lower=np.max([V0,-2*lepton_mass])-energy_prescision
+            elif nucleus.atomtype=="coulomb":
+                bindingenergy_limit_lower=-lepton_mass-energy_prescision
+            else: 
+                #energy_limit_lower=-2*lepton_mass
+                raise ValueError('non-coulomb potentials with r->0: V(r)->-inf  not supported')
+        
+        energy_limit_lower = bindingenergy_limit_lower + lepton_mass
+        energy_limit_upper = bindingenergy_limit_upper + lepton_mass
+        
+        principal_quantum_number = -kappa if kappa<0 else kappa+1 
+        
+        path=local_paths.energy_path+self.name+"_"+state_name(principal_quantum_number,kappa)[:-2]+"_m"+str(lepton_mass)+".txt" # add more parameters
+        
+        self.energy = saveandload(path,renew,save,verbose,fmt='%.50e',fct=findE,nucleus=nucleus,energy_limit_lower=energy_limit_lower,energy_limit_upper=energy_limit_upper,kappa=kappa,lepton_mass=lepton_mass,subdivisions=subdivisions,energy_precision=energy_precision,beginning_radius=beginning_radius,asymptotic_radius=asymptotic_radius,atol=atol,rtol=rtol,method=method,verbose=True)
         
         # includes SOLVING THE IVP
         pass
     
-    def wavefunction_g(self,r):
+    def wavefunction_g_1s12(self,r):
         return 
     
-    def wavefunction_g(self,r):
+    def wavefunction_f_1s12(self,r):
         return 
 
 

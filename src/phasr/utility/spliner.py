@@ -4,10 +4,6 @@ import numpy as np
 from scipy.interpolate import splev, splrep
 from ..config import local_paths
 
-def spline_field(field,fieldtype,name,rrange,renew):
-    field_spl=calcandspline(field, rrange, "./test/"+fieldtype+"_"+name+".txt",dtype=float,renew=renew) # <- change path and file name TODO
-    return field_spl
-
 def calcandspline(fct,xrange,name,dtype=float,ext=0,renew=False,save=True,verbose=True):
     # xrange is always real, fct(x) can be complex
     
@@ -57,3 +53,23 @@ def calcandspline(fct,xrange,name,dtype=float,ext=0,renew=False,save=True,verbos
         def fkt_spl(x): return splev(x,y_data_spl,ext=ext)
 
     return fkt_spl
+
+def saveandload(path,renew=False,save=True,verbose=True,fmt='%.18e',fct=None,**params):
+    
+    if os.path.exists(path) and renew==False:
+        with open( path, "rb" ) as file:
+            data = np.loadtxt( file , dtype=float)
+            if verbose:
+                print("data loaded from ",path)
+    elif fct is None:
+        raise ValueError("no data to load at ",path)
+    else:
+        if verbose:
+            print("data not found or forced to recalculate.\nThis may take some time.")
+        data = fct(**params)
+        if save:
+            with open( path, "wb" ) as file:
+                np.savetxt(file,data,fmt=fmt)
+                if verbose:
+                    print("data saved in ", path)
+    return data

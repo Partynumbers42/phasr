@@ -38,9 +38,18 @@ def initial_values(beginning_radius,electric_potential_V0,energy,mass,kappa,Z,nu
         
     return np.array([g_kappa,f_kappa])
 
+default_rrange=[1e-12,2.5],
+default_atol=1e-6
+default_rtol=1e-3
+default_method='DOP853'
+default_energy_subdivisions=100
+default_energy_precision=1e-12
+default_verbose=False
+
 class solver_settings():
-    def __init__(self):
-        pass
+    def __init__(self,rrange,asymptotic_radius,energy_precision,energy_subdivisions,atol,rtol,method,verbose):
+        
+        self.rrange = 
 
 # def radial_dirac_eq_prep(atom,E,mi,kappa=-1,EisEbin=True):
 #     if EisEbin:
