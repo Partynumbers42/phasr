@@ -1,4 +1,4 @@
-import numpy as np # type: ignore
+import numpy as np
 
 def derivative(f,precision=1e-6):
     # fine tuned for numerical stability
@@ -24,3 +24,25 @@ def radial_laplace(fct,precision_atzero=1e-3,precision_derivative=1e-6):
             laplace = laplace[0]
         return laplace
     return laplacefct
+
+def optimise_radius_highenergy_continuation(fct,x_crit,x_step,x_min=0,fct_limit=0):
+    x_crit_initial=x_crit
+    fct_crit=fct(x_crit)
+    dfct_crit=derivative(fct,1e-6)(x_crit)
+    while np.sign(dfct_crit)*np.sign(fct_crit-fct_limit)>0 and x_crit>x_min:
+        x_crit=x_crit-x_step
+        fct_crit=fct(x_crit)
+        dfct_crit=derivative(fct,1e-6)(x_crit)
+    if np.sign(dfct_crit)*np.sign(fct_crit-fct_limit)<0:
+        if x_crit!=x_crit_initial:
+            print("Warning: x_crit adjusted to "+str(x_crit)+", s.t. high-energy continuation is possible")
+        return x_crit
+    else:
+        print("Warning: Did not find a suitable x_crit in ["+str(x_min)+","+str(x_crit_initial)+"]")
+        return x_crit_initial
+
+# energy momentum relations
+def energy(momentum,mass):
+    return np.sqrt(momentum**2+mass**2)
+def momentum(energy,mass):
+    return np.sqrt(energy**2-mass**2)

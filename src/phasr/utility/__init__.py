@@ -1,2 +1,2 @@
-from .continuer import highenergycontinuation_exp, highenergycontinuation_poly
+from .continuer import highenergy_continuation_exp, highenergy_continuation_poly
 from .spliner import calcandspline

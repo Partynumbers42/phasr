@@ -8,7 +8,8 @@ from scipy.integrate import quad
 from scipy.special import spherical_jn
 
 from ...utility import calcandspline
-from ...utility.continuer import highenergycontinuation_exp, highenergycontinuation_poly
+from ...utility.continuer import highenergy_continuation_exp, highenergy_continuation_poly
+from ...utility.math import optimise_radius_highenergy_continuation
 from ...utility.math import derivative as deriv
 
 class nucleus_num(nucleus_base):
@@ -155,8 +156,10 @@ class nucleus_num(nucleus_base):
         
         charge_density_spl = spline_field(charge_density_vec,"charge_density",self.name,rrange=self.rrange,renew=self.renew)
         #
-        # TODO Adjust r_crit=rrange[1] if rho<0,drho>0 ? beyond oscillatory 
-        self.charge_density = highenergycont_rho(charge_density_spl,R=self.rrange[1],val=0,t=0)
+        # TODO test:
+        r_crit = optimise_radius_highenergy_continuation(charge_density_spl,self.rrange[1],1e-3)
+        #
+        self.charge_density = highenergycont_rho(charge_density_spl,R=r_crit,val=0,t=0)
         
     def set_electric_field_from_electric_potential(self):
         
@@ -283,9 +286,10 @@ def fourier_transform_mom_to_pos(fct_q,name,qrange,rrange,L=0,norm=1,renew=False
     # spline
     fct_r_spl = spline_field(fct_r_vec,"charge_density",name,rrange,renew=renew)
     #
-    # TODO Adjust r_crit=rrange[1] if rho<0,drho>0 ? beyond oscillatory 
+    # TODO test:
+    r_crit = optimise_radius_highenergy_continuation(fct_r_spl,r_crit,1e-3) # set xmin to radius
     # highenergy exponential decay for rho
-    fct_r = highenergycont_rho(fct_r_spl,rrange[1],val=0,t=0)  # Asymptotic: exp(-r)
+    fct_r = highenergycont_rho(fct_r_spl,r_crit,val=0,t=0)  # Asymptotic: exp(-r)
     #fct_r = highenergycutoff_field(fct_r_spl,rrange[1],val=0) # alternative
     #
     return fct_r
@@ -319,11 +323,11 @@ def highenergycont_field(field_spl,R,n):
         E_crit=field_spl(R1)
         dE=deriv(field_spl,1e-6)
         dE_crit=dE(R1)
-        field=highenergycontinuation_poly(r,R1,E_crit,dE_crit,0,n=n)
+        field=highenergy_continuation_poly(r,R1,E_crit,dE_crit,0,n=n)
         if np.any(r<=R1):
             field = field_spl(r)
         if np.size(field)>1:
-            field[np.where(r>R1)]=highenergycontinuation_poly(r[np.where(r>R1)],R1,E_crit,dE_crit,0,n=n)
+            field[np.where(r>R1)]=highenergy_continuation_poly(r[np.where(r>R1)],R1,E_crit,dE_crit,0,n=n)
         return field
     return field_ultimate
 
@@ -332,11 +336,11 @@ def highenergycont_rho(field_spl,R,val,t): # often val=0, t=0
         E_crit=field_spl(R1)
         dE=deriv(field_spl,1e-6)
         dE_crit=dE(R1)
-        field=highenergycontinuation_exp(r,R1,E_crit,dE_crit,val,t=t)
+        field=highenergy_continuation_exp(r,R1,E_crit,dE_crit,val,t=t)
         if np.any(r<=R1):
             field = field_spl(r)
         if np.size(field)>1:
-            field[np.where(r>R1)]=highenergycontinuation_exp(r[np.where(r>R1)],R1,E_crit,dE_crit,val,t=t)
+            field[np.where(r>R1)]=highenergy_continuation_exp(r[np.where(r>R1)],R1,E_crit,dE_crit,val,t=t)
         return field
     return field_ultimate
 
