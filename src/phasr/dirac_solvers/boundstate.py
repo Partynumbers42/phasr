@@ -1,17 +1,26 @@
 from .. import constants
 from ..config import local_paths
-from base import radial_dirac_eq, initial_values
+from .base import radial_dirac_eq, initial_values, boundstate_settings
 
-from ..utility.math import optimise_radius_highenergy_continuation
+from ..utility.math import optimise_radius_highenergy_continuation,derivative
 from ..utility.spliner import saveandload
+from ..utility.continuer import highenergy_continuation_exp
 
 import numpy as np
 pi = np.pi
 
-from scipy.integrate import solve_ivp
+from scipy.integrate import solve_ivp, quad
 
-def flipE(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,subdivisions=100,beginning_radius=1e-12,asymptotic_radius=2.5,atol=1e-6,rtol=1e-3,method='DOP853'):
+def flipE(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,solver_settings=boundstate_settings):
 
+    beginning_radius=solver_settings.beginning_radius
+    asymptotic_radius=solver_settings.asymptotic_radius
+    
+    # get rid of 
+    r=np.arange(beginning_radius,solver_settings.critical_radius,solver_settings.radius_precision)
+    r=np.append(r,asymptotic_radius)
+    # some wrong units still somewhere???
+    
     V0=nucleus.Vmin
     V=nucleus.electric_potential
     Z=nucleus.Z
@@ -22,13 +31,22 @@ def flipE(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,subdiv
     enery_limit_upper_new=energy_limit_upper
 
     first=True
-    for energy in np.linspace(energy_limit_lower,energy_limit_upper,subdivisions):
+    for energy in np.linspace(energy_limit_lower,energy_limit_upper,solver_settings.energy_subdivisions):
 
         def DGL(r,fct): return radial_dirac_eq(r,fct,potential=V,energy=energy,mass=m,kappa=kappa)
         initials=initial_values(beginning_radius=beginning_radius,electric_potential_V0=V0,energy=energy,mass=m,kappa=kappa,Z=Z,nucleus_type=nucleus_type)
-        radial_dirac = solve_ivp(DGL, (beginning_radius,asymptotic_radius), initials, method=method, t_eval=np.array([asymptotic_radius]), atol=atol, rtol=rtol)
-        sign=np.sign(radial_dirac.y[0])
-
+        radial_dirac = solve_ivp(DGL, (beginning_radius,asymptotic_radius), initials, t_eval=r , method = solver_settings.method, atol=solver_settings.atol, rtol=solver_settings.rtol)
+        #, t_eval=np.linspace(beginning_radius,asymptotic_radius,1000)
+        print(radial_dirac)
+        print(beginning_radius,asymptotic_radius)
+        print(radial_dirac.t)
+        print(radial_dirac.y[0])
+        print(radial_dirac.y[1])
+        
+        raise ValueError('break')
+        
+        sign=np.sign(radial_dirac.y[0][-1])
+    
         if first:
             sign_ini=sign
             first=False
@@ -43,7 +61,10 @@ def flipE(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,subdiv
     
     raise  ValueError("No sign flip found between energy_limit_lower and enery_limit_upper, adjust energyrange or increase subdivisions")
 
-def findE(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,subdivisions=100,energy_precision=1e-12,beginning_radius=1e-12,asymptotic_radius=2.5,atol=1e-6,rtol=1e-3,method='DOP853',verbose=True):
+def findE(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,solver_settings=boundstate_settings):
+    
+    verbose=solver_settings.verbose
+    energy_precision=solver_settings.energy_precision
     
     if verbose:
         print('Searching for boundstate in the range of: [',energy_limit_lower,',',energy_limit_upper,']')
@@ -52,7 +73,7 @@ def findE(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,subdiv
     if energy_limit_upper<=energy_limit_lower:
         raise ValueError("lower energy limit needs to be smaller than upper energy limit")
     while (energy_limit_upper-energy_limit_lower)>energy_precision:
-        energy_limit_lower, energy_limit_upper = flipE(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,subdivisions=subdivisions,beginning_radius=beginning_radius,asymptotic_radius=asymptotic_radius,atol=atol,rtol=rtol,method=method)
+        energy_limit_lower, energy_limit_upper = flipE(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,solver_settings)
         energy=(energy_limit_upper+energy_limit_lower)/2
         if verbose:
             print('[',energy_limit_lower,',',energy_limit_upper,']->',energy)
@@ -61,251 +82,118 @@ def findE(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,subdiv
 
 class boundstates():
     def __init__(self,nucleus,kappa,lepton_mass,
-                 bindingenergy_limit_lower=None, bindingenergy_limit_upper=0.,subdivisions=50,
-                 method='DOP853',
-                 #principal_quantum_number_max=None,
-                 energy_prescision=1e-12,
-                 #scale_initial=1e0,increase_tol_for_high_kappa=True,optimize=True,rmin_max=1e-3,kappa_crit=7,E_prescision=1e-12,rmin_Z=1e-12,rmax_Z=20,rcrit_Z=15,rinf_Z=800,rshow=None,rpres_Z=1e-2,atol=1e-12,rtol=1e-9,units='alpha m',
-                 renew=False,verbose=True,verboseLoad=True,save=True):
+                 bindingenergy_limit_lower=None, bindingenergy_limit_upper=0.,
+                 solver_settings=boundstate_settings,
+                 #scale_initial=1e0,increase_tol_for_high_kappa=True,optimize=True,rmin_max=1e-3,kappa_crit=7,
+                 #rmin_Z=1e-12,rmax_Z=20,rcrit_Z=15,rinf_Z=800,rpres_Z=1e-2
+                 ):
+        
+        self.kappa = kappa
+        self.lepton_mass=lepton_mass
         
         self.name = nucleus.name
         self.nucleus_type = nucleus.nucleus_type
-        V0=nucleus.Vmin
-        V=nucleus.electric_potential
-        Z=nucleus.Z
-        self.lepton_mass=lepton_mass
-
-        if bindingenergy_limit_lower==None:
-            if V0!=-np.inf:
-                bindingenergy_limit_lower=np.max([V0,-2*lepton_mass])-energy_prescision
-            elif nucleus.atomtype=="coulomb":
-                bindingenergy_limit_lower=-lepton_mass-energy_prescision
+        self.Z = nucleus.Z
+        self.Vmin = nucleus.Vmin
+        
+        self.nucleus = nucleus
+        self.solver_settings = solver_settings
+        
+        self.bindingenergy_limit_lower = bindingenergy_limit_lower
+        self.bindingenergy_limit_upper = bindingenergy_limit_upper
+        
+        if self.bindingenergy_limit_lower is None:
+            if self.Vmin*constants.hc!=-np.inf:
+                self.bindingenergy_limit_lower=self.Vmin*constants.hc-self.solver_settings.energy_precision
+            elif self.nucleus_type=="coulomb":
+                self.bindingenergy_limit_lower=-self.lepton_mass-self.solver_settings.energy_precision
             else: 
-                #energy_limit_lower=-2*lepton_mass
                 raise ValueError('non-coulomb potentials with r->0: V(r)->-inf  not supported')
         
-        energy_limit_lower = bindingenergy_limit_lower + lepton_mass
-        energy_limit_upper = bindingenergy_limit_upper + lepton_mass
+        self.principal_quantum_numbers=[]
+        self.energy_levels=[]
         
-        principal_quantum_number = -kappa if kappa<0 else kappa+1 
+        self.find_next_energy_level()
+        self.solve_IVP()
         
-        path=local_paths.energy_path+self.name+"_"+state_name(principal_quantum_number,kappa)[:-2]+"_m"+str(lepton_mass)+".txt" # add more parameters
+    def find_next_energy_level(self):
         
-        self.energy = saveandload(path,renew,save,verbose,fmt='%.50e',fct=findE,nucleus=nucleus,energy_limit_lower=energy_limit_lower,energy_limit_upper=energy_limit_upper,kappa=kappa,lepton_mass=lepton_mass,subdivisions=subdivisions,energy_precision=energy_precision,beginning_radius=beginning_radius,asymptotic_radius=asymptotic_radius,atol=atol,rtol=rtol,method=method,verbose=True)
-        
-        # includes SOLVING THE IVP
-        pass
-    
-    def wavefunction_g_1s12(self,r):
-        return 
-    
-    def wavefunction_f_1s12(self,r):
-        return 
-
-
-def groundstate(nucleus,kappa,mass,energy_limit_lower=None,energy_limit_upper=0.,subdivisions=50,hauptquantenzahl=None,scale_initial=1e0,increase_tol_for_high_kappa=True,optimize=True,rmin_max=1e-3,kappa_crit=7,E_prescision=1e-12,rmin_Z=1e-12,rmax_Z=20,rcrit_Z=15,rinf_Z=800,rshow=None,rpres_Z=1e-2,atol=1e-12,rtol=1e-9,units='alpha m',renew=False,verbose=True,method='DOP853',verboseLoad=True,save=True):
-    
-    #hauptquantenzahl is the starting n, just for labeling purpose -> include automation!
-    if hauptquantenzahl is None:
-        hauptquantenzahl = -kappa if kappa<0 else kappa+1 
-    
-    if verbose:
-        print('state:',state_name(hauptquantenzahl,kappa))
-    
-    #,rmax=1.5,rcrit=1.0,rinf=10
-    #Emin=None,Emax=0.,kappa=-1,m=1./alpha_el,Z=1,N=20,E_prescision=1e-12,rmin_Z=1e-12,rmax_Z=20,rinf_Z=800,rpres_Z=1e-2,atol=1e-12,rtol=1e-9,method='DOP853'
-    #,atol=1e-12,rtol=1e-9,method='DOP853'
-
-    nucleus_type = nucleus.nucleus_type
-    V0=nucleus.Vmin
-    V=nucleus.electric_potential
-    Z=nucleus.Z
-    m=mass
-    
-    rmax=rmax_Z/Z
-    rmin=rmin_Z/Z
-    rpres=rpres_Z/Z
-    rcrit=rcrit_Z/Z
-    rinf=rinf_Z/Z
-
-    if optimize:
-        rmin=np.min([rmin**(1./np.abs(kappa)),rmin_max])
-        if np.abs(kappa)>=np.abs(kappa_crit):
-            if increase_tol_for_high_kappa:
-                atol/=1.0e1**(2*(np.abs(kappa)-np.abs(kappa_crit)))
-                rtol/=1.0e1**(2*(np.abs(kappa)-np.abs(kappa_crit)))
-            scale_initial*=1.0e1**(2*(np.abs(kappa)-np.abs(kappa_crit)))
-            if rtol<3e-14:
-                if verbose:
-                    print("minimum rtol reached, it's capped to ",3e-14)
-                rtol=np.max([rtol,3e-14]) #maximum possible rtol
-
-    if energy_limit_lower==None:
-        if V0!=-np.inf:
-            energy_limit_lower=V0-E_prescision
-        elif nucleus.atomtype=="coulomb":
-            energy_limit_lower=-m
-        else: 
-            #energy_limit_lower=-2*m
-            raise ValueError('non-coulomb potentials with r->0: V(r)->-inf  not supported')
+        if not len(self.principal_quantum_numbers):
+            self._current_principal_quantum_number = -self.kappa if self.kappa<0 else self.kappa+1 
+            self.principal_quantum_numbers.append(self._current_principal_quantum_number)
+            self._current_bindingenergy_limit_lower=self.bindingenergy_limit_lower
+        else:
+            self._current_principal_quantum_number+=1
+            self.principal_quantum_numbers.append(self._current_principal_quantum_number)
+            self._current_bindingenergy_limit_lower=self.energy_levels[-1]+self.solver_settings.energy_precision
             
-    pathE="./lib/splines/Ebin"+nucleus.name+"_"+state_name(hauptquantenzahl,kappa)[:-2]+"_m"+str(m)+".txt"
-    if os.path.exists(pathE) and renew==False:
-        with open( pathE, "rb" ) as file:
-            E_load = np.loadtxt( file , dtype=float)
-            energy=E_load[0]
-            if verboseLoad:
-                print("ground state energy loaded from ",pathE,"as",energy,"+-",E_load[1])
-    else:
-        if verbose:
-            print('searching for groundstate in the range of: [',energy_limit_lower,',',energy_limit_upper,']')
-        energy=-np.inf
-        if verboseLoad:
-            print("ground state energy not found or forced to recalculate.\nThis may take some time.")
-        if energy_limit_upper<=energy_limit_lower:
-            raise ValueError("Emin needs to be smaller than Emax")
-        while (energy_limit_upper-energy_limit_lower)>E_prescision:
-            energy_limit_lower, energy_limit_upper = flipE(nucleus,energy_limit_lower,energy_limit_upper,subdivisions,kappa,m,rmin,rmax,rinf,rpres,atol=atol,rtol=rtol,method=method)
-            energy=(energy_limit_upper+energy_limit_lower)/2
-            if verbose:
-                print('[',energy_limit_lower,',',energy_limit_upper,']->',energy)
-        if save:
-            with open( pathE, "wb" ) as file:
-                np.savetxt(file,np.array([energy,E_prescision]),fmt='%.50e')
-                if verboseLoad:
-                    print("value saved in ", pathE)
-    
-    # Consider EisEbin situation <---
-
-    def DGL(r,fct): return radial_dirac_eq(r,fct,potential=V,energy=energy,mass=m,kappa=kappa)
-    initials=  scale_initial* initial_values(beginning_radius=beginning_radius,electric_potential_V0=V0,energy=energy,mass=m,kappa=kappa,Z=Z,nucleus_type=nucleus_type)
-    radial_dirac = solve_ivp(DGL, (beginning_radius,asymptotic_radius), initials, method=method, dense_output=True, atol=atol, rtol=rtol)
-    
-    wavefct_G = lambda x: radial_dirac.sol(x)[0]
-    wavefct_F = lambda x: radial_dirac.sol(x)[1]
-    
-    rcit = optimise_radius_highenergy_continuation(wavefct_G,rcrit,1e-3,rmin)
-    rcit = optimise_radius_highenergy_continuation(wavefct_F,rcrit,1e-3,rmin)
-
-    def wavefct_G_ultimate(r,R=rcrit):
+        energy_limit_lower = self._current_bindingenergy_limit_lower + self.lepton_mass
+        energy_limit_upper = self.bindingenergy_limit_upper + self.lepton_mass
         
-        G_crit=wavefct_G_spl(R)
-        dG_crit=deriv(wavefct_G_spl,R,1e-6)
+        path=local_paths.energy_path+self.name+"_"+state_name(self._current_principal_quantum_number,self.kappa)[:-2]+"_m"+str(self.lepton_mass)+".txt" # add more parameters, fct solver_settings to str
         
-        if np.size(r)>1:
-            G = 0*r
-            if np.size(G[np.where(r<=R)])>0:
-                G[np.where(r<=R)] = wavefct_G_spl(r[np.where(r<=R)])
-            if np.size(G[np.where(r>R)])>0:
-                G[np.where(r>R)]=fs.highenergycontinuation(r[np.where(r>R)],R,G_crit,dG_crit,0,t=0)
-        else:
-            G=wavefct_G_spl(r) if r<=R else fs.highenergycontinuation(r,R,G_crit,dG_crit,0,t=0)
-
-        return G
-    
-    def wavefct_F_ultimate(r,R=rcrit):
+        self._current_energy = saveandload(path,self.solver_settings.renew,self.solver_settings.save,self.solver_settings.verbose,fmt='%.50e',fct=findE,nucleus=self.nucleus,energy_limit_lower=energy_limit_lower,energy_limit_upper=energy_limit_upper,kappa=self.kappa,lepton_mass=self.lepton_mass,solver_settings=self.solver_settings)
         
-        F_crit=wavefct_F_spl(R)
-        dF_crit=deriv(wavefct_F_spl,R,1e-6)
+        self.energy_levels.append(self._current_energy)
         
-        if np.size(r)>1:
-            F = 0*r
-            if np.size(F[np.where(r<=R)])>0:
-                F[np.where(r<=R)] = wavefct_F_spl(r[np.where(r<=R)])
-            if np.size(F[np.where(r>R)])>0:
-                F[np.where(r>R)]=fs.highenergycontinuation(r[np.where(r>R)],R,F_crit,dF_crit,0,t=0)
-        else:
-            F=wavefct_F_spl(r) if r<=R else fs.highenergycontinuation(r,R,F_crit,dF_crit,0,t=0)
-
-        return F
     
-
-    # def wavefct_G_ultimate(r,R=rcrit,units=units):
+    def solve_IVP(self):
+        def DGL(r,fct): return radial_dirac_eq(r,fct,potential=self.nucleus.electric_potential,energy=self._current_energy,mass=self.lepton_mass,kappa=self.kappa)  
         
-    #     G_crit=wavefct_G_spl(R)
-    #     dG_crit=deriv(wavefct_G_spl,R,1e-6)
+        scale_initial=1 # TODO also other optimisers
+        
+        beginning_radius = self.solver_settings.beginning_radius
+        critcal_radius = self.solver_settings.critical_radius
+        asymptotic_radius = self.solver_settings.asymptotic_radius
+                
+        initials=  scale_initial*initial_values(beginning_radius=beginning_radius,electric_potential_V0=self.Vmin,energy=self._current_energy,mass=self.lepton_mass,kappa=self.kappa,Z=self.Z,nucleus_type=self.nucleus_type)
+        radial_dirac = solve_ivp(DGL, (beginning_radius,asymptotic_radius), initials, dense_output=True, method=self.solver_settings.method, atol=self.solver_settings.atol, rtol=self.solver_settings.rtol)
 
-    #     G=fs.highenergycontinuation(r,R,G_crit,dG_crit,0,t=0)
-    #     if np.any(r<=R):
-    #         G = wavefct_G_spl(r)
-    #     else:
-    #         G = 0*r
-    #     if np.size(G)>1:
-    #         if np.size(G[np.where(r>R)])>0:
-    #             G[np.where(r>R)]=fs.highenergycontinuation(r[np.where(r>R)],R,G_crit,dG_crit,0,t=0)
-    #     return G
-
-    # def wavefct_F_ultimate(r,R=rcrit):
-
-    #     F_crit=wavefct_F_spl(R)
-    #     dF_crit=deriv(wavefct_F_spl,R,1e-6)
-
-    #     F=fs.highenergycontinuation(r,R,F_crit,dF_crit,0,t=0)
-    #     if np.any(r<=R):
-    #         F = wavefct_F_spl(r)
-    #     else:
-    #         F = 0*r
-    #     if np.size(F)>1:
-    #         if np.size(F[np.where(r>R)])>0:
-    #             F[np.where(r>R)]=fs.highenergycontinuation(r[np.where(r>R)],R,F_crit,dF_crit,0,t=0)
-    #     return F
-    
-    norm1,norm1_pres=quad(lambda x: (wavefct_G_ultimate(x)**2 + wavefct_F_ultimate(x)**2),rmin,rcrit,limit=200) 
-    norm2,norm2_pres=quad(lambda x: (wavefct_G_ultimate(x)**2 + wavefct_F_ultimate(x)**2),rcrit,np.inf,limit=200) 
-    norm = norm1 + norm2
-    #print(norm,norm1_pres,norm1_pres)
-    
-    def G0(r):
-        if units=='alpha m':
-            G=wavefct_G_ultimate(r*1)/np.sqrt(norm)
-            G*=1
-        elif units=='m':
-            G=wavefct_G_ultimate(r*alpha_el)/np.sqrt(norm)
-            G*=np.sqrt(alpha_el)
-        else:
-            raise ValueError('unit system not known')
-        return G
-
-    def F0(r):
-        if units=='alpha m':
-            F=wavefct_F_ultimate(r*1)/np.sqrt(norm)
-            F*=1
-        elif units=='m':
-            F=wavefct_F_ultimate(r*alpha_el)/np.sqrt(norm)
-            F*=np.sqrt(alpha_el)
-        else:
-            raise ValueError('unit system not known')
-        return F
-
-    if rshow is None:
-        rshow=rmax
-
-    r=np.arange(rmin,rshow,rpres)
-
-    if units=='alpha m':
-        energy*=1
-        if verbose:
-            plt.plot(r,G0(r))
-            plt.plot(r,F0(r))
-    elif units=='m':
-        energy*=alpha_el
-        if verbose:
-            plt.plot(r/alpha_el,G0(r/alpha_el))
-            plt.plot(r/alpha_el,F0(r/alpha_el))
-    else:
-        raise ValueError('unit system not known')
-
-    if verbose:
-        print('ground state energy:',energy,units)
-
-    return energy, G0, F0
-
-
-
-
-
-
-
+        def wavefct_g_low(x): return radial_dirac.sol(x)[0]
+        def wavefct_f_low(x): return radial_dirac.sol(x)[1]
+        
+        critical_radius = optimise_radius_highenergy_continuation(wavefct_g_low,critcal_radius,1e-3,beginning_radius)
+        critical_radius = optimise_radius_highenergy_continuation(wavefct_f_low,critcal_radius,1e-3,beginning_radius)
+        
+        def wavefct_g_unnormalised(r,rcrit=critcal_radius,wavefct_g_low=wavefct_g_low):
+            r_arr = np.atleast_1d(r)
+            g = np.zeros(len(r_arr))
+            mask_r = r_arr<=rcrit
+            if np.any(mask_r):
+                g[mask_r]=wavefct_g_low(r_arr[mask_r])
+            if np.any(~mask_r):
+                G_crit=wavefct_g_low(rcrit)
+                dG_crit=derivative(wavefct_g_low,rcrit,1e-6)
+                g[~mask_r]=highenergy_continuation_exp(r_arr[~mask_r],rcrit,G_crit,dG_crit,limit=0,t=0)
+            if np.isscalar(r):
+                g=g[0]
+            return g
+        
+        def wavefct_f_unnormalised(r,rcrit=critcal_radius,wavefct_f_low=wavefct_f_low):
+            r_arr = np.atleast_1d(r)
+            f = np.zeros(len(r_arr))
+            mask_r = r_arr<=rcrit
+            if np.any(mask_r):
+                f[mask_r]=wavefct_f_low(r_arr[mask_r])
+            if np.any(~mask_r):
+                G_crit=wavefct_f_low(rcrit)
+                dG_crit=derivative(wavefct_f_low,rcrit,1e-6)
+                f[~mask_r]=highenergy_continuation_exp(r_arr[~mask_r],rcrit,G_crit,dG_crit,limit=0,t=0)
+            if np.isscalar(r):
+                f=f[0]
+            return f
+        
+        def integrand_norm(x): return wavefct_g_unnormalised(x)**2 + wavefct_f_unnormalised(x)**2
+        
+        int_low,_=quad(integrand_norm,beginning_radius,critcal_radius,limit=1000) 
+        int_high,_=quad(integrand_norm,critcal_radius,np.inf,limit=1000) 
+        norm = int_low + int_high
+        
+        def wavefct_g(r,wavefct_g_unnormalised=wavefct_g_unnormalised,norm=norm): return wavefct_g_unnormalised(r)/np.sqrt(norm)
+        def wavefct_f(r,wavefct_f_unnormalised=wavefct_f_unnormalised,norm=norm): return wavefct_f_unnormalised(r)/np.sqrt(norm)
+        
+        setattr(self,"wavefunction_g_"+state_name(self._current_principal_quantum_number,self.kappa)[:-2]+'2',wavefct_g)
+        setattr(self,"wavefunction_f_"+state_name(self._current_principal_quantum_number,self.kappa)[:-2]+'2',wavefct_f)
 
 def state_name(n,kappa):
     j=np.abs(kappa)-0.5

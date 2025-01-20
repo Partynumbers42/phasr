@@ -56,6 +56,7 @@ def calcandspline(fct,xrange,name,dtype=float,ext=0,renew=False,save=True,verbos
 
 def saveandload(path,renew=False,save=True,verbose=True,fmt='%.18e',fct=None,**params):
     
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     if os.path.exists(path) and renew==False:
         with open( path, "rb" ) as file:
             data = np.loadtxt( file , dtype=float)

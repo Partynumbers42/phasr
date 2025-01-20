@@ -12,3 +12,4 @@ __email__ = "noel@ipt.unibe.ch"
 # define calls from top level
 from .physical_constants import constants, masses, trafos
 from .nuclei import nucleus
+from .dirac_solvers import boundstate_settings, boundstates

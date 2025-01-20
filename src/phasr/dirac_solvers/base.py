@@ -38,18 +38,38 @@ def initial_values(beginning_radius,electric_potential_V0,energy,mass,kappa,Z,nu
         
     return np.array([g_kappa,f_kappa])
 
-default_rrange=[1e-12,2.5],
+default_beginning_radius=1e-12
+default_critical_radius=2.5
+default_asymptotic_radius=5
+default_radius_precision=1e-3
+default_energy_precision=1e-12
+default_energy_subdivisions=100
 default_atol=1e-6
 default_rtol=1e-3
 default_method='DOP853'
-default_energy_subdivisions=100
-default_energy_precision=1e-12
-default_verbose=False
+default_verbose=True # TODO change
+default_renew=True # TODO change
+default_save=False # TODO change
 
 class solver_settings():
-    def __init__(self,rrange,asymptotic_radius,energy_precision,energy_subdivisions,atol,rtol,method,verbose):
+    def __init__(self,beginning_radius,critical_radius,asymptotic_radius,radius_precision,energy_precision,energy_subdivisions,atol,rtol,method,renew,save,verbose):
         
-        self.rrange = 
+        self.beginning_radius = beginning_radius
+        self.critical_radius = critical_radius
+        self.asymptotic_radius = asymptotic_radius
+        self.radius_precision = radius_precision
+        self.energy_precision = energy_precision
+        self.energy_subdivisions = energy_subdivisions
+        self.atol = atol
+        self.rtol = rtol
+        self.method = method
+        self.verbose = verbose
+        self.renew = renew
+        self.save = save
+
+boundstate_settings = solver_settings(default_beginning_radius,default_critical_radius,default_asymptotic_radius,default_radius_precision,default_energy_precision,default_energy_subdivisions,default_atol,default_rtol,default_method,default_renew,default_save,default_verbose)
+
+# adjusted by eg.  base.boundstate_settings.renew = True 
 
 # def radial_dirac_eq_prep(atom,E,mi,kappa=-1,EisEbin=True):
 #     if EisEbin:
