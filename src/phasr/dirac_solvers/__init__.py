@@ -1,1 +1,1 @@
-from .boundstate import boundstate_settings, boundstates
+from .boundstate import default_boundstate_settings, boundstates
