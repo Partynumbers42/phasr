@@ -25,7 +25,13 @@ def radial_dirac_eq_fm(r,y,potential,energy,mass,kappa): #,contain=False
     
     return np.array([[-kappa/r,(Ebar+mass)/hc],[-(Ebar-mass)/hc,kappa/r]]) @ y
 
-def initial_values(beginning_radius,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=None,alpha_el=constants.alpha_el):
+def initial_values(beginning_radius,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=None,alpha_el=constants.alpha_el): 
+    
+    
+    
+    # TODO norm here !!!
+    
+    
     
     hc=constants.hc # MeV fm
     

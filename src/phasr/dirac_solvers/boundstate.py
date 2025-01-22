@@ -206,6 +206,10 @@ class boundstates():
             norm=1
             print("function could not be normalized as norm is not finite")
         
+        
+        # TODO norm units here !!!
+        
+        
         def wavefct_g(r,wavefct_g_unnormalised=wavefct_g_unnormalised,energy_norm=energy_norm,norm=norm): return wavefct_g_unnormalised(r*energy_norm/constants.hc)/np.sqrt(norm)
         def wavefct_f(r,wavefct_f_unnormalised=wavefct_f_unnormalised,energy_norm=energy_norm,norm=norm): return wavefct_f_unnormalised(r*energy_norm/constants.hc)/np.sqrt(norm)
         
