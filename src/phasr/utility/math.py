@@ -30,7 +30,7 @@ def optimise_radius_highenergy_continuation(fct,x_crit,x_step,x_min=0,fct_limit=
     fct_crit=fct(x_crit)
     dfct_crit=derivative(fct,1e-6)(x_crit)
     while np.sign(dfct_crit)*np.sign(fct_crit-fct_limit)>0 and x_crit>x_min:
-        x_crit=x_crit-x_step
+        x_crit=np.max([x_crit-x_step,x_min])
         fct_crit=fct(x_crit)
         dfct_crit=derivative(fct,1e-6)(x_crit)
     if np.sign(dfct_crit)*np.sign(fct_crit-fct_limit)<0:

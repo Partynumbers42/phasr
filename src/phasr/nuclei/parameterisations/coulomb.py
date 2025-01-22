@@ -66,3 +66,8 @@ def form_factor_coulomb(r):
     if np.isscalar(r):
         F=F[0]
     return F
+
+# this is the actual energy, E = E_bin + m
+def energy_coulomb_nk(n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
+    rho=reg*np.sqrt(kappa**2 - (alpha_el*Z)**2)
+    return mass/np.sqrt(1+(alpha_el*Z/(n-np.abs(kappa)+rho))**2)

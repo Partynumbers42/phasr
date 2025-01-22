@@ -4,14 +4,16 @@ from .. import constants
 import numpy as np
 pi = np.pi
 
+from ..nuclei.parameterisations.coulomb import energy_coulomb_nk
+
 from scipy.special import spherical_jn
 
-def radial_dirac_eq(r,y,potential,energy,mass,kappa,contain=False):
+def radial_dirac_eq_fm(r,y,potential,energy,mass,kappa): #,contain=False
     # only scalar r in fm, potential in fm^-1, mass & energy in MeV, 
     # dy/dr = A y -> [A]=[r]=fm
     #
     hc=constants.hc # MeV fm
-    Ebar=energy-potential(r)*hc
+    Ebar=energy-potential(r)*hc # MeV
     
     #raise ValueError('force break')
     #print(r,y,A)
@@ -48,13 +50,16 @@ def initial_values(beginning_radius,electric_potential_V0,energy,mass,kappa,Z,nu
     return np.array([g_kappa,f_kappa])
 
 default_boundstate_settings={
-    "beginning_radius":1e-12,
-    "critical_radius_perZ":500, #finetune scale with n?
+    "beginning_radius_norm":1e-12, # in inverse coulomb binding energies 
+    "beginning_radius":None,
+    "critical_radius_norm":0.25, # in inverse coulomb binding energies
     "critical_radius":None,
-    "asymptotic_radius_perZ":5000,  #finetune scale with n?
+    "asymptotic_radius_norm":1, # in inverse coulomb binding energies
     "asymptotic_radius":None,
-    "radius_precision":1e-3,
-    "energy_precision":1e-12,
+    "radius_precision_norm":1e-6, # in inverse coulomb binding energies
+    "radius_precision":None,
+    "energy_precision_norm":1e-6, # in coulomb binding energies
+    "energy_precision":None,
     "energy_subdivisions":100,
     "atol":1e-12,
     "rtol":1e-9,
@@ -65,17 +70,26 @@ default_boundstate_settings={
     }
 
 class solver_settings():
-    def __init__(self,Z,beginning_radius,critical_radius_perZ,asymptotic_radius_perZ,radius_precision,energy_precision,energy_subdivisions,atol,rtol,method,renew,save,verbose,critical_radius,asymptotic_radius):
-        
+    def __init__(self,energy_norm,
+                 beginning_radius,critical_radius,asymptotic_radius,radius_precision,energy_precision,
+                 beginning_radius_norm,critical_radius_norm,asymptotic_radius_norm,radius_precision_norm,energy_precision_norm,
+                 energy_subdivisions,atol,rtol,method,renew,save,verbose):
+        self.energy_norm=energy_norm
         self.beginning_radius = beginning_radius
+        self.beginning_radius_norm = beginning_radius_norm
+        self.set_radius("beginning_radius","beginning_radius_norm",constants.hc/self.energy_norm)
         self.critical_radius = critical_radius
-        if self.critical_radius is None:
-            self.critical_radius = critical_radius_perZ/Z
+        self.critical_radius_norm = critical_radius_norm
+        self.set_radius("critical_radius","critical_radius_norm",constants.hc/self.energy_norm)
         self.asymptotic_radius = asymptotic_radius
-        if self.asymptotic_radius is None:
-            self.asymptotic_radius = asymptotic_radius_perZ/Z
+        self.asymptotic_radius_norm = asymptotic_radius_norm
+        self.set_radius("asymptotic_radius","asymptotic_radius_norm",constants.hc/self.energy_norm)
         self.radius_precision = radius_precision
+        self.radius_precision_norm = radius_precision_norm
+        self.set_radius("radius_precision","radius_precision_norm",constants.hc/self.energy_norm)
         self.energy_precision = energy_precision
+        self.energy_precision_norm = energy_precision_norm
+        self.set_radius("energy_precision","energy_precision_norm",self.energy_norm)
         self.energy_subdivisions = energy_subdivisions
         self.atol = atol
         self.rtol = rtol
@@ -84,6 +98,15 @@ class solver_settings():
         self.renew = renew
         self.save = save
 
+    # TODO rename
+    def set_radius(self,radius_str,radius_norm_str,norm):
+        if not self.energy_norm is None:
+            if not (getattr(self,radius_str) is None):
+                setattr(self,radius_norm_str,getattr(self,radius_str)/norm)
+            else:
+                setattr(self,radius_str,getattr(self,radius_norm_str)*norm)
+        
+    
 # adjusted by eg.  base.boundstate_settings.renew = True 
 
 # def radial_dirac_eq_prep(atom,E,mi,kappa=-1,EisEbin=True):
