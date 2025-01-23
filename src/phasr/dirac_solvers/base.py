@@ -8,14 +8,13 @@ from ..nuclei.parameterisations.coulomb import energy_coulomb_nk
 
 from scipy.special import spherical_jn
 
-def radial_dirac_eq_fm(r,y,potential,energy,mass,kappa): #,contain=False
+def radial_dirac_eq_fm(r_fm,y,potential,energy,mass,kappa): #,contain=False
     # only scalar r in fm, potential in fm^-1, mass & energy in MeV, 
     # dy/dr = A y -> [A]=[r]=fm
     #
     hc=constants.hc # MeV fm
-    Ebar=energy-potential(r)*hc # MeV
+    Ebar=energy-potential(r_fm)*hc # MeV
     
-    #raise ValueError('force break')
     #print(r,y,A)
     # if contain:
     #    if np.any(np.abs(y)>1e100):
@@ -23,37 +22,45 @@ def radial_dirac_eq_fm(r,y,potential,energy,mass,kappa): #,contain=False
     #    if np.any(np.abs(y)<1e-100):
     #        y*=1e100
     
-    return np.array([[-kappa/r,(Ebar+mass)/hc],[-(Ebar-mass)/hc,kappa/r]]) @ y
+    return np.array([[-kappa/r_fm,(Ebar+mass)/hc],[-(Ebar-mass)/hc,kappa/r_fm]]) @ y
 
-def initial_values(beginning_radius,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=None,alpha_el=constants.alpha_el): 
-    
-    
-    
-    # TODO norm here !!!
-    
-    
+def radial_dirac_eq_norm(r_norm,y,potential,energy,mass,kappa,energy_norm): 
+    # change to units normalised to the boundstate energy of the coulomb solution
+    hc=constants.hc
+    return radial_dirac_eq_fm(r_norm*hc/energy_norm,y,potential,energy,mass,kappa)*hc/energy_norm
+
+def initial_values_fm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=None,alpha_el=constants.alpha_el): 
     
     hc=constants.hc # MeV fm
     
     Ebar=energy-electric_potential_V0*hc #MeV
     k0=momentum(Ebar,mass) #MeV
-    z0=k0*beginning_radius/hc
+    z0=k0*beginning_radius_fm/hc
     
     if not nucleus_type=="coulomb":
         if kappa>0:
-            g_kappa=-(beginning_radius/hc)*np.sqrt((Ebar+mass)/(Ebar-mass))*spherical_jn(kappa,z0)
-            f_kappa=-(beginning_radius/hc)*spherical_jn(kappa-1,z0)
+            g_kappa=-(beginning_radius_fm)*np.sqrt((Ebar+mass)/(Ebar-mass))*spherical_jn(kappa,z0)
+            f_kappa=-(beginning_radius_fm)*spherical_jn(kappa-1,z0)
         elif kappa<0:
-            g_kappa=+(beginning_radius/hc)*spherical_jn(-kappa-1,z0)
-            f_kappa=-(beginning_radius/hc)*np.sqrt((Ebar-mass)/(Ebar+mass))*spherical_jn(-kappa,z0)
+            g_kappa=+(beginning_radius_fm)*spherical_jn(-kappa-1,z0)
+            f_kappa=-(beginning_radius_fm)*np.sqrt((Ebar-mass)/(Ebar+mass))*spherical_jn(-kappa,z0)
         else:
             raise ValueError("kappa=0 not allowed")
     else:
         rho_kappa = np.sqrt(kappa**2 - (alpha_el*Z)**2)
-        g_kappa=-1*(kappa-rho_kappa)/(alpha_el*Z)*(beginning_radius/hc)**rho_kappa
-        f_kappa=-1*(beginning_radius/hc)**rho_kappa
+        g_kappa=-1*(kappa-rho_kappa)/(alpha_el*Z)*(beginning_radius_fm)**rho_kappa
+        f_kappa=-1*(beginning_radius_fm)**rho_kappa
         
     return np.array([g_kappa,f_kappa])
+
+def initial_values_norm(beginning_radius_norm,electric_potential_V0,energy,mass,kappa,Z,energy_norm,nucleus_type=None,alpha_el=constants.alpha_el): 
+    hc=constants.hc # MeV fm
+    initials_fm = initial_values_fm(beginning_radius_norm*hc/energy_norm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=nucleus_type,alpha_el=alpha_el)
+    if not nucleus_type=="coulomb":
+        return initials_fm*(energy_norm/hc)
+    else:
+        rho_kappa = np.sqrt(kappa**2 - (alpha_el*Z)**2)
+        return initials_fm*(energy_norm/hc)**rho_kappa
 
 default_boundstate_settings={
     "beginning_radius_norm":1e-12, # in inverse coulomb binding energies 
@@ -67,8 +74,8 @@ default_boundstate_settings={
     "energy_precision_norm":1e-6, # in coulomb binding energies
     "energy_precision":None,
     "energy_subdivisions":100,
-    "atol":1e-12,
-    "rtol":1e-9,
+    "atol":1e-6,
+    "rtol":1e-6,
     "method":'DOP853',
     "verbose":True, # TODO change
     "renew":True, # TODO change

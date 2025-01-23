@@ -1,6 +1,6 @@
 from .. import constants
 from ..config import local_paths
-from .base import radial_dirac_eq_fm, initial_values, solver_settings, default_boundstate_settings
+from .base import radial_dirac_eq_norm, initial_values_norm, solver_settings, default_boundstate_settings
 
 from ..utility.math import optimise_radius_highenergy_continuation,derivative
 from ..utility.spliner import saveandload
@@ -13,14 +13,11 @@ pi = np.pi
 
 from scipy.integrate import solve_ivp, quad
 import copy
-
-def radial_dirac_eq_boundstate(r,y,potential,energy,mass,kappa,energy_norm): 
-    # change to units normalised to the boundstate energy of the coulomb solution
-    hc=constants.hc
-    return radial_dirac_eq_fm(r*hc/energy_norm,y,potential,energy,mass,kappa)*hc/energy_norm
    
 def find_asymptotic_flip(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,solver_setting):
 
+    scale_initial=1e0
+    
     beginning_radius=solver_setting.beginning_radius_norm
     asymptotic_radius=solver_setting.asymptotic_radius_norm
     energy_norm=solver_setting.energy_norm
@@ -31,8 +28,8 @@ def find_asymptotic_flip(nucleus,energy_limit_lower,energy_limit_upper,kappa,lep
     first=True
     for energy in np.linspace(energy_limit_lower,energy_limit_upper,solver_setting.energy_subdivisions):
         
-        def DGL(r,y): return radial_dirac_eq_boundstate(r,y,potential=nucleus.electric_potential,energy=energy,mass=lepton_mass,kappa=kappa,energy_norm=energy_norm)
-        initials= initial_values(beginning_radius=beginning_radius,electric_potential_V0=nucleus.Vmin,energy=energy,mass=lepton_mass,kappa=kappa,Z=nucleus.Z,nucleus_type=nucleus.nucleus_type)
+        def DGL(r,y): return radial_dirac_eq_norm(r,y,potential=nucleus.electric_potential,energy=energy,mass=lepton_mass,kappa=kappa,energy_norm=energy_norm)
+        initials= scale_initial*initial_values_norm(beginning_radius_norm=beginning_radius,electric_potential_V0=nucleus.Vmin,energy=energy,mass=lepton_mass,kappa=kappa,Z=nucleus.Z,energy_norm=energy_norm,nucleus_type=nucleus.nucleus_type)
         
         radial_dirac = solve_ivp(DGL, (beginning_radius,asymptotic_radius), initials, t_eval=np.array([asymptotic_radius]), method=solver_setting.method, atol=solver_setting.atol, rtol=solver_setting.rtol)
         sign=np.sign(radial_dirac.y[0][-1])
@@ -151,7 +148,7 @@ class boundstates():
     def solve_IVP_at_current_energy(self):
         
         energy_norm=self.solver_setting.energy_norm
-        def DGL(r,fct): return radial_dirac_eq_boundstate(r,fct,potential=self.nucleus.electric_potential,energy=self._current_energy,mass=self.lepton_mass,kappa=self.kappa,energy_norm=energy_norm)  
+        def DGL(r,fct): return radial_dirac_eq_norm(r,fct,potential=self.nucleus.electric_potential,energy=self._current_energy,mass=self.lepton_mass,kappa=self.kappa,energy_norm=energy_norm)  
         
         scale_initial=1 # TODO also other optimisers
         
@@ -160,7 +157,10 @@ class boundstates():
         asymptotic_radius = self.solver_setting.asymptotic_radius_norm
         radius_precision = self.solver_setting.radius_precision_norm
                 
-        initials=  scale_initial*initial_values(beginning_radius=beginning_radius,electric_potential_V0=self.Vmin,energy=self._current_energy,mass=self.lepton_mass,kappa=self.kappa,Z=self.Z,nucleus_type=self.nucleus_type)
+        initials=  scale_initial*initial_values_norm(beginning_radius_norm=beginning_radius,electric_potential_V0=self.Vmin,energy=self._current_energy,mass=self.lepton_mass,kappa=self.kappa,Z=self.Z,energy_norm=energy_norm,nucleus_type=self.nucleus_type)
+        
+        print(initials)
+        
         radial_dirac = solve_ivp(DGL, (beginning_radius,asymptotic_radius), initials, dense_output=True, method=self.solver_setting.method, atol=self.solver_setting.atol, rtol=self.solver_setting.rtol)
 
         def wavefct_g_low(x): return radial_dirac.sol(x)[0]
@@ -202,16 +202,12 @@ class boundstates():
         int_low,_=quad(integrand_norm,beginning_radius,critical_radius,limit=1000) 
         int_high,_=quad(integrand_norm,critical_radius,np.inf,limit=1000) 
         norm = int_low + int_high
-        if not norm < np.inf:
+        if not (norm < np.inf):
             norm=1
             print("function could not be normalized as norm is not finite")
         
-        
-        # TODO norm units here !!!
-        
-        
-        def wavefct_g(r,wavefct_g_unnormalised=wavefct_g_unnormalised,energy_norm=energy_norm,norm=norm): return wavefct_g_unnormalised(r*energy_norm/constants.hc)/np.sqrt(norm)
-        def wavefct_f(r,wavefct_f_unnormalised=wavefct_f_unnormalised,energy_norm=energy_norm,norm=norm): return wavefct_f_unnormalised(r*energy_norm/constants.hc)/np.sqrt(norm)
+        def wavefct_g(r,wavefct_g_unnormalised=wavefct_g_unnormalised,energy_norm=energy_norm,norm=norm): return wavefct_g_unnormalised(r*energy_norm/constants.hc)/np.sqrt(norm*self.lepton_mass/energy_norm)
+        def wavefct_f(r,wavefct_f_unnormalised=wavefct_f_unnormalised,energy_norm=energy_norm,norm=norm): return wavefct_f_unnormalised(r*energy_norm/constants.hc)/np.sqrt(norm*self.lepton_mass/energy_norm)
         
         setattr(self,"wavefunction_g_"+state_name(self._current_principal_quantum_number,self.kappa),wavefct_g)
         setattr(self,"wavefunction_f_"+state_name(self._current_principal_quantum_number,self.kappa),wavefct_f)
