@@ -59,7 +59,10 @@ def saveandload(path,renew=False,save=True,verbose=True,fmt='%.18e',fct=None,**p
     os.makedirs(os.path.dirname(path), exist_ok=True)
     if os.path.exists(path) and renew==False:
         with open( path, "rb" ) as file:
+            data_structure = file.readline()
             data = np.loadtxt( file , dtype=float)
+            if data_structure == 'scalar':
+                data=data[0]
             if verbose:
                 print("data loaded from ",path)
     elif fct is None:
@@ -68,9 +71,10 @@ def saveandload(path,renew=False,save=True,verbose=True,fmt='%.18e',fct=None,**p
         if verbose:
             print("data not found or forced to recalculate.\nThis may take some time.")
         data = fct(**params)
+        data_arr = np.atleast_1d(data)
         if save:
             with open( path, "wb" ) as file:
-                np.savetxt(file,data,fmt=fmt)
+                np.savetxt(file,data_arr,fmt=fmt,header='scalar' if np.isscalar(data) else 'array')
                 if verbose:
                     print("data saved in ", path)
     return data

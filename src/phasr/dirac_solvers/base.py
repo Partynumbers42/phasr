@@ -8,7 +8,7 @@ from ..nuclei.parameterisations.coulomb import energy_coulomb_nk
 
 from scipy.special import spherical_jn
 
-def radial_dirac_eq_fm(r_fm,y,potential,energy,mass,kappa): #,contain=False
+def radial_dirac_eq_fm(r_fm,y,potential,energy,mass,kappa,contain=False): #
     # only scalar r in fm, potential in fm^-1, mass & energy in MeV, 
     # dy/dr = A y -> [A]=[r]=fm
     #
@@ -16,18 +16,20 @@ def radial_dirac_eq_fm(r_fm,y,potential,energy,mass,kappa): #,contain=False
     Ebar=energy-potential(r_fm)*hc # MeV
     
     #print(r,y,A)
-    # if contain:
-    #    if np.any(np.abs(y)>1e100):
-    #        y*=1e-100
-    #    if np.any(np.abs(y)<1e-100):
-    #        y*=1e100
+    if contain:
+       if np.any(np.abs(y)>1e100):
+           y*=1e-100
+           #print("downscaled at r=",r_fm,"fm")
+       if np.any(np.abs(y)<1e-100):
+           y*=1e100
+           #print("upscaled at r=",r_fm,"fm")
     
     return np.array([[-kappa/r_fm,(Ebar+mass)/hc],[-(Ebar-mass)/hc,kappa/r_fm]]) @ y
 
-def radial_dirac_eq_norm(r_norm,y,potential,energy,mass,kappa,energy_norm): 
+def radial_dirac_eq_norm(r_norm,y,potential,energy,mass,kappa,energy_norm,contain=False): 
     # change to units normalised to the boundstate energy of the coulomb solution
     hc=constants.hc
-    return radial_dirac_eq_fm(r_norm*hc/energy_norm,y,potential,energy,mass,kappa)*hc/energy_norm
+    return radial_dirac_eq_fm(r_norm*hc/energy_norm,y,potential,energy,mass,kappa,contain=contain)*hc/energy_norm
 
 def initial_values_fm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=None,alpha_el=constants.alpha_el): 
     
@@ -63,29 +65,49 @@ def initial_values_norm(beginning_radius_norm,electric_potential_V0,energy,mass,
         return initials_fm*(energy_norm/hc)**rho_kappa
 
 default_boundstate_settings={
-    "beginning_radius_norm":1e-12, # in inverse coulomb binding energies 
+    "beginning_radius_norm":1e-6, # in inverse coulomb binding energies 
     "beginning_radius":None,
-    "critical_radius_norm":0.25, # in inverse coulomb binding energies
+    "critical_radius_norm":0.3, # in inverse coulomb binding energies # could also be set by behaviour of coulomb solution
     "critical_radius":None,
-    "asymptotic_radius_norm":1, # in inverse coulomb binding energies
+    "asymptotic_radius_norm":1, # in inverse coulomb binding energies # could also be set by behaviour of coulomb solution
     "asymptotic_radius":None,
-    "radius_precision_norm":1e-6, # in inverse coulomb binding energies
-    "radius_precision":None,
+    "radius_optimise_step_norm":1e-2, # in inverse coulomb binding energies
+    "radius_optimise_step":None,
     "energy_precision_norm":1e-6, # in coulomb binding energies
     "energy_precision":None,
     "energy_subdivisions":100,
-    "atol":1e-6,
-    "rtol":1e-6,
+    "atol":1e-12,
+    "rtol":1e-9,
+    "method":'DOP853',
+    "verbose":True, 
+    "renew":False, 
+    "save":True, 
+    }
+
+default_continuumstate_settings={
+    "beginning_radius_norm":1e-6, # in inverse coulomb binding energies 
+    "beginning_radius":None,
+    "critical_radius_norm":None,  
+    "critical_radius":10, # set to None once set by potential
+    "asymptotic_radius_norm":None, 
+    "asymptotic_radius":20, # fm
+    "radius_optimise_step_norm":1e-2, # in inverse coulomb binding energies
+    "radius_optimise_step":None,
+    "energy_precision_norm":1e-6, # in coulomb binding energies
+    "energy_precision":None,
+    "energy_subdivisions":None,
+    "atol":1e-12,
+    "rtol":1e-9,
     "method":'DOP853',
     "verbose":True, # TODO change
     "renew":True, # TODO change
     "save":False, # TODO change
-    }
+}
 
 class solver_settings():
     def __init__(self,energy_norm,
-                 beginning_radius,critical_radius,asymptotic_radius,radius_precision,energy_precision,
-                 beginning_radius_norm,critical_radius_norm,asymptotic_radius_norm,radius_precision_norm,energy_precision_norm,
+                 beginning_radius,critical_radius,asymptotic_radius,radius_optimise_step,energy_precision,
+                 beginning_radius_norm,critical_radius_norm,asymptotic_radius_norm,radius_optimise_step_norm,energy_precision_norm,
                  energy_subdivisions,atol,rtol,method,renew,save,verbose):
         self.energy_norm=energy_norm
         self.beginning_radius = beginning_radius
@@ -97,9 +119,9 @@ class solver_settings():
         self.asymptotic_radius = asymptotic_radius
         self.asymptotic_radius_norm = asymptotic_radius_norm
         self.set_radius("asymptotic_radius","asymptotic_radius_norm",constants.hc/self.energy_norm)
-        self.radius_precision = radius_precision
-        self.radius_precision_norm = radius_precision_norm
-        self.set_radius("radius_precision","radius_precision_norm",constants.hc/self.energy_norm)
+        self.radius_optimise_step = radius_optimise_step
+        self.radius_optimise_step_norm = radius_optimise_step_norm
+        self.set_radius("radius_optimise_step","radius_optimise_step_norm",constants.hc/self.energy_norm)
         self.energy_precision = energy_precision
         self.energy_precision_norm = energy_precision_norm
         self.set_radius("energy_precision","energy_precision_norm",self.energy_norm)

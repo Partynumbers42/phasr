@@ -4,6 +4,13 @@ from ..base import nucleus_base
 import numpy as np
 pi = np.pi
 
+from scipy.special import factorial, gamma
+from mpmath import hyper, workdps #confluent hypergeometric function
+def hyp1f1_scalar_arbitrary_precision(a,b,z,dps=15):
+    with workdps(dps):
+        return complex(hyper([a],[b],z))
+hyp1f1=np.vectorize(hyp1f1_scalar_arbitrary_precision,excluded=[0,1,3])
+
 class nucleus_coulomb(nucleus_base):
     def __init__(self,name,Z,A,**args): 
         nucleus_base.__init__(self,name,Z,A,**args)
@@ -71,3 +78,31 @@ def form_factor_coulomb(r):
 def energy_coulomb_nk(n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
     rho=reg*np.sqrt(kappa**2 - (alpha_el*Z)**2)
     return mass/np.sqrt(1+(alpha_el*Z/(n-np.abs(kappa)+rho))**2)
+
+def g_coulomb_nk(r,n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
+    # r in fm, mass in MeV, g in sqrt(MeV)
+    r=r/constants.hc
+    E = energy_coulomb_nk(n,kappa,Z,mass=mass,reg=reg,alpha_el=alpha_el)
+    lam = np.sqrt(1 - E**2/mass**2)
+    y=alpha_el*Z
+    rho=np.sqrt(kappa**2 - y**2)
+    sigma=reg*rho
+    n_p = n - np.abs(kappa) 
+    #
+    pref=+np.sqrt(lam)**3/np.sqrt(2)
+    #
+    return pref*(np.abs(np.sqrt(gamma(2*sigma+1+n_p)*(mass+E)/(factorial(n_p)*y*(y-lam*kappa))+0j))/(gamma(2*sigma+1)))*((2*lam*mass*r)**sigma)*(np.exp(-lam*mass*r))*( -n_p*hyp1f1(-n_p+1,2*sigma+1,2*lam*mass*r)-(kappa-y/lam)*hyp1f1(-n_p,2*sigma+1,2*lam*mass*r) )
+
+def f_coulomb_nk(r,n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
+    # r in fm, mass in MeV, g in sqrt(MeV)
+    r=r/constants.hc
+    E = energy_coulomb_nk(n,kappa,Z,mass=mass,reg=reg,alpha_el=alpha_el)
+    lam = np.sqrt(1 - E**2/mass**2)
+    y=alpha_el*Z
+    rho=np.sqrt(kappa**2 - y**2)
+    sigma=reg*rho
+    n_p = n - np.abs(kappa) 
+    #
+    pref=-np.sqrt(lam)**3/np.sqrt(2)
+    #
+    return pref*(np.sqrt(np.abs(gamma(2*sigma+1+n_p)*(mass-E)/(factorial(n_p)*y*(y-lam*kappa))+0j))/(gamma(2*sigma+1)))*((2*lam*mass*r)**sigma)*(np.exp(-lam*mass*r))*( n_p*hyp1f1(-n_p+1,2*sigma+1,2*lam*mass*r)-(kappa-y/lam)*hyp1f1(-n_p,2*sigma+1,2*lam*mass*r) )

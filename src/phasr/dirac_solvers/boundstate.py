@@ -13,63 +13,6 @@ pi = np.pi
 
 from scipy.integrate import solve_ivp, quad
 import copy
-   
-def find_asymptotic_flip(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,solver_setting):
-
-    scale_initial=1e0
-    
-    beginning_radius=solver_setting.beginning_radius_norm
-    asymptotic_radius=solver_setting.asymptotic_radius_norm
-    energy_norm=solver_setting.energy_norm
-    
-    enery_limit_lower_new=energy_limit_lower
-    enery_limit_upper_new=energy_limit_upper
-
-    first=True
-    for energy in np.linspace(energy_limit_lower,energy_limit_upper,solver_setting.energy_subdivisions):
-        
-        def DGL(r,y): return radial_dirac_eq_norm(r,y,potential=nucleus.electric_potential,energy=energy,mass=lepton_mass,kappa=kappa,energy_norm=energy_norm)
-        initials= scale_initial*initial_values_norm(beginning_radius_norm=beginning_radius,electric_potential_V0=nucleus.Vmin,energy=energy,mass=lepton_mass,kappa=kappa,Z=nucleus.Z,energy_norm=energy_norm,nucleus_type=nucleus.nucleus_type)
-        
-        radial_dirac = solve_ivp(DGL, (beginning_radius,asymptotic_radius), initials, t_eval=np.array([asymptotic_radius]), method=solver_setting.method, atol=solver_setting.atol, rtol=solver_setting.rtol)
-        sign=np.sign(radial_dirac.y[0][-1])
-        
-        if first:
-            sign_ini=sign
-            first=False
-
-        if sign == -sign_ini:
-            if energy<enery_limit_upper_new:
-                enery_limit_upper_new=energy
-            return (enery_limit_lower_new, enery_limit_upper_new)
-        else:
-            if energy>enery_limit_lower_new:
-                enery_limit_lower_new=energy
-                
-    raise  ValueError("No sign flip found between energy_limit_lower and enery_limit_upper, adjust energyrange or increase subdivisions")
-
-def find_bindingenergy(nucleus,bindingenergy_limit_lower,bindingenergy_limit_upper,kappa,lepton_mass,solver_setting):
-    
-    energy_limit_lower = bindingenergy_limit_lower + lepton_mass
-    energy_limit_upper = bindingenergy_limit_upper + lepton_mass
-    
-    verbose=solver_setting.verbose
-    energy_precision=solver_setting.energy_precision
-    
-    if verbose:
-        print('Searching for boundstate in the range of: [',bindingenergy_limit_lower,',',bindingenergy_limit_upper,']')
-    bindingenergy=-np.inf
-    
-    if bindingenergy_limit_upper<=bindingenergy_limit_lower:
-        raise ValueError("lower energy limit needs to be smaller than upper energy limit")
-    while (bindingenergy_limit_upper-bindingenergy_limit_lower)>energy_precision:
-        energy_limit_lower, energy_limit_upper = find_asymptotic_flip(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,solver_setting)
-        bindingenergy_limit_lower, bindingenergy_limit_upper  = energy_limit_lower - lepton_mass, energy_limit_upper - lepton_mass
-        bindingenergy=(bindingenergy_limit_upper+bindingenergy_limit_lower)/2
-        if verbose:
-            print('[',bindingenergy_limit_lower,',',bindingenergy_limit_upper,']->',bindingenergy)
-    
-    return bindingenergy
 
 class boundstates():
     def __init__(self,nucleus,kappa,lepton_mass,
@@ -78,7 +21,7 @@ class boundstates():
         
         self.name = nucleus.name
         self.nucleus_type = nucleus.nucleus_type
-        self.Z = nucleus.Z
+        self.Z = nucleus.total_charge
         self.kappa = kappa
         self.lepton_mass=lepton_mass
         
@@ -115,11 +58,12 @@ class boundstates():
     def update_solver_setting(self):
         energy_norm = np.abs(energy_coulomb_nk(self._current_principal_quantum_number,self.kappa,self.Z,self.lepton_mass)-self.lepton_mass)
         self.solver_setting = solver_settings(energy_norm=energy_norm,**self.inital_boundstate_settings)
-        print("r0=",self.solver_setting.beginning_radius,"fm")
-        print("rc=",self.solver_setting.critical_radius,"fm")
-        print("rinf=",self.solver_setting.asymptotic_radius,"fm")
-        print("dr=",self.solver_setting.radius_precision,"fm")
-        print("dE=",self.solver_setting.energy_precision,"MeV")
+        if self.solver_setting.verbose:
+            print("r0=",self.solver_setting.beginning_radius,"fm")
+            print("rc=",self.solver_setting.critical_radius,"fm")
+            print("rinf=",self.solver_setting.asymptotic_radius,"fm")
+            print("dr=",self.solver_setting.radius_optimise_step,"fm")
+            print("dE=",self.solver_setting.energy_precision,"MeV")
     
     def find_next_solution(self,**args):
         for key in args:
@@ -128,6 +72,15 @@ class boundstates():
         
         self.find_next_energy_level()
         self.solve_IVP_at_current_energy()
+    
+    def remove_last_energy_level(self):
+        if len(self.energy_levels)>0:
+            self.energy_levels=self.energy_levels[:-1]
+            if len(self.energy_levels)-1==len(self.principal_quantum_numbers):
+                self.principal_quantum_numbers=self.principal_quantum_numbers[:-1]
+                self._current_principal_quantum_number-=1
+                self._current_bindingenergy_limit_lower=self.energy_levels[-1]+self.solver_setting.energy_precision
+                self.update_solver_setting()
     
     def find_next_energy_level(self):
         
@@ -155,9 +108,9 @@ class boundstates():
         beginning_radius = self.solver_setting.beginning_radius_norm
         critical_radius = self.solver_setting.critical_radius_norm
         asymptotic_radius = self.solver_setting.asymptotic_radius_norm
-        radius_precision = self.solver_setting.radius_precision_norm
+        radius_optimise_step = self.solver_setting.radius_optimise_step_norm
                 
-        initials=  scale_initial*initial_values_norm(beginning_radius_norm=beginning_radius,electric_potential_V0=self.Vmin,energy=self._current_energy,mass=self.lepton_mass,kappa=self.kappa,Z=self.Z,energy_norm=energy_norm,nucleus_type=self.nucleus_type)
+        initials= scale_initial*initial_values_norm(beginning_radius_norm=beginning_radius,electric_potential_V0=self.Vmin,energy=self._current_energy,mass=self.lepton_mass,kappa=self.kappa,Z=self.Z,energy_norm=energy_norm,nucleus_type=self.nucleus_type)
         
         print(initials)
         
@@ -166,8 +119,8 @@ class boundstates():
         def wavefct_g_low(x): return radial_dirac.sol(x)[0]
         def wavefct_f_low(x): return radial_dirac.sol(x)[1]
         
-        critical_radius = optimise_radius_highenergy_continuation(wavefct_g_low,critical_radius,radius_precision,beginning_radius)
-        critical_radius = optimise_radius_highenergy_continuation(wavefct_f_low,critical_radius,radius_precision,beginning_radius)
+        critical_radius = optimise_radius_highenergy_continuation(wavefct_g_low,critical_radius,radius_optimise_step,beginning_radius)
+        critical_radius = optimise_radius_highenergy_continuation(wavefct_f_low,critical_radius,radius_optimise_step,beginning_radius)
         
         def wavefct_g_unnormalised(r,rcrit=critical_radius,wavefct_g_low=wavefct_g_low):
             r_arr = np.atleast_1d(r)
@@ -215,6 +168,64 @@ class boundstates():
 def state_name(n,kappa):
     j=np.abs(kappa)-0.5
     l=kappa if kappa>0 else -kappa-1
-    l_label = 's' if l==0 else 'p' if l==1 else 'd' if l==2 else 'f' if l==3 else 'g('+str(l)+')'
+    l_label = 's' if l==0 else 'p' if l==1 else 'd' if l==2 else 'f' if l==3 else 'g' if l==4 else '_l'+str(l)+'_'
     return str(n)+l_label+str(int(2*j))+'2'
+
+def find_bindingenergy(nucleus,bindingenergy_limit_lower,bindingenergy_limit_upper,kappa,lepton_mass,solver_setting):
+    
+    energy_limit_lower = bindingenergy_limit_lower + lepton_mass
+    energy_limit_upper = bindingenergy_limit_upper + lepton_mass
+    
+    verbose=solver_setting.verbose
+    energy_precision=solver_setting.energy_precision
+    
+    if verbose:
+        print('Searching for boundstate in the range of: [',bindingenergy_limit_lower,',',bindingenergy_limit_upper,']')
+    bindingenergy=-np.inf
+    
+    if bindingenergy_limit_upper<=bindingenergy_limit_lower:
+        raise ValueError("lower energy limit needs to be smaller than upper energy limit")
+    while (bindingenergy_limit_upper-bindingenergy_limit_lower)>energy_precision:
+        energy_limit_lower, energy_limit_upper = find_asymptotic_flip(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,solver_setting)
+        bindingenergy_limit_lower, bindingenergy_limit_upper  = energy_limit_lower - lepton_mass, energy_limit_upper - lepton_mass
+        bindingenergy=(bindingenergy_limit_upper+bindingenergy_limit_lower)/2
+        if verbose:
+            print('[',bindingenergy_limit_lower,',',bindingenergy_limit_upper,']->',bindingenergy)
+    
+    return bindingenergy
+
+def find_asymptotic_flip(nucleus,energy_limit_lower,energy_limit_upper,kappa,lepton_mass,solver_setting):
+
+    scale_initial=1e0
+    
+    beginning_radius=solver_setting.beginning_radius_norm
+    asymptotic_radius=solver_setting.asymptotic_radius_norm
+    energy_norm=solver_setting.energy_norm
+    
+    enery_limit_lower_new=energy_limit_lower
+    enery_limit_upper_new=energy_limit_upper
+
+    first=True
+    for energy in np.linspace(energy_limit_lower,energy_limit_upper,solver_setting.energy_subdivisions):
+        
+        def DGL(r,y): return radial_dirac_eq_norm(r,y,potential=nucleus.electric_potential,energy=energy,mass=lepton_mass,kappa=kappa,energy_norm=energy_norm,contain=True)
+        initials= scale_initial*initial_values_norm(beginning_radius_norm=beginning_radius,electric_potential_V0=nucleus.Vmin,energy=energy,mass=lepton_mass,kappa=kappa,Z=nucleus.Z,energy_norm=energy_norm,nucleus_type=nucleus.nucleus_type)
+        
+        radial_dirac = solve_ivp(DGL, (beginning_radius,asymptotic_radius), initials, t_eval=np.array([asymptotic_radius]), method=solver_setting.method, atol=solver_setting.atol, rtol=solver_setting.rtol)
+        sign=np.sign(radial_dirac.y[0][-1])
+        
+        if first:
+            sign_ini=sign
+            first=False
+
+        if sign == -sign_ini:
+            if energy<enery_limit_upper_new:
+                enery_limit_upper_new=energy
+            return (enery_limit_lower_new, enery_limit_upper_new)
+        else:
+            if energy>enery_limit_lower_new:
+                enery_limit_lower_new=energy
+                
+    raise  ValueError("No sign flip found between energy_limit_lower and enery_limit_upper, adjust energyrange or increase subdivisions")
+
 
