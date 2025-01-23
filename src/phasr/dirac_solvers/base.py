@@ -85,15 +85,15 @@ default_boundstate_settings={
     }
 
 default_continuumstate_settings={
-    "beginning_radius_norm":1e-6, # in inverse coulomb binding energies 
-    "beginning_radius":None,
+    "beginning_radius_norm":None, 
+    "beginning_radius":1e-6,
     "critical_radius_norm":None,  
-    "critical_radius":10, # set to None once set by potential
+    "critical_radius":None, # set by potential
     "asymptotic_radius_norm":None, 
     "asymptotic_radius":20, # fm
-    "radius_optimise_step_norm":1e-2, # in inverse coulomb binding energies
-    "radius_optimise_step":None,
-    "energy_precision_norm":1e-6, # in coulomb binding energies
+    "radius_optimise_step_norm":None, 
+    "radius_optimise_step":1e-1,
+    "energy_precision_norm":None, 
     "energy_precision":None,
     "energy_subdivisions":None,
     "atol":1e-12,
@@ -112,19 +112,19 @@ class solver_settings():
         self.energy_norm=energy_norm
         self.beginning_radius = beginning_radius
         self.beginning_radius_norm = beginning_radius_norm
-        self.set_radius("beginning_radius","beginning_radius_norm",constants.hc/self.energy_norm)
+        self.set_norm_or_unnorm("beginning_radius","beginning_radius_norm",constants.hc/self.energy_norm)
         self.critical_radius = critical_radius
         self.critical_radius_norm = critical_radius_norm
-        self.set_radius("critical_radius","critical_radius_norm",constants.hc/self.energy_norm)
+        self.set_norm_or_unnorm("critical_radius","critical_radius_norm",constants.hc/self.energy_norm)
         self.asymptotic_radius = asymptotic_radius
         self.asymptotic_radius_norm = asymptotic_radius_norm
-        self.set_radius("asymptotic_radius","asymptotic_radius_norm",constants.hc/self.energy_norm)
+        self.set_norm_or_unnorm("asymptotic_radius","asymptotic_radius_norm",constants.hc/self.energy_norm)
         self.radius_optimise_step = radius_optimise_step
         self.radius_optimise_step_norm = radius_optimise_step_norm
-        self.set_radius("radius_optimise_step","radius_optimise_step_norm",constants.hc/self.energy_norm)
+        self.set_norm_or_unnorm("radius_optimise_step","radius_optimise_step_norm",constants.hc/self.energy_norm)
         self.energy_precision = energy_precision
         self.energy_precision_norm = energy_precision_norm
-        self.set_radius("energy_precision","energy_precision_norm",self.energy_norm)
+        self.set_norm_or_unnorm("energy_precision","energy_precision_norm",self.energy_norm)
         self.energy_subdivisions = energy_subdivisions
         self.atol = atol
         self.rtol = rtol
@@ -134,11 +134,11 @@ class solver_settings():
         self.save = save
 
     # TODO rename
-    def set_radius(self,radius_str,radius_norm_str,norm):
-        if not self.energy_norm is None:
+    def set_norm_or_unnorm(self,radius_str,radius_norm_str,norm):
+        if not (self.energy_norm is None):
             if not (getattr(self,radius_str) is None):
                 setattr(self,radius_norm_str,getattr(self,radius_str)/norm)
-            else:
+            elif not (getattr(self,radius_norm_str) is None):
                 setattr(self,radius_str,getattr(self,radius_norm_str)*norm)
         
     

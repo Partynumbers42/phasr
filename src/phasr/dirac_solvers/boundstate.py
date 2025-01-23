@@ -112,8 +112,6 @@ class boundstates():
                 
         initials= scale_initial*initial_values_norm(beginning_radius_norm=beginning_radius,electric_potential_V0=self.Vmin,energy=self._current_energy,mass=self.lepton_mass,kappa=self.kappa,Z=self.Z,energy_norm=energy_norm,nucleus_type=self.nucleus_type)
         
-        print(initials)
-        
         radial_dirac = solve_ivp(DGL, (beginning_radius,asymptotic_radius), initials, dense_output=True, method=self.solver_setting.method, atol=self.solver_setting.atol, rtol=self.solver_setting.rtol)
 
         def wavefct_g_low(x): return radial_dirac.sol(x)[0]
