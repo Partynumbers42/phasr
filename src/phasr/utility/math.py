@@ -1,4 +1,9 @@
 import numpy as np
+pi=np.pi
+
+def angle_mod(phi,n=1): 
+    # shift angle to (-pi*n,+pi*n]
+    return -((n*pi-phi)%(2*n*pi))+n*pi
 
 def derivative(f,precision=1e-6):
     # fine tuned for numerical stability
