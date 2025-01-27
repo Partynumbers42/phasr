@@ -50,4 +50,4 @@ def optimise_radius_highenergy_continuation(fct,x_crit,x_step,x_min=0,fct_limit=
 def energy(momentum,mass):
     return np.sqrt(momentum**2+mass**2)
 def momentum(energy,mass):
-    return np.sqrt(energy**2-mass**2)
+    return np.sqrt(energy**2-mass**2) if energy > mass else np.sqrt(energy**2-mass**2+0j)

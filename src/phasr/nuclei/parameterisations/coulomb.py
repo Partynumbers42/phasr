@@ -57,24 +57,24 @@ def charge_density_coulomb(r):
 
 def electric_field_coulomb(r,Z,alpha_el=constants.alpha_el):
     r_arr = np.atleast_1d(r)
-    E=np.sqrt(alpha_el/(4*pi))*Z/r_arr**2
+    El=np.sqrt(alpha_el/(4*pi))*Z/r_arr**2
     if np.isscalar(r):
-        E=E[0]
-    return E
+        El=El[0]
+    return El
 
 def electric_potential_coulomb(r,Z,alpha_el=constants.alpha_el):
     r_arr = np.atleast_1d(r)
-    V=-Z*alpha_el/r_arr
+    pot=-Z*alpha_el/r_arr
     if np.isscalar(r):
-        V=V[0]
-    return V
+        pot=pot[0]
+    return pot
 
 def form_factor_coulomb(r):
     r_arr = np.atleast_1d(r)
-    F = np.ones(len(r_arr))
+    FF = np.ones(len(r_arr))
     if np.isscalar(r):
-        F=F[0]
-    return F
+        FF=FF[0]
+    return FF
 
 # this is the actual energy, E = E_bin + m
 def energy_coulomb_nk(n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
@@ -84,8 +84,8 @@ def energy_coulomb_nk(n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
 def g_coulomb_nk(r,n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
     # r in fm, mass in MeV, g in sqrt(MeV)
     r=r/constants.hc
-    E = energy_coulomb_nk(n,kappa,Z,mass=mass,reg=reg,alpha_el=alpha_el)
-    lam = np.sqrt(1 - E**2/mass**2)
+    energy = energy_coulomb_nk(n,kappa,Z,mass=mass,reg=reg,alpha_el=alpha_el)
+    lam = np.sqrt(1 - energy**2/mass**2)
     y0=alpha_el*Z
     rho=rho_kappa(kappa,Z)
     sigma=reg*rho
@@ -93,13 +93,13 @@ def g_coulomb_nk(r,n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
     #
     pref=+np.sqrt(lam)**3/np.sqrt(2)
     #
-    return pref*(np.abs(np.sqrt(gamma(2*sigma+1+n_p)*(mass+E)/(factorial(n_p)*y0*(y0-lam*kappa))+0j))/(gamma(2*sigma+1)))*((2*lam*mass*r)**sigma)*(np.exp(-lam*mass*r))*( -n_p*hyper1f1(-n_p+1,2*sigma+1,2*lam*mass*r)-(kappa-y0/lam)*hyper1f1(-n_p,2*sigma+1,2*lam*mass*r) )
+    return pref*(np.abs(np.sqrt(gamma(2*sigma+1+n_p)*(mass+energy)/(factorial(n_p)*y0*(y0-lam*kappa))+0j))/(gamma(2*sigma+1)))*((2*lam*mass*r)**sigma)*(np.exp(-lam*mass*r))*( -n_p*hyper1f1(-n_p+1,2*sigma+1,2*lam*mass*r)-(kappa-y0/lam)*hyper1f1(-n_p,2*sigma+1,2*lam*mass*r) )
 
 def f_coulomb_nk(r,n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
     # r in fm, mass in MeV, g in sqrt(MeV)
     r=r/constants.hc
-    E = energy_coulomb_nk(n,kappa,Z,mass=mass,reg=reg,alpha_el=alpha_el)
-    lam = np.sqrt(1 - E**2/mass**2)
+    energy = energy_coulomb_nk(n,kappa,Z,mass=mass,reg=reg,alpha_el=alpha_el)
+    lam = np.sqrt(1 - energy**2/mass**2)
     y0=alpha_el*Z
     rho=rho_kappa(kappa,Z)
     sigma=reg*rho
@@ -107,7 +107,7 @@ def f_coulomb_nk(r,n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
     #
     pref=-np.sqrt(lam)**3/np.sqrt(2)
     #
-    return pref*(np.sqrt(np.abs(gamma(2*sigma+1+n_p)*(mass-E)/(factorial(n_p)*y0*(y0-lam*kappa))+0j))/(gamma(2*sigma+1)))*((2*lam*mass*r)**sigma)*(np.exp(-lam*mass*r))*( n_p*hyper1f1(-n_p+1,2*sigma+1,2*lam*mass*r)-(kappa-y0/lam)*hyper1f1(-n_p,2*sigma+1,2*lam*mass*r) )
+    return pref*(np.sqrt(np.abs(gamma(2*sigma+1+n_p)*(mass-energy)/(factorial(n_p)*y0*(y0-lam*kappa))+0j))/(gamma(2*sigma+1)))*((2*lam*mass*r)**sigma)*(np.exp(-lam*mass*r))*( n_p*hyper1f1(-n_p+1,2*sigma+1,2*lam*mass*r)-(kappa-y0/lam)*hyper1f1(-n_p,2*sigma+1,2*lam*mass*r) )
 
 def g_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,alpha_el=constants.alpha_el):
     # r in fm

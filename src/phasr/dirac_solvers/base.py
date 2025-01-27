@@ -4,8 +4,6 @@ from .. import constants
 import numpy as np
 pi = np.pi
 
-from ..nuclei.parameterisations.coulomb import energy_coulomb_nk
-
 from scipy.special import spherical_jn
 
 def radial_dirac_eq_fm(r_fm,y,potential,energy,mass,kappa,contain=False): #
@@ -96,8 +94,8 @@ default_continuumstate_settings={
     "energy_precision_norm":None, 
     "energy_precision":None,
     "energy_subdivisions":None,
-    "atol":1e-12,
-    "rtol":1e-9,
+    "atol":1e-9,
+    "rtol":1e-6,
     "method":'DOP853',
     "verbose":True, # TODO change
     "renew":True, # TODO change

@@ -7,7 +7,7 @@ import numpy as np
 pi = np.pi
 
 class nucleus_base:
-    def __init__(self,name,Z, A, m=None, abundance=None, spin=None, parity=None,# weak_charge=None,#spline_hyp1f1=None, fp=False, ap_dps=15, 
+    def __init__(self,name,Z, A, mass=None, abundance=None, spin=None, parity=None,# weak_charge=None,#spline_hyp1f1=None, fp=False, ap_dps=15, 
                  **args):
         #
         self.nucleus_type = "base"
@@ -15,8 +15,8 @@ class nucleus_base:
         self.Z = Z
         self.A = A
         #
-        self.m = m
-        if self.m is None:
+        self.mass = mass
+        if self.mass is None:
             self.lookup_nucleus_mass()
         self.abundance=abundance
         if self.abundance is None:
@@ -132,7 +132,7 @@ class nucleus_base:
         self.update_dependencies()
     
     def update_m(self,m):
-        self.m=m
+        self.mass=m
         self.update_dependencies()
     
     def update_spin(self,spin):
@@ -156,7 +156,7 @@ class nucleus_base:
         self.update_dependencies()
 
     def lookup_nucleus_mass(self):
-        self.m = massofnucleusZN(self.Z,self.A-self.Z)
+        self.mass = massofnucleusZN(self.Z,self.A-self.Z)
 
     def lookup_nucleus_abundance(self):
         self.abundance = abundanceofnucleusZN(self.Z,self.A-self.Z)
