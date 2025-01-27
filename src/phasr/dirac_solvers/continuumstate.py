@@ -33,7 +33,7 @@ class continuumstates():
         
         self.update_eta_coulomb()
 
-        self.initialize_critical_radius() #potentially time intensive
+        self.initialize_critical_radius() #potentially time intensive -> make it possible to overwrite
         
         self.update_solver_setting()
         
@@ -152,10 +152,14 @@ class continuumstates():
         
         radial_dirac = solve_ivp(DGL, (beginning_radius,critical_radius_norm), initials,  t_eval=np.array([critical_radius_norm]), method=self.solver_setting.method, atol=self.solver_setting.atol, rtol=self.solver_setting.rtol)
 
-        wavefct_g_critical_radius = radial_dirac.y[0]
-        wavefct_f_critical_radius = radial_dirac.y[1]
+        wavefct_g_critical_radius = radial_dirac.y[0][0]
+        wavefct_f_critical_radius = radial_dirac.y[1][0]
         
         self.regular_irregular_fraction = regular_irregular_fraction(wavefct_f_critical_radius,wavefct_g_critical_radius,critical_radius,kappa=self.kappa,Z=self.Z,energy=self.energy,mass=self.lepton_mass,pass_hyper1f1_regular=self.pass_hyper1f1_regular,pass_hyper1f1_irregular=self.pass_hyper1f1_irregular,pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
+        
+        if self.solver_setting.verbose:
+            print("A/B=",self.regular_irregular_fraction)
+        
         self.phase_difference = phase_difference(critical_radius,self.regular_irregular_fraction,kappa=self.kappa,Z=self.Z,energy=self.energy,mass=self.lepton_mass,pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
         self.phase_shift = delta_coulomb(self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular) + self.phase_difference
 
