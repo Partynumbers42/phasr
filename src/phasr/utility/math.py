@@ -1,7 +1,7 @@
 import numpy as np
 pi=np.pi
 
-def angle_mod(phi,n=1): 
+def angle_shift_mod_pi(phi,n=1): 
     # shift angle to (-pi*n,+pi*n]
     return -((n*pi-phi)%(2*n*pi))+n*pi
 

@@ -152,13 +152,13 @@ class boundstates():
         
         int_low,_=quad(integrand_norm,beginning_radius,critical_radius,limit=1000) 
         int_high,_=quad(integrand_norm,critical_radius,np.inf,limit=1000) 
-        norm = int_low + int_high
-        if not (norm < np.inf):
-            norm=1
+        norm_sq = int_low + int_high
+        if not (norm_sq < np.inf):
+            norm_sq=1
             print("function could not be normalized as norm is not finite")
         
-        def wavefct_g(r,wavefct_g_unnormalised=wavefct_g_unnormalised,energy_norm=energy_norm,norm=norm): return wavefct_g_unnormalised(r*energy_norm/constants.hc)/np.sqrt(norm*self.lepton_mass/energy_norm)
-        def wavefct_f(r,wavefct_f_unnormalised=wavefct_f_unnormalised,energy_norm=energy_norm,norm=norm): return wavefct_f_unnormalised(r*energy_norm/constants.hc)/np.sqrt(norm*self.lepton_mass/energy_norm)
+        def wavefct_g(r,wavefct_g_unnormalised=wavefct_g_unnormalised,energy_norm=energy_norm,norm_sq=norm_sq): return wavefct_g_unnormalised(r*energy_norm/constants.hc)/np.sqrt(norm_sq*self.lepton_mass/energy_norm)
+        def wavefct_f(r,wavefct_f_unnormalised=wavefct_f_unnormalised,energy_norm=energy_norm,norm_sq=norm_sq): return wavefct_f_unnormalised(r*energy_norm/constants.hc)/np.sqrt(norm_sq*self.lepton_mass/energy_norm)
         
         setattr(self,"wavefunction_g_"+state_name(self._current_principal_quantum_number,self.kappa),wavefct_g)
         setattr(self,"wavefunction_f_"+state_name(self._current_principal_quantum_number,self.kappa),wavefct_f)
