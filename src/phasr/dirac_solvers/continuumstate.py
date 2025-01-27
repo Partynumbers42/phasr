@@ -10,7 +10,7 @@ from ..utility.math import momentum, angle_shift_mod_pi, derivative
 from scipy.integrate import solve_ivp
 import copy
 
-from ..nuclei.parameterisations.coulomb import electric_potential_coulomb, f_coulomb, g_coulomb, hyp1f1_coulomb, eta_coulomb, theta_coulomb, delta_coulomb, delta_1overr
+from ..nuclei.parameterisations.coulomb import electric_potential_coulomb, f_coulomb, g_coulomb, hyper1f1_coulomb, eta_coulomb, theta_coulomb, delta_coulomb, delta_1overr
 
 class continuumstates():
     def __init__(self,nucleus,kappa,energy,lepton_mass=0,
@@ -37,9 +37,7 @@ class continuumstates():
         
         self.update_solver_setting()
         
-        self.update_hyp1f1_coulomb_at_critical_radius()
-
-        #self.solve_IVP()
+        self.update_hyper1f1_coulomb_at_critical_radius()
         
     def initialize_critical_radius(self):
         r=np.arange(self.inital_continuumstate_settings['beginning_radius'],self.inital_continuumstate_settings['asymptotic_radius'],self.inital_continuumstate_settings['radius_optimise_step'])
@@ -49,8 +47,6 @@ class continuumstates():
             if np.all(np.abs(potential_coulomb_diff[r>=rc])<1e-6):
                 self.inital_continuumstate_settings['critical_radius'] = rc
                 break
-        #if self.inital_continuumstate_settings['verbose']:
-        #    print("rc=",self.inital_continuumstate_settings['critical_radius'],'fm')
     
     def update_solver_setting(self):
         energy_norm = self.energy # no scaling with Z or kappa ?
@@ -58,17 +54,14 @@ class continuumstates():
         if self.solver_setting.verbose:
             print("r0=",self.solver_setting.beginning_radius,"fm")
             print("rc=",self.solver_setting.critical_radius,"fm")
-            print("rinf=",self.solver_setting.asymptotic_radius,"fm")
-            print("dr=",self.solver_setting.radius_optimise_step,"fm")
-            print("dE=",self.solver_setting.energy_precision,"MeV")
-    
+            
     def update_eta_coulomb(self):
         self.pass_eta_regular=eta_coulomb(self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,alpha_el=constants.alpha_el)
         self.pass_eta_irregular=eta_coulomb(self.kappa,self.Z,self.energy,self.lepton_mass,reg=-1,pass_eta_regular=self.pass_eta_regular,alpha_el=constants.alpha_el)
 
-    def update_hyp1f1_coulomb_at_critical_radius(self):
-        self.pass_hyp1f1_regular=hyp1f1_coulomb(self.solver_setting.critical_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,alpha_el=constants.alpha_el)
-        self.pass_hyp1f1_irregular=hyp1f1_coulomb(self.solver_setting.critical_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=-1,alpha_el=constants.alpha_el)
+    def update_hyper1f1_coulomb_at_critical_radius(self):
+        self.pass_hyper1f1_regular=hyper1f1_coulomb(self.solver_setting.critical_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,alpha_el=constants.alpha_el)
+        self.pass_hyper1f1_irregular=hyper1f1_coulomb(self.solver_setting.critical_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=-1,alpha_el=constants.alpha_el)
 
     def solve_IVP(self):
         
@@ -80,7 +73,6 @@ class continuumstates():
         beginning_radius = self.solver_setting.beginning_radius_norm
         critical_radius_norm = self.solver_setting.critical_radius_norm
         critical_radius = self.solver_setting.critical_radius
-        #asymptotic_radius = self.solver_setting.asymptotic_radius_norm
         
         initials= scale_initial*initial_values_norm(beginning_radius_norm=beginning_radius,electric_potential_V0=self.Vmin,energy=self.energy,mass=self.lepton_mass,kappa=self.kappa,Z=self.Z,energy_norm=energy_norm,nucleus_type=self.nucleus_type)
         
@@ -93,46 +85,54 @@ class continuumstates():
         def wavefct_f_low(x): return radial_dirac.sol(x)[1]
         
         wavefct_g_critical_radius = wavefct_g_low(critical_radius_norm)
-        wavefct_f_critical_radius = wavefct_g_low(critical_radius_norm)
+        wavefct_f_critical_radius = wavefct_f_low(critical_radius_norm)
         
-        self.regular_irregular_fraction = regular_irregular_fraction(wavefct_f_critical_radius,wavefct_g_critical_radius,critical_radius,kappa=self.kappa,Z=self.Z,energy=self.energy,mass=self.lepton_mass,pass_hyp1f1_regular=self.pass_hyp1f1_regular,pass_hyp1f1_irregular=self.pass_hyp1f1_irregular,pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
+        self.regular_irregular_fraction = regular_irregular_fraction(wavefct_f_critical_radius,wavefct_g_critical_radius,critical_radius,kappa=self.kappa,Z=self.Z,energy=self.energy,mass=self.lepton_mass,pass_hyper1f1_regular=self.pass_hyper1f1_regular,pass_hyper1f1_irregular=self.pass_hyper1f1_irregular,pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
         
-        weight_regular = wavefct_g_critical_radius / g_highenergy(critical_radius,1.,1./self.regular_irregular_fraction,self.kappa,self.Z,self.energy,self.lepton_mass,pass_hyp1f1_regular=self.pass_hyp1f1_regular,pass_hyp1f1_irregular=self.pass_hyp1f1_irregular,pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
+        weight_regular = wavefct_g_critical_radius / g_highenergy(critical_radius,1.,1./self.regular_irregular_fraction,self.kappa,self.Z,self.energy,self.lepton_mass,pass_hyper1f1_regular=self.pass_hyper1f1_regular,pass_hyper1f1_irregular=self.pass_hyper1f1_irregular,pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
         weight_irregular = weight_regular / self.regular_irregular_fraction
         
-        def wavefct_g_unnormalised(r,rcrit=critical_radius,wavefct_g_low=wavefct_g_low,weight_regular=weight_regular,weight_irregular=weight_irregular):
+        if self.solver_setting.verbose:
+            print("A/B=",self.regular_irregular_fraction)
+            print(" A =",weight_regular)
+            print(" B =",weight_irregular)
+
+        def wavefct_g_unnormalised(r,rcrit=critical_radius_norm,wavefct_g_low=wavefct_g_low,weight_regular=weight_regular,weight_irregular=weight_irregular):
             r_arr = np.atleast_1d(r)
             g = np.zeros(len(r_arr))
             mask_r = r_arr<=rcrit
             if np.any(mask_r):
                 g[mask_r]=wavefct_g_low(r_arr[mask_r])
             if np.any(~mask_r):
-                g[~mask_r]=g_highenergy(r_arr[~mask_r],weight_regular,weight_irregular,self.energy,self.kappa,self.Z,self.lepton_mass,pass_hyp1f1_regular=self.pass_hyp1f1_regular,pass_hyp1f1_irregular=self.pass_hyp1f1_irregular,pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
+                g[~mask_r]=g_highenergy(r_arr[~mask_r]*constants.hc/energy_norm,weight_regular,weight_irregular,self.kappa,self.Z,self.energy,self.lepton_mass,pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
             if np.isscalar(r):
                 g=g[0]
             return g
         
-        def wavefct_f_unnormalised(r,rcrit=critical_radius,wavefct_f_low=wavefct_f_low,weight_regular=weight_regular,weight_irregular=weight_irregular):
+        def wavefct_f_unnormalised(r,rcrit=critical_radius_norm,wavefct_f_low=wavefct_f_low,weight_regular=weight_regular,weight_irregular=weight_irregular):
             r_arr = np.atleast_1d(r)
             f = np.zeros(len(r_arr))
             mask_r = r_arr<=rcrit
             if np.any(mask_r):
                 f[mask_r]=wavefct_f_low(r_arr[mask_r])
             if np.any(~mask_r):
-                f[~mask_r]=f_highenergy(r_arr[~mask_r],weight_regular,weight_irregular,self.energy,self.kappa,self.Z,self.lepton_mass,pass_hyp1f1_regular=self.pass_hyp1f1_regular,pass_hyp1f1_irregular=self.pass_hyp1f1_irregular,pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
+                f[~mask_r]=f_highenergy(r_arr[~mask_r]*constants.hc/energy_norm,weight_regular,weight_irregular,self.kappa,self.Z,self.energy,self.lepton_mass,pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
             if np.isscalar(r):
                 f=f[0]
             return f
         
         theta=theta_coulomb(self.kappa,self.Z,self.energy,self.lepton_mass,pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
-        norm = np.abs(weight_regular*np.sqrt(1+(1/self.regular_irregular_fraction)**2+2*(1/self.regular_irregular_fraction)*(np.cos(theta)+(self.mass/self.energy)*np.sin(theta)))) #written in this way to not get to big intermediate values (from A**2 for example)
+        norm = np.abs(weight_regular*np.sqrt(1+(1/self.regular_irregular_fraction)**2+2*(1/self.regular_irregular_fraction)*(np.cos(theta)+(self.lepton_mass/self.energy)*np.sin(theta)))) #written in this way to not get to big intermediate values (from A**2 for example)
+
+        if self.solver_setting.verbose:
+            print("norm",norm)
 
         if not (norm < np.inf):
             norm=1
             print("function could not be normalized as norm is not finite")
 
-        def wavefct_g(r,wavefct_g_unnormalised=wavefct_g_unnormalised,energy_norm=energy_norm,norm=norm): return wavefct_g_unnormalised(r*energy_norm/constants.hc)/np.sqrt(norm)
-        def wavefct_f(r,wavefct_f_unnormalised=wavefct_f_unnormalised,energy_norm=energy_norm,norm=norm): return wavefct_f_unnormalised(r*energy_norm/constants.hc)/np.sqrt(norm)
+        def wavefct_g(r,wavefct_g_unnormalised=wavefct_g_unnormalised,energy_norm=energy_norm,norm=norm): return wavefct_g_unnormalised(r*energy_norm/constants.hc)/norm
+        def wavefct_f(r,wavefct_f_unnormalised=wavefct_f_unnormalised,energy_norm=energy_norm,norm=norm): return wavefct_f_unnormalised(r*energy_norm/constants.hc)/norm
 
         self.wavefct_g = wavefct_g
         self.wavefct_f = wavefct_f
@@ -147,7 +147,6 @@ class continuumstates():
         beginning_radius = self.solver_setting.beginning_radius_norm
         critical_radius_norm = self.solver_setting.critical_radius_norm
         critical_radius = self.solver_setting.critical_radius
-        #asymptotic_radius = self.solver_setting.asymptotic_radius_norm
         
         initials= scale_initial*initial_values_norm(beginning_radius_norm=beginning_radius,electric_potential_V0=self.Vmin,energy=self.energy,mass=self.lepton_mass,kappa=self.kappa,Z=self.Z,energy_norm=energy_norm,nucleus_type=self.nucleus_type)
         
@@ -156,36 +155,36 @@ class continuumstates():
         wavefct_g_critical_radius = radial_dirac.y[0]
         wavefct_f_critical_radius = radial_dirac.y[1]
         
-        self.regular_irregular_fraction = regular_irregular_fraction(wavefct_f_critical_radius,wavefct_g_critical_radius,critical_radius,kappa=self.kappa,Z=self.Z,energy=self.energy,mass=self.lepton_mass,pass_hyp1f1_regular=self.pass_hyp1f1_regular,pass_hyp1f1_irregular=self.pass_hyp1f1_irregular,pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
+        self.regular_irregular_fraction = regular_irregular_fraction(wavefct_f_critical_radius,wavefct_g_critical_radius,critical_radius,kappa=self.kappa,Z=self.Z,energy=self.energy,mass=self.lepton_mass,pass_hyper1f1_regular=self.pass_hyper1f1_regular,pass_hyper1f1_irregular=self.pass_hyper1f1_irregular,pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
         self.phase_difference = phase_difference(critical_radius,self.regular_irregular_fraction,kappa=self.kappa,Z=self.Z,energy=self.energy,mass=self.lepton_mass,pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
         self.phase_shift = delta_coulomb(self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular) + self.phase_difference
 
-def g_highenergy(r,weight_regular,weight_irregular,energy,kappa,Z,mass,pass_hyp1f1_regular=None,pass_hyp1f1_irregular=None,pass_eta_regular=None,pass_eta_irregular=None,alpha_el=constants.alpha_el):
-    g_coulomb_regular=g_coulomb(r,kappa,Z,energy,mass,reg=+1,pass_eta=pass_eta_regular,pass_hyp1f1=pass_hyp1f1_regular,alpha_el=alpha_el)
-    g_coulomb_irregular=g_coulomb(r,kappa,Z,energy,mass,reg=-1,pass_eta=pass_eta_irregular,pass_hyp1f1=pass_hyp1f1_irregular,alpha_el=alpha_el)
+def g_highenergy(r,weight_regular,weight_irregular,kappa,Z,energy,mass,pass_hyper1f1_regular=None,pass_hyper1f1_irregular=None,pass_eta_regular=None,pass_eta_irregular=None,alpha_el=constants.alpha_el):
+    g_coulomb_regular=g_coulomb(r,kappa,Z,energy,mass,reg=+1,pass_eta=pass_eta_regular,pass_hyper1f1=pass_hyper1f1_regular,alpha_el=alpha_el)
+    g_coulomb_irregular=g_coulomb(r,kappa,Z,energy,mass,reg=-1,pass_eta=pass_eta_irregular,pass_hyper1f1=pass_hyper1f1_irregular,alpha_el=alpha_el)
     return weight_regular*g_coulomb_regular + weight_irregular*g_coulomb_irregular
 
-def f_highenergy(r,weight_regular,weight_irregular,kappa,Z,energy,mass,pass_hyp1f1_regular=None,pass_hyp1f1_irregular=None,pass_eta_regular=None,pass_eta_irregular=None,alpha_el=constants.alpha_el):
-    f_coulomb_regular=f_coulomb(r,kappa,Z,energy,mass,reg=+1,pass_eta=pass_eta_regular,pass_hyp1f1=pass_hyp1f1_regular,alpha_el=alpha_el)
-    f_coulomb_irregular=f_coulomb(r,kappa,Z,energy,mass,reg=-1,pass_eta=pass_eta_irregular,pass_hyp1f1=pass_hyp1f1_irregular,alpha_el=alpha_el)
+def f_highenergy(r,weight_regular,weight_irregular,kappa,Z,energy,mass,pass_hyper1f1_regular=None,pass_hyper1f1_irregular=None,pass_eta_regular=None,pass_eta_irregular=None,alpha_el=constants.alpha_el):
+    f_coulomb_regular=f_coulomb(r,kappa,Z,energy,mass,reg=+1,pass_eta=pass_eta_regular,pass_hyper1f1=pass_hyper1f1_regular,alpha_el=alpha_el)
+    f_coulomb_irregular=f_coulomb(r,kappa,Z,energy,mass,reg=-1,pass_eta=pass_eta_irregular,pass_hyper1f1=pass_hyper1f1_irregular,alpha_el=alpha_el)
     return weight_regular*f_coulomb_regular + weight_irregular*f_coulomb_irregular
 
-def regular_irregular_fraction(wavefct_f_radius,wavefct_g_radius,radius,kappa,Z,energy,mass,pass_hyp1f1_regular=None,pass_hyp1f1_irregular=None,pass_eta_regular=None,pass_eta_irregular=None,alpha_el=constants.alpha_el):
+def regular_irregular_fraction(wavefct_f_radius,wavefct_g_radius,radius,kappa,Z,energy,mass,pass_hyper1f1_regular=None,pass_hyper1f1_irregular=None,pass_eta_regular=None,pass_eta_irregular=None,alpha_el=constants.alpha_el):
     #radius in fm 
     #
-    if pass_hyp1f1_regular is None:
-        pass_hyp1f1_regular=hyp1f1_coulomb(radius,kappa,Z,energy,mass,reg=+1,alpha_el=alpha_el)
-    if pass_hyp1f1_irregular is None:
-        pass_hyp1f1_irregular=hyp1f1_coulomb(radius,kappa,Z,energy,mass,reg=-1,alpha_el=alpha_el)
+    if pass_hyper1f1_regular is None:
+        pass_hyper1f1_regular=hyper1f1_coulomb(radius,kappa,Z,energy,mass,reg=+1,alpha_el=alpha_el)
+    if pass_hyper1f1_irregular is None:
+        pass_hyper1f1_irregular=hyper1f1_coulomb(radius,kappa,Z,energy,mass,reg=-1,alpha_el=alpha_el)
     if pass_eta_regular is None:
         pass_eta_regular=eta_coulomb(kappa,Z,energy,mass,reg=+1,alpha_el=alpha_el)
     if pass_eta_irregular is None:
         pass_eta_irregular=eta_coulomb(kappa,Z,energy,mass,reg=-1,pass_eta_regular=pass_eta_regular,alpha_el=alpha_el)
     #
-    f_coulomb_regular=f_coulomb(radius,kappa,Z,energy,mass,reg=+1,pass_eta=pass_eta_regular,pass_hyp1f1=pass_hyp1f1_regular,alpha_el=alpha_el)
-    f_coulomb_irregular=f_coulomb(radius,kappa,Z,energy,mass,reg=-1,pass_eta=pass_eta_irregular,pass_hyp1f1=pass_hyp1f1_irregular,alpha_el=alpha_el)
-    g_coulomb_regular=g_coulomb(radius,kappa,Z,energy,mass,reg=+1,pass_eta=pass_eta_regular,pass_hyp1f1=pass_hyp1f1_regular,alpha_el=alpha_el)
-    g_coulomb_irregular=g_coulomb(radius,kappa,Z,energy,mass,reg=-1,pass_eta=pass_eta_irregular,pass_hyp1f1=pass_hyp1f1_irregular,alpha_el=alpha_el)
+    f_coulomb_regular=f_coulomb(radius,kappa,Z,energy,mass,reg=+1,pass_eta=pass_eta_regular,pass_hyper1f1=pass_hyper1f1_regular,alpha_el=alpha_el)
+    f_coulomb_irregular=f_coulomb(radius,kappa,Z,energy,mass,reg=-1,pass_eta=pass_eta_irregular,pass_hyper1f1=pass_hyper1f1_irregular,alpha_el=alpha_el)
+    g_coulomb_regular=g_coulomb(radius,kappa,Z,energy,mass,reg=+1,pass_eta=pass_eta_regular,pass_hyper1f1=pass_hyper1f1_regular,alpha_el=alpha_el)
+    g_coulomb_irregular=g_coulomb(radius,kappa,Z,energy,mass,reg=-1,pass_eta=pass_eta_irregular,pass_hyper1f1=pass_hyper1f1_irregular,alpha_el=alpha_el)
     #
     regular=f_coulomb_irregular - g_coulomb_irregular *(wavefct_f_radius/wavefct_g_radius)
     irregular= f_coulomb_regular - g_coulomb_regular*(wavefct_f_radius/wavefct_g_radius)
