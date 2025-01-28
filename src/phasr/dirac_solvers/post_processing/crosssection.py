@@ -19,6 +19,7 @@ def recoil_quantities(energy_lab,theta_lab,mass):
 def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,N_partial_waves=20,phase_difference_limit=0,**args):
     
     nucleus_mass=nucleus.mass
+    charge = nucleus.total_charge
 
     if recoil:
         energy, theta, scale_crosssection = recoil_quantities(energy,theta,nucleus_mass)
@@ -30,39 +31,37 @@ def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,su
     phase_difference_gr0 = True
     for kappa in np.arange(-1,-(N_partial_waves+1+1),-1,dtype=int):
         if phase_difference_gr0:    
-            partial_wave_kappa = continuumstates(nucleus,kappa,energy,lepton_mass,verbose=False)
+            partial_wave_kappa = continuumstates(nucleus,kappa,energy,lepton_mass,**args)
             partial_wave_kappa.extract_phase_shift()
             phase_shifts[kappa] = partial_wave_kappa.phase_shift
-            #print(kappa,partial_wave_kappa.phase_difference)
             if -kappa < N_partial_waves+1:
                 if lepton_mass==0:
                     phase_shifts[-kappa] = phase_shifts[kappa]
                 else:
-                    partial_wave_mkappa = continuumstates(nucleus,-kappa,energy,lepton_mass,verbose=False)
+                    partial_wave_mkappa = continuumstates(nucleus,-kappa,energy,lepton_mass,**args)
                     partial_wave_mkappa.extract_phase_shift()
                     phase_shifts[-kappa] = partial_wave_mkappa.phase_shift
-                    #print(-kappa,partial_wave_mkappa.phase_difference)
                 if np.abs(partial_wave_kappa.phase_difference)<=phase_difference_limit:
                     phase_difference_gr0 = False
                     print("phase differences set to zero after kappa=",kappa)
         else:
-            eta_regular = eta_coulomb(kappa,nucleus.Z,energy,lepton_mass,reg=+1)
-            phase_shifts[kappa] = delta_coulomb(kappa,nucleus.Z,energy,lepton_mass,reg=+1,pass_eta=eta_regular) + 0
+            eta_regular = eta_coulomb(kappa,charge,energy,lepton_mass,reg=+1)
+            phase_shifts[kappa] = delta_coulomb(kappa,charge,energy,lepton_mass,reg=+1,pass_eta=eta_regular) + 0
             if -kappa < N_partial_waves+1:
                 if lepton_mass==0:
                     phase_shifts[-kappa] = phase_shifts[kappa]
                 else:
-                    phase_shifts[-kappa] = delta_coulomb(-kappa,nucleus.Z,energy,lepton_mass,reg=+1,pass_eta=eta_regular) + 0
+                    phase_shifts[-kappa] = delta_coulomb(-kappa,charge,energy,lepton_mass,reg=+1,pass_eta=eta_regular) + 0
 
-    print(phase_shifts)
     nonspinflip = nonspinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts)
     
     if lepton_mass==0:
         crosssection = (1+np.tan(theta/2)**2)*np.abs(nonspinflip)**2
     else:
-        raise ValueError('not fully implmented yet')
-        spinflip = 0 #spinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts)
+        print('Warning: m!=0 not fully implmented yet, may have unexpected behaviour')
+        spinflip = spinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts)
         crosssection = np.abs(nonspinflip)**2 + np.abs(spinflip)**2
+        # TODO subtract sumrule used for m=0
 
     return scale_crosssection * crosssection
 
@@ -70,9 +69,8 @@ def nonspinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,
     k=momentum(energy,lepton_mass)
     amplitude=0
     for kappa in np.arange(0,N_partial_waves-subtractions+1,dtype=int): 
-        print('kappa=',kappa)
         coefficient=coefficient_nonspinflip_amplitude(kappa,subtractions,N_partial_waves,phase_shifts)
-        print('a^m_kappa=',coefficient)
+        #print("{:d} {:.5f} {:.5f}".format(kappa,np.real(coefficient),np.imag(coefficient)))
         amplitude+=coefficient*(associated_legendre(0,kappa,np.cos(theta)))
     return (amplitude/((1-np.cos(theta))**subtractions))/(2j*k)
 
@@ -80,7 +78,7 @@ def coefficient_nonspinflip_amplitude(kappa,subtractions,N_partial_waves,phase_s
 
     if kappa<0:
         raise ValueError("only defined for kappa >= 0")
-    
+        
     if subtractions>0:
         last_coefficient_kappa = coefficient_nonspinflip_amplitude(kappa,subtractions-1,N_partial_waves,phase_shifts)
         if N_partial_waves-subtractions>=kappa>0:
@@ -103,38 +101,36 @@ def coefficient_nonspinflip_amplitude(kappa,subtractions,N_partial_waves,phase_s
     return this_coefficient_kappa
 #
 
-# TODO -> Check / rework
+def spinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts):
+    k=momentum(energy,lepton_mass)
+    amplitude=0
+    for kappa in np.arange(0,N_partial_waves-subtractions+1,dtype=int):
+        coefficient=coefficient_spinflip_amplitude(kappa,subtractions,N_partial_waves,phase_shifts)
+        amplitude+=coefficient*(associated_legendre(1,kappa,np.cos(theta)))
+    return (amplitude/((1-np.cos(theta))**subtractions))/(2j*k)
 
-# def spinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts):
-#     k=momentum(energy,lepton_mass)
-#     amplitude=0
-#     for kappa in np.arange(0,N_partial_waves-subtractions+1,dtype=int):
-#         coefficient=coefficient_spinflip_amplitude(kappa,subtractions,N_partial_waves,phase_shifts)
-#         amplitude+=coefficient*(associated_legendre(1,kappa,np.cos(theta)))
-#     return (amplitude/((1-np.cos(theta))**subtractions))/(2j*k)
-
-# def coefficient_spinflip_amplitude(kappa,subtractions,N_partial_waves,phase_shifts):
+def coefficient_spinflip_amplitude(kappa,subtractions,N_partial_waves,phase_shifts):
     
-#     if kappa<0:
-#         raise ValueError("only defined for kappa >= 0")
+    if kappa<0:
+        raise ValueError("only defined for kappa >= 0")
         
-#     if subtractions>0:
-#         last_coefficient_kappa = coefficient_spinflip_amplitude(kappa,subtractions-1,N_partial_waves,phase_shifts)
-#         if N_partial_waves-subtractions>=kappa>0:
-#             last_coefficient_kappap1 = coefficient_spinflip_amplitude(kappa+1,subtractions-1,N_partial_waves,phase_shifts)
-#             last_coefficient_kappam1 = coefficient_spinflip_amplitude(kappa-1,subtractions-1,N_partial_waves,phase_shifts)
-#             this_coefficient_kappa = last_coefficient_kappa - ((kappa+1+1)/(2*kappa+3))*last_coefficient_kappap1 - ((kappa-1)/(2*kappa-1))*last_coefficient_kappam1
-#         elif kappa==0:
-#             last_coefficient_kappap1 = coefficient_spinflip_amplitude(kappa+1,subtractions-1,N_partial_waves,phase_shifts)
-#             this_coefficient_kappa = last_coefficient_kappa - ((kappa+1+1)/(2*kappa+3))*last_coefficient_kappap1
-#         else:
-#             raise ValueError("only defined for kappa <= Nmax - m")
-#     else:
-#         if N_partial_waves>=kappa>0:
-#             this_coefficient_kappa = np.exp(2j*phase_shifts[kappa])+np.exp(2j*phase_shifts[-(kappa+1)])
-#         elif kappa==0:
-#             this_coefficient_kappa = np.exp(2j*phase_shifts[-(kappa+1)])
-#         else:
-#             raise ValueError("only defined for kappa <= Nmax")
+    if subtractions>0:
+        last_coefficient_kappa = coefficient_spinflip_amplitude(kappa,subtractions-1,N_partial_waves,phase_shifts)
+        if N_partial_waves-subtractions>=kappa>0:
+            last_coefficient_kappap1 = coefficient_spinflip_amplitude(kappa+1,subtractions-1,N_partial_waves,phase_shifts)
+            last_coefficient_kappam1 = coefficient_spinflip_amplitude(kappa-1,subtractions-1,N_partial_waves,phase_shifts)
+            this_coefficient_kappa = last_coefficient_kappa - ((kappa+1+1)/(2*kappa+3))*last_coefficient_kappap1 - ((kappa-1)/(2*kappa-1))*last_coefficient_kappam1
+        elif kappa==0:
+            last_coefficient_kappap1 = coefficient_spinflip_amplitude(kappa+1,subtractions-1,N_partial_waves,phase_shifts)
+            this_coefficient_kappa = last_coefficient_kappa - ((kappa+1+1)/(2*kappa+3))*last_coefficient_kappap1
+        else:
+            raise ValueError("only defined for kappa <= Nmax - m")
+    else:
+        if N_partial_waves>=kappa>0:
+            this_coefficient_kappa = np.exp(2j*phase_shifts[kappa])+np.exp(2j*phase_shifts[-(kappa+1)])
+        elif kappa==0:
+            this_coefficient_kappa = np.exp(2j*phase_shifts[-(kappa+1)])
+        else:
+            raise ValueError("only defined for kappa <= Nmax")
 
-#     return this_coefficient_kappa
+    return this_coefficient_kappa

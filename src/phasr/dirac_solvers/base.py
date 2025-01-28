@@ -18,8 +18,8 @@ def radial_dirac_eq_fm(r_fm,y,potential,energy,mass,kappa,contain=False): #
        if np.any(np.abs(y)>1e100):
            y*=1e-100
            #print("downscaled at r=",r_fm,"fm")
-       if np.any(np.abs(y)<1e-100):
-           y*=1e100
+       if np.any(np.abs(y)<1e-50):
+           y*=1e50
            #print("upscaled at r=",r_fm,"fm")
     
     return np.array([[-kappa/r_fm,(Ebar+mass)/hc],[-(Ebar-mass)/hc,kappa/r_fm]]) @ y
@@ -84,7 +84,7 @@ default_boundstate_settings={
 
 default_continuumstate_settings={
     "beginning_radius_norm":None, 
-    "beginning_radius":1e-6,
+    "beginning_radius":None, # set by potential
     "critical_radius_norm":None,  
     "critical_radius":None, # set by potential
     "asymptotic_radius_norm":None, 
@@ -94,12 +94,12 @@ default_continuumstate_settings={
     "energy_precision_norm":None, 
     "energy_precision":None,
     "energy_subdivisions":None,
-    "atol":1e-9,
-    "rtol":1e-6,
+    "atol":1e-12,
+    "rtol":1e-9,
     "method":'DOP853',
-    "verbose":True, # TODO change
-    "renew":True, # TODO change
-    "save":False, # TODO change
+    "verbose":False,
+    "renew":None, # TODO change
+    "save":None, # TODO change
 }
 
 class solver_settings():
