@@ -77,6 +77,7 @@ default_boundstate_settings={
     "atol":1e-12,
     "rtol":1e-9,
     "method":'DOP853',
+    "dps_hyper1f1":15, # TODO implement
     "verbose":True, 
     "renew":False, 
     "save":True, 
@@ -97,6 +98,7 @@ default_continuumstate_settings={
     "atol":1e-12,
     "rtol":1e-9,
     "method":'DOP853',
+    "dps_hyper1f1":15,
     "verbose":False,
     "renew":None, # TODO change
     "save":None, # TODO change
@@ -106,7 +108,7 @@ class solver_settings():
     def __init__(self,energy_norm,
                  beginning_radius,critical_radius,asymptotic_radius,radius_optimise_step,energy_precision,
                  beginning_radius_norm,critical_radius_norm,asymptotic_radius_norm,radius_optimise_step_norm,energy_precision_norm,
-                 energy_subdivisions,atol,rtol,method,renew,save,verbose):
+                 energy_subdivisions,atol,rtol,method,dps_hyper1f1,renew,save,verbose):
         self.energy_norm=energy_norm
         self.beginning_radius = beginning_radius
         self.beginning_radius_norm = beginning_radius_norm
@@ -127,6 +129,7 @@ class solver_settings():
         self.atol = atol
         self.rtol = rtol
         self.method = method
+        self.dps_hyper1f1 = dps_hyper1f1
         self.verbose = verbose
         self.renew = renew
         self.save = save

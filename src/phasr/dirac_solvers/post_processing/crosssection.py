@@ -10,27 +10,41 @@ from scipy.special import lpmv as associated_legendre
 
 from ...utility.math import momentum
 
+import time
+
 def recoil_quantities(energy_lab,theta_lab,mass):
     energy_CMS=energy_lab*(1.-energy_lab/mass)
     theta_CMS=theta_lab+(energy_lab/mass)*np.sin(theta_lab)
     scalefactor_crosssection_CMS = 1+(2*energy_lab/mass)*np.cos(theta_lab)
     return energy_CMS, theta_CMS, scalefactor_crosssection_CMS
 
-def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,N_partial_waves=20,phase_difference_limit=0,**args):
+def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,N_partial_waves=50,phase_difference_limit=1e-7,verbose=False,**args):
     
+    args['verbose']=verbose
+
     nucleus_mass=nucleus.mass
     charge = nucleus.total_charge
 
     if recoil:
         energy, theta, scale_crosssection = recoil_quantities(energy,theta,nucleus_mass)
-        print('E=',energy,'MeV')
+        if verbose:
+            print('E=',energy,'MeV')
     else:
         scale_crosssection = 1
     
     phase_shifts = {}
     phase_difference_gr0 = True
+    # calculate beginning and critical radius only once, since independent on kappa
+    if (not ('beginning_radius' in args)) or (not ('critical_radius' in args)):
+        initialiser = continuumstates(nucleus,-1,energy,lepton_mass,**args)
+    if not 'beginning_radius' in args:
+        args['beginning_radius']=initialiser.solver_setting.beginning_radius
+    if not 'critical_radius' in args:
+        args['critical_radius']=initialiser.solver_setting.critical_radius
+
     for kappa in np.arange(-1,-(N_partial_waves+1+1),-1,dtype=int):
         if phase_difference_gr0:    
+            #print(kappa,'calc')
             partial_wave_kappa = continuumstates(nucleus,kappa,energy,lepton_mass,**args)
             partial_wave_kappa.extract_phase_shift()
             phase_shifts[kappa] = partial_wave_kappa.phase_shift
@@ -43,8 +57,10 @@ def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,su
                     phase_shifts[-kappa] = partial_wave_mkappa.phase_shift
                 if np.abs(partial_wave_kappa.phase_difference)<=phase_difference_limit:
                     phase_difference_gr0 = False
-                    print("phase differences set to zero after kappa=",kappa)
+                    if verbose:
+                        print("phase differences set to zero after kappa=",kappa)
         else:
+            #print(kappa,'0')
             eta_regular = eta_coulomb(kappa,charge,energy,lepton_mass,reg=+1)
             phase_shifts[kappa] = delta_coulomb(kappa,charge,energy,lepton_mass,reg=+1,pass_eta=eta_regular) + 0
             if -kappa < N_partial_waves+1:

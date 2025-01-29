@@ -11,7 +11,7 @@ from mpmath import hyper, workdps #confluent hypergeometric function
 def hyper1f1_scalar_arbitrary_precision(a,b,z,dps=15):
     with workdps(dps):
         return complex(hyper([a],[b],z))
-hyper1f1=np.vectorize(hyper1f1_scalar_arbitrary_precision,excluded=[0,1,3])
+hyper1f1_vector_arbitrary_precision=np.vectorize(hyper1f1_scalar_arbitrary_precision,excluded=[0,1,3])
 
 class nucleus_coulomb(nucleus_base):
     def __init__(self,name,Z,A,**args): 
@@ -93,6 +93,11 @@ def g_coulomb_nk(r,n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
     #
     pref=+np.sqrt(lam)**3/np.sqrt(2)
     #
+    if np.isscalar(r):
+        hyper1f1=hyper1f1_scalar_arbitrary_precision
+    else:
+        hyper1f1=hyper1f1_vector_arbitrary_precision
+    #
     return pref*(np.abs(np.sqrt(gamma(2*sigma+1+n_p)*(mass+energy)/(factorial(n_p)*y0*(y0-lam*kappa))+0j))/(gamma(2*sigma+1)))*((2*lam*mass*r)**sigma)*(np.exp(-lam*mass*r))*( -n_p*hyper1f1(-n_p+1,2*sigma+1,2*lam*mass*r)-(kappa-y0/lam)*hyper1f1(-n_p,2*sigma+1,2*lam*mass*r) )
 
 def f_coulomb_nk(r,n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
@@ -107,9 +112,15 @@ def f_coulomb_nk(r,n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
     #
     pref=-np.sqrt(lam)**3/np.sqrt(2)
     #
+    #
+    if np.isscalar(r):
+        hyper1f1=hyper1f1_scalar_arbitrary_precision
+    else:
+        hyper1f1=hyper1f1_vector_arbitrary_precision
+    #
     return pref*(np.sqrt(np.abs(gamma(2*sigma+1+n_p)*(mass-energy)/(factorial(n_p)*y0*(y0-lam*kappa))+0j))/(gamma(2*sigma+1)))*((2*lam*mass*r)**sigma)*(np.exp(-lam*mass*r))*( n_p*hyper1f1(-n_p+1,2*sigma+1,2*lam*mass*r)-(kappa-y0/lam)*hyper1f1(-n_p,2*sigma+1,2*lam*mass*r) )
 
-def g_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,alpha_el=constants.alpha_el):
+def g_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyper1f1=15,alpha_el=constants.alpha_el):
     # r in fm
 
     k=momentum(energy,mass)
@@ -120,7 +131,7 @@ def g_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,alpha_e
     if pass_eta is None:
         pass_eta = eta_coulomb(kappa,Z,energy,mass,reg,alpha_el=alpha_el)
     if pass_hyper1f1 is None:
-        pass_hyper1f1=hyper1f1_coulomb(r,kappa,Z,energy,mass,reg,alpha_el=alpha_el)
+        pass_hyper1f1=hyper1f1_coulomb(r,kappa,Z,energy,mass,reg,dps=dps_hyper1f1,alpha_el=alpha_el)
     
     prefactor=(-1)*np.sign(kappa)*np.sqrt(2*(energy+mass)/k)
     
@@ -128,7 +139,7 @@ def g_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,alpha_e
 
     return prefactor*((2*k*r)**sigma)*(np.exp(pi*y/2))*(np.abs(gamma(sigma+1j*y))/(gamma(2*sigma+1)))*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
 
-def f_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,alpha_el=constants.alpha_el):
+def f_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyper1f1=15,alpha_el=constants.alpha_el):
     # r in fm
 
     k=momentum(energy,mass)
@@ -139,7 +150,7 @@ def f_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,alpha_e
     if pass_eta is None:
         pass_eta = eta_coulomb(kappa,Z,energy,mass,reg,alpha_el=alpha_el)
     if pass_hyper1f1 is None:
-        pass_hyper1f1=hyper1f1_coulomb(r,kappa,Z,energy,mass,reg,alpha_el=alpha_el)
+        pass_hyper1f1=hyper1f1_coulomb(r,kappa,Z,energy,mass,reg,dps=dps_hyper1f1,alpha_el=alpha_el)
 
     prefactor=np.sign(kappa)*np.sqrt(2*(energy-mass)/k)
     
@@ -147,13 +158,19 @@ def f_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,alpha_e
 
     return prefactor*((2*k*r)**sigma)*(np.exp(pi*y/2))*(np.abs(gamma(sigma+1j*y))/(gamma(2*sigma+1)))*np.imag((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
 
-def hyper1f1_coulomb(r,kappa,Z,energy,mass,reg=+1,alpha_el=constants.alpha_el):
+def hyper1f1_coulomb(r,kappa,Z,energy,mass,reg=+1,dps=15,alpha_el=constants.alpha_el):
     # r in fm
     r=r/constants.hc
     k=momentum(energy,mass)
     y=alpha_el*Z*energy/k
     rho=rho_kappa(kappa,Z)
-    return hyper1f1(reg*rho+1+1j*y,2*reg*rho+1,2j*k*r)
+    #
+    if np.isscalar(r):
+        hyper1f1=hyper1f1_scalar_arbitrary_precision
+    else:
+        hyper1f1=hyper1f1_vector_arbitrary_precision
+    #
+    return hyper1f1(reg*rho+1+1j*y,2*reg*rho+1,2j*k*r,dps=dps)
 
 def delta_coulomb(kappa,Z,energy,mass,reg,pass_eta=None,alpha_el=constants.alpha_el):
     k=momentum(energy,mass)
