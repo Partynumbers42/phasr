@@ -38,18 +38,32 @@ def initial_values_fm(beginning_radius_fm,electric_potential_V0,energy,mass,kapp
     z0=k0*beginning_radius_fm/hc
     
     if not nucleus_type=="coulomb":
+        return beginning_radius_fm*initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=nucleus_type,alpha_el=alpha_el)
+    else:
+        rho_kappa = np.sqrt(kappa**2 - (alpha_el*Z)**2)
+        return (beginning_radius_fm)**rho_kappa*initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=nucleus_type,alpha_el=alpha_el)
+    
+def initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=None,alpha_el=constants.alpha_el): 
+    
+    hc=constants.hc # MeV fm
+    
+    Ebar=energy-electric_potential_V0*hc #MeV
+    k0=momentum(Ebar,mass) #MeV
+    z0=k0*beginning_radius_fm/hc
+    
+    if not nucleus_type=="coulomb":
         if kappa>0:
-            g_kappa=-(beginning_radius_fm)*np.sqrt((Ebar+mass)/(Ebar-mass))*spherical_jn(kappa,z0)
-            f_kappa=-(beginning_radius_fm)*spherical_jn(kappa-1,z0)
+            g_kappa=-np.sqrt((Ebar+mass)/(Ebar-mass))*spherical_jn(kappa,z0)
+            f_kappa=-spherical_jn(kappa-1,z0)
         elif kappa<0:
-            g_kappa=+(beginning_radius_fm)*spherical_jn(-kappa-1,z0)
-            f_kappa=-(beginning_radius_fm)*np.sqrt((Ebar-mass)/(Ebar+mass))*spherical_jn(-kappa,z0)
+            g_kappa=+spherical_jn(-kappa-1,z0)
+            f_kappa=-np.sqrt((Ebar-mass)/(Ebar+mass))*spherical_jn(-kappa,z0)
         else:
             raise ValueError("kappa=0 not allowed")
     else:
         rho_kappa = np.sqrt(kappa**2 - (alpha_el*Z)**2)
-        g_kappa=-1*(kappa-rho_kappa)/(alpha_el*Z)*(beginning_radius_fm)**rho_kappa
-        f_kappa=-1*(beginning_radius_fm)**rho_kappa
+        g_kappa=-1*(kappa-rho_kappa)/(alpha_el*Z)
+        f_kappa=-1
         
     return np.array([g_kappa,f_kappa])
 
@@ -74,6 +88,7 @@ default_boundstate_settings={
     "energy_precision_norm":1e-6, # in coulomb binding energies
     "energy_precision":None,
     "energy_subdivisions":100,
+    "potential_precision":None,
     "atol":1e-12,
     "rtol":1e-9,
     "method":'DOP853',
@@ -92,9 +107,10 @@ default_continuumstate_settings={
     "asymptotic_radius":20, # fm
     "radius_optimise_step_norm":None, 
     "radius_optimise_step":1e-1,
-    "energy_precision_norm":None, 
-    "energy_precision":None,
-    "energy_subdivisions":None,
+    "energy_precision_norm":None, # unused
+    "energy_precision":None, # unused
+    "energy_subdivisions":None, # unused
+    "potential_precision":1e-6,
     "atol":1e-12,
     "rtol":1e-9,
     "method":'DOP853',
@@ -108,7 +124,7 @@ class solver_settings():
     def __init__(self,energy_norm,
                  beginning_radius,critical_radius,asymptotic_radius,radius_optimise_step,energy_precision,
                  beginning_radius_norm,critical_radius_norm,asymptotic_radius_norm,radius_optimise_step_norm,energy_precision_norm,
-                 energy_subdivisions,atol,rtol,method,dps_hyper1f1,renew,save,verbose):
+                 energy_subdivisions,potential_precision,atol,rtol,method,dps_hyper1f1,renew,save,verbose):
         self.energy_norm=energy_norm
         self.beginning_radius = beginning_radius
         self.beginning_radius_norm = beginning_radius_norm
@@ -126,6 +142,7 @@ class solver_settings():
         self.energy_precision_norm = energy_precision_norm
         self.set_norm_or_unnorm("energy_precision","energy_precision_norm",self.energy_norm)
         self.energy_subdivisions = energy_subdivisions
+        self.potential_precision = potential_precision
         self.atol = atol
         self.rtol = rtol
         self.method = method
@@ -134,7 +151,6 @@ class solver_settings():
         self.renew = renew
         self.save = save
 
-    # TODO rename
     def set_norm_or_unnorm(self,radius_str,radius_norm_str,norm):
         if not (self.energy_norm is None):
             if not (getattr(self,radius_str) is None):

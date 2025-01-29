@@ -1,6 +1,6 @@
 from .. import constants
 from ..config import local_paths
-from .base import radial_dirac_eq_norm, initial_values_norm, solver_settings, default_continuumstate_settings
+from .base import radial_dirac_eq_norm, initial_values_fm_norm, solver_settings, default_continuumstate_settings
 
 import numpy as np
 pi = np.pi
@@ -41,24 +41,28 @@ class continuumstates():
         
     def initialize_critical_radius(self):
         r=np.arange(self.inital_continuumstate_settings['radius_optimise_step'],self.inital_continuumstate_settings['asymptotic_radius'],self.inital_continuumstate_settings['radius_optimise_step'])
+        potential_precision = self.inital_continuumstate_settings['potential_precision']
         potential_coulomb_diff=(self.nucleus.electric_potential(r)-electric_potential_coulomb(r,self.Z))/electric_potential_coulomb(r,self.Z)
-        r_coulomb = r[np.abs(potential_coulomb_diff)<1e-6]
+        r_coulomb = r[np.abs(potential_coulomb_diff)<potential_precision]
+        self.inital_continuumstate_settings['critical_radius'] = r[-1] # default
         for rc in r_coulomb:
-            if np.all(np.abs(potential_coulomb_diff[r>=rc])<1e-6):
+            if np.all(np.abs(potential_coulomb_diff[r>=rc])<potential_precision):
                 self.inital_continuumstate_settings['critical_radius'] = rc
                 break
     
     def initialize_beginning_radius(self):
-        r=np.arange(0,self.inital_continuumstate_settings['radius_optimise_step'],self.inital_continuumstate_settings['radius_optimise_step']*1e-2)
+        r=np.arange(self.inital_continuumstate_settings['radius_optimise_step']*1e-3,self.inital_continuumstate_settings['radius_optimise_step'],self.inital_continuumstate_settings['radius_optimise_step']*1e-3)
+        potential_precision = self.inital_continuumstate_settings['potential_precision']
         potential_Vmin_diff=(self.nucleus.electric_potential(r)-self.Vmin)/self.Vmin
-        r_Vmin = r[np.abs(potential_Vmin_diff)<1e-6]
+        r_Vmin = r[np.abs(potential_Vmin_diff)<potential_precision]
+        self.inital_continuumstate_settings['beginning_radius'] = r[0] # default
         for r0 in r_Vmin[::-1]:
-            if np.all(np.abs(potential_Vmin_diff[r<=r0])<1e-6):
+            if np.all(np.abs(potential_Vmin_diff[r<=r0])<potential_precision):
                 self.inital_continuumstate_settings['beginning_radius'] = r0
                 break
                
     def update_solver_setting(self):
-        energy_norm = 1e3*self.energy # no scaling with Z or kappa ?
+        energy_norm = self.energy #*1e3  # no scaling with Z or kappa ? hc/(rc-r0)
         self.solver_setting = solver_settings(energy_norm=energy_norm,**self.inital_continuumstate_settings)
         if self.solver_setting.verbose:
             print("r0=",self.solver_setting.beginning_radius,"fm")
@@ -82,28 +86,23 @@ class continuumstates():
         energy_norm=self.solver_setting.energy_norm
         def DGL(r,fct): return radial_dirac_eq_norm(r,fct,potential=self.nucleus.electric_potential,energy=self.energy,mass=self.lepton_mass,kappa=self.kappa,energy_norm=energy_norm)  
         
-        beginning_radius = self.solver_setting.beginning_radius_norm
+        beginning_radius_norm = self.solver_setting.beginning_radius_norm
         critical_radius_norm = self.solver_setting.critical_radius_norm
-        critical_radius = self.solver_setting.critical_radius
         
-        initials= initial_values_norm(beginning_radius_norm=beginning_radius,electric_potential_V0=self.Vmin,energy=self.energy,mass=self.lepton_mass,kappa=self.kappa,Z=self.Z,energy_norm=energy_norm,nucleus_type=self.nucleus_type)
-        
-        initial_coulomb=g_coulomb(beginning_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
-        critical_coulomb=g_coulomb(critical_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
-        scale_initial=10**(-np.log10(np.abs(initials[0]))-(np.log10(np.abs(critical_coulomb))-np.log10(np.abs(initial_coulomb)))/2.)
-        # scale such that propagation range is logarithmically centered at 1        
-        initials=scale_initial*initials
+        self.set_initials()
         
         if self.solver_setting.verbose:
-            print("y0=",initials)
+            print("y0=",self.initials)
         
-        radial_dirac = solve_ivp(DGL, (beginning_radius,critical_radius_norm), initials, dense_output=True, method=self.solver_setting.method, atol=self.solver_setting.atol, rtol=self.solver_setting.rtol)
+        radial_dirac = solve_ivp(DGL, (beginning_radius_norm,critical_radius_norm), initials, dense_output=True, method=self.solver_setting.method, atol=self.solver_setting.atol, rtol=self.solver_setting.rtol)
 
         def wavefct_g_low(x): return radial_dirac.sol(x)[0]
         def wavefct_f_low(x): return radial_dirac.sol(x)[1]
         
         wavefct_g_critical_radius = wavefct_g_low(critical_radius_norm)
         wavefct_f_critical_radius = wavefct_f_low(critical_radius_norm)
+        
+        critical_radius = self.solver_setting.critical_radius
         
         self.regular_irregular_fraction = regular_irregular_fraction(wavefct_f_critical_radius,wavefct_g_critical_radius,critical_radius,kappa=self.kappa,Z=self.Z,energy=self.energy,mass=self.lepton_mass,
                                                                      pass_hyper1f1_regular=self.pass_hyper1f1_regular_at_crtical_radius,pass_hyper1f1_irregular=self.pass_hyper1f1_irregular_at_critical_radius,
@@ -169,22 +168,20 @@ class continuumstates():
         energy_norm=self.solver_setting.energy_norm
         def DGL(r,fct): return radial_dirac_eq_norm(r,fct,potential=self.nucleus.electric_potential,energy=self.energy,mass=self.lepton_mass,kappa=self.kappa,energy_norm=energy_norm,contain=True)  
         
-        beginning_radius = self.solver_setting.beginning_radius_norm
+        beginning_radius_norm = self.solver_setting.beginning_radius_norm
         critical_radius_norm = self.solver_setting.critical_radius_norm
-        critical_radius = self.solver_setting.critical_radius
         
-        initials= initial_values_norm(beginning_radius_norm=beginning_radius,electric_potential_V0=self.Vmin,energy=self.energy,mass=self.lepton_mass,kappa=self.kappa,Z=self.Z,energy_norm=energy_norm,nucleus_type=self.nucleus_type)
+        self.set_initials()
         
-        initial_coulomb=g_coulomb(beginning_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
-        critical_coulomb=g_coulomb(critical_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
-        scale_initial=10**(-np.log10(np.abs(initials[0]))-(np.log10(np.abs(critical_coulomb))-np.log10(np.abs(initial_coulomb)))/2.)
-        # scale such that propagation range is logarithmically centered at 1        
-        initials=scale_initial*initials
+        if self.solver_setting.verbose:
+            print("y0=",self.initials)
         
-        radial_dirac = solve_ivp(DGL, (beginning_radius,critical_radius_norm), initials,  t_eval=np.array([critical_radius_norm]), method=self.solver_setting.method, atol=self.solver_setting.atol, rtol=self.solver_setting.rtol)
+        radial_dirac = solve_ivp(DGL, (beginning_radius_norm,critical_radius_norm), self.initials,  t_eval=np.array([critical_radius_norm]), method=self.solver_setting.method, atol=self.solver_setting.atol, rtol=self.solver_setting.rtol)
 
         wavefct_g_critical_radius = radial_dirac.y[0][0]
         wavefct_f_critical_radius = radial_dirac.y[1][0]
+        
+        critical_radius = self.solver_setting.critical_radius
         
         self.regular_irregular_fraction = regular_irregular_fraction(wavefct_f_critical_radius,wavefct_g_critical_radius,critical_radius,kappa=self.kappa,Z=self.Z,energy=self.energy,mass=self.lepton_mass,
                                                                      pass_hyper1f1_regular=self.pass_hyper1f1_regular_at_crtical_radius,pass_hyper1f1_irregular=self.pass_hyper1f1_irregular_at_critical_radius,
@@ -197,6 +194,23 @@ class continuumstates():
                                                  pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
         self.phase_shift = delta_coulomb(self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular) + self.phase_difference
 
+    def set_initials(self):
+        
+        beginning_radius = self.solver_setting.beginning_radius
+        critical_radius = self.solver_setting.critical_radius
+        
+        initials= initial_values_fm_norm(beginning_radius_fm=beginning_radius,electric_potential_V0=self.Vmin,energy=self.energy,mass=self.lepton_mass,kappa=self.kappa,Z=self.Z,nucleus_type=self.nucleus_type) #,energy_norm=energy_norm
+        
+        initial_coulomb=g_coulomb(beginning_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
+        critical_coulomb=g_coulomb(critical_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
+        
+        scale_coulomb = np.abs(critical_coulomb)/np.abs(initial_coulomb)
+        scale_initial=initials[0]*np.sqrt(scale_coulomb)
+        if scale_initial==0:
+            scale_initial=1
+            print("Warning: could not rescale initials")    
+        self.initials= initials/scale_initial
+    
 def g_highenergy(r,weight_regular,weight_irregular,kappa,Z,energy,mass,pass_hyper1f1_regular=None,pass_hyper1f1_irregular=None,pass_eta_regular=None,pass_eta_irregular=None,dps_hyper1f1=15,alpha_el=constants.alpha_el):
     g_coulomb_regular=g_coulomb(r,kappa,Z,energy,mass,reg=+1,pass_eta=pass_eta_regular,pass_hyper1f1=pass_hyper1f1_regular,dps_hyper1f1=dps_hyper1f1,alpha_el=alpha_el)
     g_coulomb_irregular=g_coulomb(r,kappa,Z,energy,mass,reg=-1,pass_eta=pass_eta_irregular,pass_hyper1f1=pass_hyper1f1_irregular,dps_hyper1f1=dps_hyper1f1,alpha_el=alpha_el)

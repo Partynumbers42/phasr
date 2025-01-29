@@ -10,7 +10,50 @@ from scipy.special import lpmv as associated_legendre
 
 from ...utility.math import momentum
 
-import time
+import itertools
+
+import time, copy
+
+parameter_steps={
+    'atol' : 10**np.arange(-13,-3+1,1,dtype=float),
+    'rtol' : 10**np.arange(-13,-3+1,1,dtype=float),
+    'method' : ['DOP853','LSODA'],
+    #'potential_precision' : 10**np.arange(-9,-3+1,1,dtype=float),
+    #'phase_difference_limit' : np.append([0],10**np.arange(-16,-3+1,1,dtype=float)),
+}
+
+
+def optimise_precision(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,N_partial_waves=50,phase_difference_limit=1e-9,verbose=False,crosssection_precision=1e-3):
+    
+    
+    first=True
+    for atol,rtol,method in itertools.product(*parameter_steps.values()):
+        #print(atol,rtol,method)
+        args={'atol':atol,'rtol':rtol,'method':method}
+        arg_str=str(atol)+str(rtol)+method
+        start_time=time.time()
+        crosssection = crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass,subtractions,recoil,N_partial_waves,phase_difference_limit,verbose,**args)
+        end_time=time.time()
+        runtime=end_time-start_time
+        
+        if first:
+            crosssection0=crosssection
+            best_time=runtime
+            best_args=copy.copy(args)
+            first=False
+        
+        crossections_difference=(crosssection-crosssection0)/crosssection0
+        
+        #print(crossections_difference)
+        #print(runtime)
+        
+        if np.all(crossections_difference<crosssection_precision) and runtime<best_time:
+            print(runtime)
+            print(args)
+            best_time=runtime
+            best_args=copy.copy(args)
+    
+    return best_args        
 
 def recoil_quantities(energy_lab,theta_lab,mass):
     energy_CMS=energy_lab*(1.-energy_lab/mass)
@@ -18,7 +61,7 @@ def recoil_quantities(energy_lab,theta_lab,mass):
     scalefactor_crosssection_CMS = 1+(2*energy_lab/mass)*np.cos(theta_lab)
     return energy_CMS, theta_CMS, scalefactor_crosssection_CMS
 
-def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,N_partial_waves=50,phase_difference_limit=1e-7,verbose=False,**args):
+def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,N_partial_waves=50,phase_difference_limit=1e-9,verbose=False,**args):
     
     args['verbose']=verbose
 
@@ -74,7 +117,9 @@ def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,su
     if lepton_mass==0:
         crosssection = (1+np.tan(theta/2)**2)*np.abs(nonspinflip)**2
     else:
-        print('Warning: m!=0 not fully implmented yet, may have unexpected behaviour')
+        print('Warning: m!=0 does not converge properly, to be revised')
+        #mass_correction = mass_correction_amplitude(energy,theta,lepton_mass,N_partial_waves,phase_shifts)
+        #spinflip = np.tan(theta/2)*nonspinflip + mass_correction
         spinflip = spinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts)
         crosssection = np.abs(nonspinflip)**2 + np.abs(spinflip)**2
         # TODO subtract sumrule used for m=0
@@ -150,3 +195,12 @@ def coefficient_spinflip_amplitude(kappa,subtractions,N_partial_waves,phase_shif
             raise ValueError("only defined for kappa <= Nmax")
 
     return this_coefficient_kappa
+
+def mass_correction_amplitude(energy,theta,lepton_mass,N_partial_waves,phase_shifts):
+    # needs subtraction -> todo 
+    k=momentum(energy,lepton_mass)
+    amplitude=0
+    for kappa in np.arange(1,N_partial_waves+1,dtype=int):
+        coefficient=np.exp(2j*phase_shifts[kappa])-np.exp(2j*phase_shifts[-kappa])
+        amplitude+=coefficient*(kappa*np.tan(theta/2)*associated_legendre(0,kappa-1,np.cos(theta)) - associated_legendre(1,kappa-1,np.cos(theta)))
+    return amplitude/(2j*k)
