@@ -7,7 +7,10 @@ import numpy as np
 pi = np.pi
 
 from scipy.special import factorial, gamma
-from mpmath import hyper, workdps #confluent hypergeometric function
+from mpmath import hyper, workdps, fp #confluent hypergeometric function
+
+# aternative: fp.hyper
+
 def hyper1f1_scalar_arbitrary_precision(a,b,z,dps=15):
     with workdps(dps):
         return complex(hyper([a],[b],z))
