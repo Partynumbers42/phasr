@@ -15,45 +15,74 @@ import itertools
 import time, copy
 
 parameter_steps={
-    'atol' : 10**np.arange(-13,-3+1,1,dtype=float),
-    'rtol' : 10**np.arange(-13,-3+1,1,dtype=float),
-    'method' : ['DOP853','LSODA'],
+    'method' : np.array(['DOP853']), #,'LSODA'
+    'atol' : 10**np.arange(-13,-6+1,1,dtype=float),
+    'rtol' : 10**np.arange(-13,-6+1,1,dtype=float),
     #'potential_precision' : 10**np.arange(-9,-3+1,1,dtype=float),
-    #'phase_difference_limit' : np.append([0],10**np.arange(-16,-3+1,1,dtype=float)),
+    'energy_norm': constants.hc*10**np.arange(0,-9-1,-1,dtype=float),
+    'phase_difference_limit' : np.append([0],10**np.arange(-16,-6+1,1,dtype=float)),
 }
 
+# add N_partial_waves?
 
-def optimise_precision(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,N_partial_waves=50,phase_difference_limit=1e-9,verbose=False,crosssection_precision=1e-3):
+def optimise_precision(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,N_partial_waves=50,verbose=False,crosssection_precision=1e-3):
     
+    insufficient_args=[]
     
     first=True
-    for atol,rtol,method in itertools.product(*parameter_steps.values()):
+    for method,atol,rtol,energy_norm,phase_difference_limit in itertools.product(*parameter_steps.values()): #,potential_precision
+        
+        skip=False
+
         #print(atol,rtol,method)
-        args={'atol':atol,'rtol':rtol,'method':method}
-        arg_str=str(atol)+str(rtol)+method
-        start_time=time.time()
-        crosssection = crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass,subtractions,recoil,N_partial_waves,phase_difference_limit,verbose,**args)
-        end_time=time.time()
-        runtime=end_time-start_time
+        args={'method':method,'atol':atol,'rtol':rtol,'energy_norm':energy_norm,'phase_difference_limit':phase_difference_limit} #,'potential_precision':potential_precision
+        #print(args)
         
-        if first:
-            crosssection0=crosssection
-            best_time=runtime
-            best_args=copy.copy(args)
-            first=False
+        for key in args:
+            #print(parameter_steps[key])
+            #print(args[key])
+            index_key = np.where(parameter_steps[key]==args[key])[0][0]
+            #print(index_key)
+            if index_key>0:
+                args_check = copy.copy(args)
+                args_check[key] = parameter_steps[key][index_key-1]
+                if args_check in insufficient_args:
+                    skip=True
+                    insufficient_args.append(args)
+                    #print('skiped')
+                    break
+
+        if not skip:
+
+            start_time=time.time()
+            crosssection = crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass,subtractions,recoil,N_partial_waves,verbose=verbose,**args)
+            end_time=time.time()
+            runtime=end_time-start_time
+            
+            if first:
+                crosssection0=crosssection
+                best_time=runtime
+                best_args=copy.copy(args)
+                first=False
+            
+            crossections_difference=(crosssection-crosssection0)/crosssection0
         
-        crossections_difference=(crosssection-crosssection0)/crosssection0
+            #print(runtime,np.max(crossections_difference))
         
-        #print(crossections_difference)
-        #print(runtime)
-        
-        if np.all(crossections_difference<crosssection_precision) and runtime<best_time:
-            print(runtime)
-            print(args)
-            best_time=runtime
-            best_args=copy.copy(args)
+            if np.all(crossections_difference<crosssection_precision) and (runtime-best_time)/best_time<1e-2:
+                if True:#verbose:
+                    print('new best:',args)
+                    print('time:',runtime,np.max(crossections_difference))
+                best_time=runtime
+                best_args=copy.copy(args)
+            
+            if np.any(crossections_difference>crosssection_precision):
+                insufficient_args.append(args)
+
+    if verbose:
+        print('best time:',best_time)    
     
-    return best_args        
+    return best_args
 
 def recoil_quantities(energy_lab,theta_lab,mass):
     energy_CMS=energy_lab*(1.-energy_lab/mass)
@@ -61,7 +90,7 @@ def recoil_quantities(energy_lab,theta_lab,mass):
     scalefactor_crosssection_CMS = 1+(2*energy_lab/mass)*np.cos(theta_lab)
     return energy_CMS, theta_CMS, scalefactor_crosssection_CMS
 
-def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,N_partial_waves=50,phase_difference_limit=1e-9,verbose=False,**args):
+def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,N_partial_waves=50,verbose=False,phase_difference_limit=1e-9,**args):
     
     args['verbose']=verbose
 

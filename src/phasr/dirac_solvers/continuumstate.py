@@ -26,6 +26,11 @@ class continuumstates():
         self.nucleus = nucleus
         self.Vmin = nucleus.Vmin
         
+        if "energy_norm" in args:
+            self.energy_norm=args["energy_norm"]
+        else:
+            self.energy_norm=self.energy
+
         self.inital_continuumstate_settings = copy.copy(default_continuumstate_settings)
         for key in args:
             if key in self.inital_continuumstate_settings:
@@ -62,8 +67,7 @@ class continuumstates():
                 break
                
     def update_solver_setting(self):
-        energy_norm = self.energy #*1e3  # no scaling with Z or kappa ? hc/(rc-r0)
-        self.solver_setting = solver_settings(energy_norm=energy_norm,**self.inital_continuumstate_settings)
+        self.solver_setting = solver_settings(energy_norm=self.energy_norm,**self.inital_continuumstate_settings)
         if self.solver_setting.verbose:
             print("r0=",self.solver_setting.beginning_radius,"fm")
             #print("r0=",self.solver_setting.beginning_radius_norm,"/Enorm")
