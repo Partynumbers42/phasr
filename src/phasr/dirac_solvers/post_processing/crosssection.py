@@ -90,7 +90,7 @@ def recoil_quantities(energy_lab,theta_lab,mass):
     scalefactor_crosssection_CMS = 1+(2*energy_lab/mass)*np.cos(theta_lab)
     return energy_CMS, theta_CMS, scalefactor_crosssection_CMS
 
-def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,N_partial_waves=50,verbose=False,phase_difference_limit=1e-9,**args):
+def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,N_partial_waves=100,verbose=False,phase_difference_limit=0,**args):
     
     args['verbose']=verbose
 
@@ -151,8 +151,7 @@ def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,su
         #spinflip = np.tan(theta/2)*nonspinflip + mass_correction
         spinflip = spinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts)
         crosssection = np.abs(nonspinflip)**2 + np.abs(spinflip)**2
-        # TODO subtract sumrule used for m=0
-
+        
     return scale_crosssection * crosssection
 
 def nonspinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts):
@@ -226,7 +225,7 @@ def coefficient_spinflip_amplitude(kappa,subtractions,N_partial_waves,phase_shif
     return this_coefficient_kappa
 
 def mass_correction_amplitude(energy,theta,lepton_mass,N_partial_waves,phase_shifts):
-    # needs subtraction -> todo 
+    # needs subtraction -> TODO
     k=momentum(energy,lepton_mass)
     amplitude=0
     for kappa in np.arange(1,N_partial_waves+1,dtype=int):
