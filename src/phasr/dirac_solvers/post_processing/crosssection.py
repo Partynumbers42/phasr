@@ -15,7 +15,7 @@ import itertools
 import time, copy
 
 parameter_steps={
-    'method' : np.array(['DOP853']), 
+    'method' : np.array(['DOP853']), #,'LSODA' 
     'N_partial_waves' : np.append(np.arange(100,50-10,-10),np.arange(50,20-5,-5)),
     'atol' : 10**np.arange(-13,-6+1,1,dtype=float),
     'rtol' : 10**np.arange(-13,-6+1,1,dtype=float),
