@@ -29,7 +29,7 @@ class continuumstates():
         if "energy_norm" in args:
             self.energy_norm=args["energy_norm"]
         else:
-            self.energy_norm=self.energy
+            self.energy_norm=constants.hc
 
         self.inital_continuumstate_settings = copy.copy(default_continuumstate_settings)
         for key in args:
@@ -98,7 +98,7 @@ class continuumstates():
         if self.solver_setting.verbose:
             print("y0=",self.initials)
         
-        radial_dirac = solve_ivp(DGL, (beginning_radius_norm,critical_radius_norm), initials, dense_output=True, method=self.solver_setting.method, atol=self.solver_setting.atol, rtol=self.solver_setting.rtol)
+        radial_dirac = solve_ivp(DGL, (beginning_radius_norm,critical_radius_norm), self.initials, dense_output=True, method=self.solver_setting.method, atol=self.solver_setting.atol, rtol=self.solver_setting.rtol)
 
         def wavefct_g_low(x): return radial_dirac.sol(x)[0]
         def wavefct_f_low(x): return radial_dirac.sol(x)[1]

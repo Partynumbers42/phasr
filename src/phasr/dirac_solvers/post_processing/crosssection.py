@@ -15,47 +15,49 @@ import itertools
 import time, copy
 
 parameter_steps={
-    'method' : np.array(['DOP853']), #,'LSODA'
+    'method' : np.array(['DOP853']), 
+    'N_partial_waves' : np.append(np.arange(100,50-10,-10),np.arange(50,20-5,-5)),
     'atol' : 10**np.arange(-13,-6+1,1,dtype=float),
     'rtol' : 10**np.arange(-13,-6+1,1,dtype=float),
-    #'potential_precision' : 10**np.arange(-9,-3+1,1,dtype=float),
-    'energy_norm': constants.hc*10**np.arange(0,-9-1,-1,dtype=float),
-    'phase_difference_limit' : np.append([0],10**np.arange(-16,-6+1,1,dtype=float)),
+    'energy_norm': constants.hc*10**np.arange(0,-6-1,-1,dtype=float),
+    'phase_difference_limit' : np.append([0],10**np.arange(-15,-6+1,1,dtype=float)),
 }
 
-# add N_partial_waves?
+def optimise_precision(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,verbose=False,crosssection_precision=1e-3,jump_forward_dist=1):
 
-def optimise_precision(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,N_partial_waves=50,verbose=False,crosssection_precision=1e-3):
-    
     insufficient_args=[]
     
     first=True
-    for method,atol,rtol,energy_norm,phase_difference_limit in itertools.product(*parameter_steps.values()): #,potential_precision
+    for method,N_partial_waves,atol,rtol,energy_norm,phase_difference_limit in itertools.product(*parameter_steps.values()): 
         
         skip=False
-
-        #print(atol,rtol,method)
-        args={'method':method,'atol':atol,'rtol':rtol,'energy_norm':energy_norm,'phase_difference_limit':phase_difference_limit} #,'potential_precision':potential_precision
-        #print(args)
+        
+        args={'method':method,'N_partial_waves':N_partial_waves,'atol':atol,'rtol':rtol,'energy_norm':energy_norm,'phase_difference_limit':phase_difference_limit} 
         
         for key in args:
-            #print(parameter_steps[key])
-            #print(args[key])
             index_key = np.where(parameter_steps[key]==args[key])[0][0]
-            #print(index_key)
             if index_key>0:
                 args_check = copy.copy(args)
                 args_check[key] = parameter_steps[key][index_key-1]
+                # skip if more precise calculation was already unsuccesfull
                 if args_check in insufficient_args:
                     skip=True
                     insufficient_args.append(args)
                     #print('skiped')
                     break
+            
+            if index_key<len(parameter_steps[key]) and not first:
+                index_best_key = np.where(parameter_steps[key]==best_args[key])[0][0]
+                # skip until close to the current best again
+                if index_key < index_best_key-jump_forward_dist:
+                    skip=True
+                    #print('jumped forward')
+                    break
 
         if not skip:
 
             start_time=time.time()
-            crosssection = crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass,subtractions,recoil,N_partial_waves,verbose=verbose,**args)
+            crosssection = crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=lepton_mass,subtractions=subtractions,recoil=recoil,verbose=verbose,**args)
             end_time=time.time()
             runtime=end_time-start_time
             
@@ -66,8 +68,6 @@ def optimise_precision(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=
                 first=False
             
             crossections_difference=(crosssection-crosssection0)/crosssection0
-        
-            #print(runtime,np.max(crossections_difference))
         
             if np.all(crossections_difference<crosssection_precision) and (runtime-best_time)/best_time<1e-2:
                 if True:#verbose:
