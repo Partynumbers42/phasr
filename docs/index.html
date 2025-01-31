@@ -48,7 +48,7 @@
                 <a class="title" href="#basicfeatures">Basic Modules</a>
 
                 <a class="section" href="#nucleus">nucleus</a>
-                <a class="section" href="#diracsolver">dirac_solver</a>
+                <a class="section" href="#dirac_solver">dirac_solvers</a>
                 <!--<a class="section" href="#feature3">Feature 3</a>
                 <a class="section" href="#feature4">Feature 4</a>
                 <a class="section" href="#feature5">Feature 5</a>-->
@@ -291,18 +291,85 @@
                           
                       </table> 
 
-
                 The parameterizations are based on:
-                \[ \rho_\text{FB}(r) = \sum_{i=1}^N a_i ~ j_0(q_i r); \qquad q_i= \frac{i \pi}{R} \]
+                \[ \rho_\text{FB}(r) = \begin{cases} \sum_{i=1}^N a_i ~ j_0(q_i r) & r \leq R \\ 0 & r > R \end{cases} \qquad q_i= \frac{i \pi}{R} \]
                 \[ \rho_\text{Fermi}(r) = \rho_0 \frac{1+w \tfrac{r^2}{c^2}}{1 + e^{(r-c)/z}}<!--; \qquad \rho_0 = \frac{Z}{8\pi z^3} (-\text{Li}_3(-e^{c/z}) - 12 w \tfrac{z^2}{c^2} \text{Li}_5(-e^{c/z}) )^{-1} -->\]
                 \[ \rho_\text{Gauss}(r) = \frac{Z}{\pi^{3/2} b^3} e^{-(r/b)^2} \]
-                \[ \rho_\text{Uni}(r) = \begin{cases} \frac{3 Z}{4 \pi r_c^3} & r \leq r_c \\ 0 & r < r_c \end{cases} \]
+                \[ \rho_\text{Uni}(r) = \begin{cases} \frac{3 Z}{4 \pi r_c^3} & r \leq r_c \\ 0 & r > r_c \end{cases} \]
                 \[ F_\text{Osz}(q) = e^{-u(q)/2} \sum_i C_i ~ u(q)^i; \qquad u(q)=\frac{q^2 b^2}{2} \]
                 </p>
-
-                <h2 id="diracsolver">The <code>dirac_solvers</code> module </h2>
                 
-                <p> TBD </p>
+                   TODO attributes:
+
+                <h2 id="dirac_solver">The <code>dirac_solvers</code> module</h2>
+
+                    <p>The <code>dirac_solvers</code> module has two main duties, covered by two classes. 
+                    The <code>boundstates</code> class calculates the boundstate solutions of a given nucleus by solving the Dirac equation in the presence of the nucleus potential, which includes finding the boundstate energy first.  
+                    The <code>continuumstates</code> class calculates the continuumstate solution for a given energy of a given nucleus by solving the Dirac equation in the presence of the nucleus potential.  
+                    Finally, there are some functions that make use of the boundstate and continuumstate solutions by calculating elastic electron nucleus scattering crosssections and overlap integrals for /(\mu \to e/) conversion.</p>  
+                
+                    <p><b> The <code>boundstates</code> class: </b><br>
+                    The <code>boundstates</code> class is used to calculate the boundstates for a given <code>nucleus</code> object, beginning from the ground state for the given partial wave. 
+                    First the energy for the boundstate is found by iteratively scanning for flips in the asymptotic behaviour of the wave functions, which indicate a boundstate in between, until a set precision is reached. 
+                    For this energy then the solution of the Dirac equation gives the dirac wavefunction for that state. 
+                
+                    <pre><code class="python"> phr.boundstates(nucleus,kappa,lepton_mass,**args) </code></pre> 
+                    <ul>
+                        <li>
+                        <b>nucleus</b> (<i>nucleus object</i>): Nucleus, whose electric potential is used for the calculation. 
+                        <br>
+                        <li>
+                        <b>kappa</b> (<i>int</i>): selects total spin and angular momentum quantum number for the considered partial wave based on  \(j = |\kappa| - \frac{1}{2}; \quad l = \begin{cases} \kappa, & \quad \kappa > 0 \\ - \kappa - 1 , & \quad \kappa < 0 \end{cases}\). 
+                        <br>
+                        <li>
+                        <b>lepton_mass</b> (<i>float</i>): mass of the lepton bound to the nucleus. Common choices are electron mass <code>phr.masses.me</code> or muon mass <code>phr.masses.mmu</code>. needs to be non-zero.
+                        <br>
+                        <li>
+                        <b>bindingenergy_limit_lower</b> (<i>float,optional</i>): lower limit for the binding energy to look for boundstates. If not provided uses the potential at zero as the lower bound.  
+                        <br>
+                        <li>
+                        <b>bindingenergy_limit_upper</b> (<i>float,optional</i>): upper limit for the binding energy to look for boundstates (default: 0). 
+                        <br>
+                        <li>
+                        <b>**args</b> (<i>dict,optional</i>): Additional keywords can be used to pass parameters to the underlying numerical routine (including parameters for <code>scipy.integrate.solve_IVP</code>). Default values are set by <code>phr.default_boundstate_settings</code>. 
+                        <br> 
+                    </ul>
+
+                    Appart from storing the input paramters the <code>boundstates</code> object has the following attributes, which you might want to access:
+
+                    <ul>
+                        <li>
+                        <b>principal_quantum_numbers</b> (<i>list of int's</i>): principal quantum numbers of the calculated boundstates. 
+                        <br>
+                        <li>
+                        <b>energy_levels</b> (<i>list of floats</i>): energy values of the calculated boundstates.   
+                        <br>
+                        <li>
+                        <b>find_next_energy_level()</b> (<i>callable</i>): called to find the next boundstate energy (for that /(\kappa/)). The groundstate energy is always calculated at initialisation. 
+                        <br>    
+                        <li>
+                        <b>solve_IVP_at_current_energy()</b> (<i>callable</i>): called to calculate the boundstate wavefunctions at the current boundstate energy. The groundstate wavefunction is always calculated at initialisation. 
+                        <br>    
+                        <li>
+                        <b>find_next_solution(**args)</b> (<i>callable</i>): same as calling <code>find_next_energy_level</code> and <code>solve_IVP_at_current_energy</code> consecutively. Can be passed **args to change the <code>solver_setting</code>.  
+                        <br>    
+                        <li>
+                        <b>wavefunction_g_&lt;state&gt;(r)</b> (<i>callable</i>): returns the upper radial component of the wavefunction evaluated at r in fm for the state &lt;state&gt;, where &lt;state&gt;=1s12, 2s12, ..., 2p12, 2d12, ..., 2p32, 2d32, ... labeling principal quantum numbers, angular momentum quantum number and total spin.
+                        Example: wavefunction_g_1s12 
+                        <br>
+                        <li>
+                        <b>wavefunction_f_&lt;state&gt;(r)</b> (<i>callable</i>): returns the lower radial component of the wavefunction evaluated at r in fm  for the state &lt;state&gt;, where &lt;state&gt;=1s12, 2s12, ..., 2p12, 2d12, ..., 2p32, 2d32, ... labeling principal quantum numbers, angular momentum quantum number and total spin.
+                        Example: wavefunction_g_1s12
+                        <br> 
+                    </ul>
+                    
+                    <b> The <code>continuumstate</code> class: </b><br>
+
+                    <b> The <code>crosssection_lepton_nucleus_scattering</code> class: </b><br>
+
+                </p>
+
+                
 
                 <!--<p>
                 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
