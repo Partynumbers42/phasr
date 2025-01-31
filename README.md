@@ -7,3 +7,5 @@
 [![codecov](https://codecov.io/gh/Partynumbers42/phasr/branch/main/graph/badge.svg)](https://codecov.io/gh/Partynumbers42/phasr)
 
 Package to calculate scattering phase shifts for arbitrary radial potentials using the phase shift method as well as resulting crosssections as mainly used in the context of elastic electron nucleus scattering.
+
+For the documentation visit: https://partynumbers42.github.io/phasr/
