@@ -280,33 +280,64 @@
                         </tr>
                         <tr>
                             <td>'numerical'</td>
-                            <td><b>charge_density</b> (<i>callable,optional</i>): Function describing the charge density. 
-                            <br><b>form_factor</b> (<i>callable,optional</i>): Function describing the form factor.
-                            <br><b>electric_field</b> (<i>callable,optional</i>): Function describing the electric field.
-                            <br><b>electric_potential</b> (<i>callable,optional</i>): Function describing the electric potential. 
-                            <br><b>form_factor_dict</b> (<i>dict,optional</i>): Dictionary containing form factor functions for specific multipoles (keys are 'F'+multipole).
-                            <br><b>density_dict</b> (<i>dict,optional</i>): Dictionary containing density functions for specific multipoles (keys are 'rho'+multipole).
-                            <br> Can deduce/calculate other quantities, based on the given one.</td>
+                            <td> see below </td>
                         </tr>
                           
                       </table> 
 
-                The parameterizations are based on:
+                <br>The parameterizations are based on:
                 \[ \rho_\text{FB}(r) = \begin{cases} \sum_{i=1}^N a_i ~ j_0(q_i r) & r \leq R \\ 0 & r > R \end{cases} \qquad q_i= \frac{i \pi}{R} \]
                 \[ \rho_\text{Fermi}(r) = \rho_0 \frac{1+w \tfrac{r^2}{c^2}}{1 + e^{(r-c)/z}}<!--; \qquad \rho_0 = \frac{Z}{8\pi z^3} (-\text{Li}_3(-e^{c/z}) - 12 w \tfrac{z^2}{c^2} \text{Li}_5(-e^{c/z}) )^{-1} -->\]
                 \[ \rho_\text{Gauss}(r) = \frac{Z}{\pi^{3/2} b^3} e^{-(r/b)^2} \]
                 \[ \rho_\text{Uni}(r) = \begin{cases} \frac{3 Z}{4 \pi r_c^3} & r \leq r_c \\ 0 & r > r_c \end{cases} \]
                 \[ F_\text{Osz}(q) = e^{-u(q)/2} \sum_i C_i ~ u(q)^i; \qquad u(q)=\frac{q^2 b^2}{2} \]
-                </p>
                 
-                   TODO attributes:
+                Alternatively one can also supply general descriptions for charge_density, form_factor or the different multipoles. These get the label of nucleus_type 'numerical'. 
+                Here the other quantities can be calculated based on the given ones using numerical methods. Possiple paramters are:
+                
+                <table>
+                <tr>
+                    <th>Parameters/**args</th> <th></th>
+                </tr>
+                <tr>
+                    <td><b>charge_density</b> (<i>callable,optional</i>):</td> <td>Function describing the charge density.</td>
+                </tr>
+                <tr>
+                    <td><b>form_factor</b> (<i>callable,optional</i>):</td> <td>Function describing the form factor.</td>
+                </tr>
+                <tr>
+                    <td><b>electric_field</b> (<i>callable,optional</i>):</td> <td>Function describing the electric field.</td>
+                </tr>
+                <tr>
+                    <td><b>electric_potential</b> (<i>callable,optional</i>):</td> <td>Function describing the electric potential.</td>
+                </tr>
+                <tr>
+                    <td><b>form_factor_dict</b> (<i>dict,optional</i>):</td> <td>Dictionary containing form factor functions for specific multipoles (keys are 'F'+multipole).</td>
+                </tr>
+                <tr>
+                    <td><b>density_dict</b> (<i>dict,optional</i>):</td> <td>Dictionary containing density functions for specific multipoles (keys are 'rho'+multipole).</td>
+                </tr>
+            </table>
+            
+            </p>
+                
+                Every nucleus has the following attributes that can be accessed: 
+                
 
                 <h2 id="dirac_solver">The <code>dirac_solvers</code> module</h2>
 
                     <p>The <code>dirac_solvers</code> module has two main duties, covered by two classes. 
                     The <code>boundstates</code> class calculates the boundstate solutions of a given nucleus by solving the Dirac equation in the presence of the nucleus potential, which includes finding the boundstate energy first.  
                     The <code>continuumstates</code> class calculates the continuumstate solution for a given energy of a given nucleus by solving the Dirac equation in the presence of the nucleus potential.  
-                    Finally, there are some functions that make use of the boundstate and continuumstate solutions by calculating elastic electron nucleus scattering crosssections and overlap integrals for /(\mu \to e/) conversion.</p>  
+                    Finally, there are some functions that make use of the boundstate and continuumstate solutions by calculating elastic electron nucleus scattering crosssections and overlap integrals for /(\mu \to e/) conversion.<br>
+                    
+                    The boundstate and continuumstate wavefunctions are both parameterized according to 
+                    \[ \psi = \psi_\kappa^\mu(\vec{r})= \frac{1}{r} \Bigg(\begin{array}{c}
+                     g_\kappa(r) \phi_\kappa^\mu(\hat{r}) \\ i f_\kappa(r) \phi_{-\kappa}^\mu(\hat{r}) \end{array} \Bigg), \]
+                    separating off the angular degrees of freedom, which are the same for all radial symmetric potential. The \(\kappa\) label refers to the angular momentum quantum numbers and spin according to
+                    \[j = |\kappa| - \frac{1}{2}; \quad l = \begin{cases} \kappa, & \quad \kappa > 0 \\ - \kappa - 1 , & \quad \kappa < 0 \end{cases}\]
+                    The numerical calculations then provide descriptions for \(g_\kappa(r)\) and \(f_\kappa(r)\).  
+                    </p>  
                 
                     <p><b> The <code>boundstates</code> class: </b><br>
                     The <code>boundstates</code> class is used to calculate the boundstates for a given <code>nucleus</code> object, beginning from the ground state for the given partial wave. 
@@ -319,7 +350,7 @@
                         <b>nucleus</b> (<i>nucleus object</i>): Nucleus, whose electric potential is used for the calculation. 
                         <br>
                         <li>
-                        <b>kappa</b> (<i>int</i>): selects total spin and angular momentum quantum number for the considered partial wave based on  \(j = |\kappa| - \frac{1}{2}; \quad l = \begin{cases} \kappa, & \quad \kappa > 0 \\ - \kappa - 1 , & \quad \kappa < 0 \end{cases}\). 
+                        <b>kappa</b> (<i>int</i>): selects total spin and angular momentum quantum number. 
                         <br>
                         <li>
                         <b>lepton_mass</b> (<i>float</i>): mass of the lepton bound to the nucleus. Common choices are electron mass <code>phr.masses.me</code> or muon mass <code>phr.masses.mmu</code>. needs to be non-zero.
@@ -335,7 +366,7 @@
                         <br> 
                     </ul>
 
-                    Appart from storing the input paramters the <code>boundstates</code> object has the following attributes, which you might want to access:
+                    Apart from storing the input paramters the <code>boundstates</code> object has the following attributes, which you might want to access:
 
                     <ul>
                         <li>
