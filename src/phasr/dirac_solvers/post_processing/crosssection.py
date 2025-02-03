@@ -23,7 +23,7 @@ parameter_steps={
     'phase_difference_limit' : np.append([0],10**np.arange(-15,-6+1,1,dtype=float)),
 }
 
-def optimise_precision(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,verbose=False,crosssection_precision=1e-3,jump_forward_dist=1):
+def optimise_crosssection_precision(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,crosssection_precision=1e-3,jump_forward_dist=1,verbose=False):
 
     insufficient_args=[]
     
@@ -57,7 +57,7 @@ def optimise_precision(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=
         if not skip:
 
             start_time=time.time()
-            crosssection = crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=lepton_mass,subtractions=subtractions,recoil=recoil,verbose=verbose,**args)
+            crosssection = crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=lepton_mass,recoil=recoil,subtractions=subtractions,verbose=verbose,**args)
             end_time=time.time()
             runtime=end_time-start_time
             
@@ -90,7 +90,7 @@ def recoil_quantities(energy_lab,theta_lab,mass):
     scalefactor_crosssection_CMS = 1+(2*energy_lab/mass)*np.cos(theta_lab)
     return energy_CMS, theta_CMS, scalefactor_crosssection_CMS
 
-def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,subtractions=3,recoil=True,N_partial_waves=100,verbose=False,phase_difference_limit=0,**args):
+def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,N_partial_waves=100,verbose=False,phase_difference_limit=0,**args):
     
     args['verbose']=verbose
 

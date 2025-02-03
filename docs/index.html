@@ -57,8 +57,8 @@
 
                 <a class="title" href="#advanced">Common Use Cases</a>
 
-                <a class="section" href="#ana">Crosssection (ana)</a>
-                <a class="section" href="#num">Crosssection (num)</a>
+                <a class="section" href="#ana">Crosssection (analytic \(\rho_\text{ch}\))</a>
+                <a class="section" href="#num">Crosssection (numeric \(\rho_\text{ch}\))</a>
                 <a class="section" href="#PV">Parity Violation (TBD)</a>
                 <!--<a class="sub-section" href="#featurec1">Feature C.1</a>
                 <a class="sub-section" href="#featurec2">Feature C.2</a>
@@ -329,7 +329,7 @@
                     <p>The <code>dirac_solvers</code> module has two main duties, covered by two classes. 
                     The <code>boundstates</code> class calculates the boundstate solutions of a given nucleus by solving the Dirac equation in the presence of the nucleus potential, which includes finding the boundstate energy first.  
                     The <code>continuumstates</code> class calculates the continuumstate solution for a given energy of a given nucleus by solving the Dirac equation in the presence of the nucleus potential.  
-                    Finally, there are some functions that make use of the boundstate and continuumstate solutions by calculating elastic electron nucleus scattering crosssections and overlap integrals for /(\mu \to e/) conversion.<br>
+                    Finally, there are some functions that make use of the boundstate and continuumstate solutions by calculating elastic electron nucleus scattering crosssections and overlap integrals for \(\mu \to e\) conversion.<br>
                     
                     The boundstate and continuumstate wavefunctions are both parameterized according to 
                     \[ \psi = \psi_\kappa^\mu(\vec{r})= \frac{1}{r} \Bigg(\begin{array}{c}
@@ -339,7 +339,7 @@
                     The numerical calculations then provide descriptions for \(g_\kappa(r)\) and \(f_\kappa(r)\).  
                     </p>  
                 
-                    <p><b> The <code>boundstates</code> class: </b><br>
+                    <u><p><b> The <code>boundstates</code> class: </b></u><br>
                     The <code>boundstates</code> class is used to calculate the boundstates for a given <code>nucleus</code> object, beginning from the ground state for the given partial wave. 
                     First the energy for the boundstate is found by iteratively scanning for flips in the asymptotic behaviour of the wave functions, which indicate a boundstate in between, until a set precision is reached. 
                     For this energy then the solution of the Dirac equation gives the dirac wavefunction for that state. 
@@ -353,7 +353,7 @@
                         <b>kappa</b> (<i>int</i>): selects total spin and angular momentum quantum number. 
                         <br>
                         <li>
-                        <b>lepton_mass</b> (<i>float</i>): mass of the lepton bound to the nucleus. Common choices are electron mass <code>phr.masses.me</code> or muon mass <code>phr.masses.mmu</code>. needs to be non-zero.
+                        <b>lepton_mass</b> (<i>float</i>): mass of the lepton bound to the nucleus in MeV. Common choices are electron mass <code>phr.masses.me</code> or muon mass <code>phr.masses.mmu</code>. needs to be non-zero.
                         <br>
                         <li>
                         <b>bindingenergy_limit_lower</b> (<i>float,optional</i>): lower limit for the binding energy to look for boundstates. If not provided uses the potential at zero as the lower bound.  
@@ -385,20 +385,150 @@
                         <b>find_next_solution(**args)</b> (<i>callable</i>): same as calling <code>find_next_energy_level</code> and <code>solve_IVP_at_current_energy</code> consecutively. Can be passed **args to change the <code>solver_setting</code>.  
                         <br>    
                         <li>
-                        <b>wavefunction_g_&lt;state&gt;(r)</b> (<i>callable</i>): returns the upper radial component of the wavefunction evaluated at r in fm for the state &lt;state&gt;, where &lt;state&gt;=1s12, 2s12, ..., 2p12, 2d12, ..., 2p32, 2d32, ... labeling principal quantum numbers, angular momentum quantum number and total spin.
-                        Example: wavefunction_g_1s12 
+                        <b>wavefunction_g_&lt;state&gt;(r)</b> (<i>callable</i>): returns the upper radial component of the wavefunction evaluated at r in fm for the state &lt;state&gt;. Exists only if <code>find_next_solution()</code> was called enough times.
+                        Example: Groundstate is wavefunction_g_1s12 (using \(\kappa=-1\))
                         <br>
                         <li>
-                        <b>wavefunction_f_&lt;state&gt;(r)</b> (<i>callable</i>): returns the lower radial component of the wavefunction evaluated at r in fm  for the state &lt;state&gt;, where &lt;state&gt;=1s12, 2s12, ..., 2p12, 2d12, ..., 2p32, 2d32, ... labeling principal quantum numbers, angular momentum quantum number and total spin.
-                        Example: wavefunction_g_1s12
+                        <b>wavefunction_f_&lt;state&gt;(r)</b> (<i>callable</i>): returns the lower radial component of the wavefunction evaluated at r in fm  for the state &lt;state&gt;. Exists only if <code>find_next_solution()</code> was called enough times.
+                        Example: Groundstate is wavefunction_f_1s12 (using \(\kappa=-1\))
                         <br> 
                     </ul>
                     
-                    <b> The <code>continuumstate</code> class: </b><br>
+                    The states are labeled accoring to principal quantum numbers, angular momentum quantum number and total spin following the scheme of 
+                    &lt;state&gt;=1s12, 2s12, ..., 2p12, 2d12, ..., 2p32, 2d32, ... .<br> <br>
+
+                    <u><b> The <code>continuumstate</code> class: </b></u><br>
                     
                     <pre><code class="python"> phr.continuumstates(nucleus,kappa,energy,lepton_mass=0,**args) </code></pre> 
+                    <ul>
+                        <li>
+                        <b>nucleus</b> (<i>nucleus object</i>): Nucleus, whose electric potential is used for the calculation. 
+                        <br>
+                        <li>
+                        <b>kappa</b> (<i>int</i>): selects total spin and angular momentum quantum number. 
+                        <br>
+                        <li>
+                        <b>energy</b> (<i>float</i>): energy of the (initial) lepton in MeV. 
+                        <br>
+                        <li>
+                        <b>lepton_mass</b> (<i>float,optional</i>): mass of the lepton bound to the nucleus in MeV (default: 0). Can be set to 0 if energy \(\gg\) lepton_mass, which gives significant runtime improvements.
+                        <br>
+                        <li>
+                        <b>**args</b> (<i>dict,optional</i>): Additional keywords can be used to pass parameters to the underlying numerical routine (including parameters for <code>scipy.integrate.solve_IVP</code>). Default values are set by <code>phr.default_continuumstate_settings</code>. 
+                        <br> 
+                    </ul>
 
-                    <b> The <code>crosssection_lepton_nucleus_scattering</code> class: </b><br>
+                    Apart from storing the input paramters the <code>continuumstates</code> object has the following attributes, which you might want to access:
+
+                    <ul>
+                        <li>
+                        <b>solve_IVP()</b> (<i>callable</i>): called to calculate the continuumstate wavefunctions for the given energy. Needs to be called once explicitly, does not happen at initialisation. 
+                        <br>    
+                        <li>
+                        <b>wavefunction_g(r)</b> (<i>callable</i>): returns the upper radial component of the wavefunction evaluated at r in fm for the given energy. exists only if <code>solve_IVP()</code> was called.
+                        <br>
+                        <li>
+                        <b>wavefunction_f(r)</b> (<i>callable</i>): returns the upper radial component of the wavefunction evaluated at r in fm for the given energy. exists only if <code>solve_IVP()</code> was called.
+                        <br>
+                        <li>
+                        <b>extract_phase_shift()</b> (<i>callable</i>): called to calculate the asymptotic phase shift for the given energy. Needs to be called once explicitly, does not happen at initialisation. Faster than calling <code>solve_IVP()</code>.
+                        <br>
+                        <li>
+                        <b>phase_difference</b> (<i>float</i>): difference between the phase shift of a Coulomb potential and the considered nucleus potential. 
+                        <br>
+                        <li>
+                        <b>phase_shift</b> (<i>float</i>): phase shift of the considered nucleus potential. Input for elastic scattering crosssection.
+                        <br>        
+                    </ul>
+
+                    <u><b> The <code>crosssection_lepton_nucleus_scattering</code> function: </b></u><br>
+
+                    Used to calculate the crosssection for elastic lepton nucleus scattering for specific intial lepton energys and scattering angles based on a given nucleus. 
+
+                    <pre><code class="python"> phr.crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,**args) </code></pre> 
+                    <ul>
+                        <li>
+                        <b>energy</b> (<i>float</i>): energy of the (initial) lepton in MeV. 
+                        <br>
+                        <li>
+                        <b>theta</b> (<i>float / 1d-array</i>): elastic scattering angle in rad (\(\theta=0\) forward direction, \(\theta=2\pi\) backward direction). 
+                        <br>
+                        <li>
+                        <b>nucleus</b> (<i>nucleus object</i>): nucleus against which the lepton is scattered. 
+                        <br>
+                        <li>
+                        <b>lepton_mass</b> (<i>float,optional</i>): mass of the lepton bound to the nucleus in MeV (default: 0). Can be set to 0 if energy \(\gg\) lepton_mass, which gives significant runtime improvements. No convergent implementation for non-zero lepton_mass yet. 
+                        <br>
+                        <li>
+                        <b>recoil</b> (<i>bool,optional</i>): if recoil of the nucleus at leading (kinematic) order should be considered (default: True). 
+                        <br>
+                        <li>
+                        <b>subtractions</b> (<i>int, optional</i>): number of subtractions to make the partial wave sum convergent (default: 3). subtractions=0 will not converge. 
+                        subtractions=3 seems to work most consistently.  
+                        <br>    
+                        <li>
+                        <b>**args</b> (<i>dict,optional</i>): Additional keywords can be used to pass parameters to the underlying numerical routines. 
+                        The time-optimal parameters for a given dataset can be accessed by calling <code>optimise_crosssection_precision()</code> (see below). 
+                        <br> 
+                        <br> 
+                        <li>
+                        <b>return</b>: crosssection for elastic lepton nucleus scattering of the given nucleus at the given energy and angles in MeV\(^{-2}\) 
+                        <br>
+                    </ul>
+                    
+                    Possible **args/ parameters for the underlying numerical routines are:
+
+                    <table>
+                        <tr>
+                            <th>Parameters/**args</th> <th></th>
+                        </tr>
+                        <tr>
+                            <td><b>N_partial_waves</b> (<i>int,optional</i>):</td> <td> angular momenutum of the partial wave at which the series is terminated. (default: 100)</td>
+                        </tr>
+                        <tr>
+                            <td><b>phase_difference_limit</b> (<i>float,optional</i>):</td> <td>limit at which (numerical) value for the <code>phase_difference</code> attribute of a <code>continuumstates</code> all following partial waves are considered indistinguishable to the coulomb solution. (default:0).</td>
+                        </tr>
+                        <tr>
+                            <td><b>energy_norm</b> (<i>float,optional</i>):</td> <td> scaling factor for the units while solving the inital value problem to increase speed (default: \( \hbar c\) fm\(^{-1}\)) </td>
+                        </tr>
+                        <tr>
+                            <td><b>method</b> (<i>str,optional</i>):</td> <td>method keyword passed to <code>scipy.integrate.solve_IVP</code> (default: 'DOP853' / as set in <code>default_continuumstate_settings</code>)</td>
+                        </tr>
+                        <tr>
+                            <td><b>atol</b> (<i>float,optional</i>):</td> <td>atol keyword passed to <code>scipy.integrate.solve_IVP</code> (default: 1e-12 as set in <code>default_continuumstate_settings</code>)</td>
+                        </tr>
+                        <tr>
+                            <td><b>rtol</b> (<i>float,optional</i>):</td> <td>rtol keyword passed to <code>scipy.integrate.solve_IVP</code> (default: 1e-9 as set in <code>default_continuumstate_settings</code>)</td>
+                        </tr>
+                    </table>
+                    
+                    <br>
+                    If you want to call <code>crosssection_lepton_nucleus_scattering</code> many times for the same energies and angles theta for similar nuclei (for example for a fit), 
+                    it makes sense to assess the necessary precision for the numerical calculation using <code>optimise_crosssection_precision</code>.  
+                    This functions can run a few minutes as it is scanning a large **args / parameter space, but can afterwards improve the runtime significantly. 
+                    Unfortunately the necessary precision is very dependent on how large the energy and angles are (larger energies and angles require significantly more precision and runtime), 
+                    which is why this is the best solution for a reasonable runtime. Of course you can always also try to finetune the parameters yourself, but note that the convergence might break down, 
+                    and that you should always check if the calculated crosssection is still reasonable. 
+
+                    <pre><code class="python"> phr.optimise_crosssection_precision(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,crosssection_precision=1e-3,jump_forward_dist=1) </code></pre> 
+                    <ul>
+                        <li>
+                        <b>energy</b> (<i>float</i>): energy of the (initial) lepton in MeV. 
+                        <br>
+                        <li>
+                        <b>theta</b> (<i>float / 1d-array</i>): elastic scattering angle in rad (\(\theta=0\) forward direction, \(\theta=2\pi\) backward direction). 
+                        <br>
+                        <li>
+                        <b>nucleus</b> (<i>nucleus object</i>): nucleus against which the lepton is scattered. 
+                        <br>
+                        <li>
+                        <b>lepton_mass</b> (<i>float,optional</i>): mass of the lepton bound to the nucleus in MeV (default: 0). Can be set to 0 if energy \(\gg\) lepton_mass, which gives significant runtime improvements. No convergent implementation for non-zero lepton_mass yet. 
+                        <br> 
+                        <br> 
+                        <li>
+                        <b>return</b>: args with the quickest runtime for <code>crosssection_lepton_nucleus_scattering</code> while still consistent with crosssection calculations with a higher precision up to a relative precision of crosssection_precision. 
+                        <br> 
+                    </ul>
 
                 </p>
 
@@ -406,11 +536,11 @@
                 
                 <h1 id="advanced">Common use cases</h1>
                 
-                <h2 id="FB">Calculate the scattering crosssection based on an analytic charge density parametrisation</h2>
+                <h2 id="ana">Calculate the scattering crosssection based on an analytic charge density parametrisation</h2>
                 
                 <p>TBD</p>
                 
-                <h2 id="numerical">Calculate the scattering crosssection based on a numerical charge density parametrisation</h2>
+                <h2 id="num">Calculate the scattering crosssection based on a numerical charge density parametrisation</h2>
                 
                 <p>TBD</p>
                 
