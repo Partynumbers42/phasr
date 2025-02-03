@@ -10,7 +10,7 @@ from ..utility.math import momentum, angle_shift_mod_pi
 from scipy.integrate import solve_ivp
 import copy
 
-from ..nuclei.parameterisations.coulomb import electric_potential_coulomb, f_coulomb, g_coulomb, hyper1f1_coulomb, eta_coulomb, theta_coulomb, delta_coulomb, delta_1overr
+from ..nuclei.parameterizations.coulomb import electric_potential_coulomb, f_coulomb, g_coulomb, hyper1f1_coulomb, eta_coulomb, theta_coulomb, delta_coulomb, delta_1overr
 
 class continuumstates():
     def __init__(self,nucleus,kappa,energy,lepton_mass=0,

@@ -6,7 +6,7 @@ from ..utility.math import optimise_radius_highenergy_continuation,derivative
 from ..utility.spliner import saveandload
 from ..utility.continuer import highenergy_continuation_exp
 
-from ..nuclei.parameterisations.coulomb import energy_coulomb_nk
+from ..nuclei.parameterizations.coulomb import energy_coulomb_nk
 
 import numpy as np
 pi = np.pi

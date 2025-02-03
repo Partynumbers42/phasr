@@ -1,7 +1,7 @@
 from ... import constants
 
 from ..continuumstate import continuumstates
-from ...nuclei.parameterisations.coulomb import delta_coulomb, eta_coulomb
+from ...nuclei.parameterizations.coulomb import delta_coulomb, eta_coulomb
 
 import numpy as np
 pi = np.pi

@@ -1,10 +1,10 @@
 from .base import nucleus_base
-from .parameterisations.fourier_bessel import nucleus_FB
-from .parameterisations.oszillator_basis import nucleus_osz
-from .parameterisations.fermi import nucleus_fermi
-from .parameterisations.basic import nucleus_gauss, nucleus_uniform
-from .parameterisations.numerical import nucleus_num
-from .parameterisations.coulomb import nucleus_coulomb
+from .parameterizations.fourier_bessel import nucleus_FB
+from .parameterizations.oszillator_basis import nucleus_osz
+from .parameterizations.fermi import nucleus_fermi
+from .parameterizations.basic import nucleus_gauss, nucleus_uniform
+from .parameterizations.numerical import nucleus_num
+from .parameterizations.coulomb import nucleus_coulomb
 
 def nucleus(name,Z,A,**args):
     args = {"name":name,"Z":Z,"A":A,**args}
