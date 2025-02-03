@@ -83,7 +83,7 @@
                 <h1 id="intro">Introduction</h1>
                 
                 <p> <code> phasr </code> is a python package able to calculate scattering phase shifts for arbitrary radial potentials and calculate (elastic) electron nucleus scattering crosssections based on it. 
-                    In combination with a fitting routine it can be used to fit elastic electron nucleus scattering data to extract charge density parameterizations. It is also possible to increase the precision sufficiently to quantitately resolve parity violating electron scattering (optimisation for this use case is planed for a future update). </p> 
+                    In combination with a fitting routine it can be used to fit elastic electron nucleus scattering data to extract charge density parameterizations. It is also possible to increase the precision sufficiently to quantitatively resolve parity violating electron scattering (optimisation for this use case is planed for a future update). </p> 
             
                 <h2 id="versions">Versions/Change-Log:</h2>
              
@@ -100,8 +100,8 @@
                 <p> This package was developed with the goal of extracting charge density parameterizations based on (elastic) electron nucleus scattering crosssection data while properly accounting for Coulomb corrections using the so called phase shift model. 
                 While this procedure is known since the 60s, the documentation and availability of programs used back then, are very limited and hardly accessable. 
                 Furthermore, for a majority of nuclei the extractions of model-independent parameterizations of their charge densities have not been updated since the 80s and do not provide any uncertainty estimates. 
-                Since these also applied to the nuclei we were interested in, we build such a framework in phython, which calculates elastic electron nucleus scattering crosssections based on input charge densities using the phase shift model, from which this package evolved. 
-                With such a more modern implementation and programming language, the calculations can become faster, broader accessable, easier to understand and easier to incorporate into exisiting programs. 
+                Since these also applied to the nuclei we were interested in, we build such a framework in python, which calculates elastic electron nucleus scattering crosssections based on input charge densities using the phase shift model, from which this package evolved. 
+                With such a more modern implementation and programming language, the calculations can become faster, broader accessable, easier to understand and easier to incorporate into existing programs. 
                 This package (in its pre-release version) has already been used successfully in the papers REFs to extract charge densities for nuclei of interest to \( \mu \to e \) conversion a (hypothetical) process of interest in particle physics. The package has been benchmarked for nuclei reaching from ... to ... . 
                 
                 <h2 id="dependencies">Dependencies</h2>
@@ -110,6 +110,7 @@
                 <u> It requires the following packages to operate properly: </u> <br>
                 numpy (add Version) <br>
                 scipy (add Version) <br>
+                mpmath (add Version) <br>
                 ....... (TBD) <br>
                 </p>
                  
@@ -130,11 +131,11 @@
                 
                 <h2 id="installingapp">Install the package</h2>
                 
-                <p> To install and use the program please follow the following steps for setup. We assume you already have a working python enviroment setup on your machine (othewise see REF).<br>
-                The package is listed on PyPI (TODO), which is why it can be easily accessed via:
+                <p> To install and use the program please follow the following steps for setup. We assume you already have a working python environment setup on your machine (othewise see REF).<br>
+                The package is listed on PyPI, which is why it can be easily installed via:
                 <pre><code> pip install phasr </code></pre>
                 If you want the latest (development) version, you can clone it from the <a href="https://github.com/Partynumbers42/phasr"> phasr GitHub repository </a>. <br> 
-                Note that you need need to also install all the reqired packages as listed <a href="#dependencies"> above </a>.
+                Note that you need need to also install all the required packages as listed <a href="#dependencies"> above </a>.
                 </p>
 
                 <!--
@@ -163,7 +164,7 @@
  mmu = phr.masses.mmu
  boundstates_Al27 = phr.boundstates(nucleus_Al27,kappa=-1,lepton_mass=mmu) 
  print('E_1s=',boundstates_Al27.energy_levels[0],'MeV') </code></pre>
-                    will give you the groundstate energy of a muonic atom for the nucleus parameterisation, described used a uniform charge distribution of charge 13 and a radius of 5 fm. 
+                    will give you the groundstate energy of a muonic atom for the nucleus parameterization, described used a uniform charge distribution of charge 13 and a radius of 5 fm. 
                     We will assume the import with the alias <code>phr</code> throughout this manual. 
                     </p>
                     
@@ -200,7 +201,7 @@
                 
                 <p> The code is structured into two main modules. 
                     The <code>nuclei</code> module is home of the <code>nucleus</code> class and manages all the relevant properties of a nucleus/isotope that is considered and calculates other properties based on the information it has available (e.g. the electric field from the charge density). 
-                    The <code>dirac_solvers</code> module is home of the <code>boundstates</code> and <code>continuumstates</code> classes and manages solving the Dirac equation for a given nucleus based on its nucleus potential and returns the desired consequental quantities like for example electron wave functions, phase shifts or the crosssection. 
+                    The <code>dirac_solvers</code> module is home of the <code>boundstates</code> and <code>continuumstates</code> classes and manages solving the Dirac equation for a given nucleus based on its nucleus potential and returns the desired consequential quantities like for example electron wave functions, phase shifts or the crosssection. 
                     In all applicational scenarios one will first construct a <code>nucleus</code> object, which is then be used to construct a <code>boundstates</code> or <code>continuumstates</code> object. For calculating elastic scattering crosssections we supply the function <code>crosssection_lepton_nucleus_scattering</code>, 
                     which can be used to directly calculate the crosssection using the energy, the angle and a <code>nucleus</code> object. </p>
 
@@ -219,11 +220,11 @@
                         <b>name</b> (<i>str</i>): Label for the nucleus, part of the filename if things about this nucleus are saved, should be unique.
                         <br>
                         <li>
-                        <b>Z</b> (<i>int</i>): Nuclear charge number / proton number of the considered nucleus, necessary for the normalisation. 
-                        Will raise a warning if not consistent with the normalisation of a provided charge density in **args. 
+                        <b>Z</b> (<i>int</i>): Nuclear charge number / proton number of the considered nucleus, necessary for the normalization. 
+                        Will raise a warning if not consistent with the normalization of a provided charge density in **args. 
                         <li>
                         <b>A</b> (<i>int</i>): Atomic mass number / nucleon number of the considered nucleus, necessary for recoil, 
-                        enables lookup of nucleon mass, spin, parity and isotope abundancy.  
+                        enables lookup of nucleon mass, spin, parity and isotope abundancy. 
                         <li>
                         <b>m</b> (<i>float</i>,optional) mass of the nucleus, necessary for recoil, is looked up based on \(Z\), \(A\) if not supplied.
                         <br>
@@ -244,7 +245,7 @@
                         <br>
                     </ul>
                     
-                    Parameterization spezific parameters are:
+                    Parameterization specific parameters are:
 
                     <table>
                         <tr>
@@ -262,21 +263,21 @@
                         </tr>
                         <tr>
                             <td>'oszillator-basis'</td>
-                            <td><b>Ci_dict</b> (<i>dict</i>): dictionary of 1d-arrays \(C_i\), with mutlipole names as keys (see TODO). </td>
+                            <td><b>Ci_dict</b> (<i>dict</i>): dictionary of 1d-arrays \(C_i\), with multipole names as keys (see TODO). </td>
                         </tr>
                         <tr>
                             <td>'fermi'</td>
-                            <td><b>c</b> (<i>float</i>): \(c\) parameter in fm for Fermi parameterisation. 
-                            <br><b>z</b> (<i>float</i>): \(z\) parameter in fm for Fermi parameterisation.
-                            <br><b>w</b> (<i>float</i>,optional): \(w\) parameter for Fermi parameterisation (default: w=0). </td>
+                            <td><b>c</b> (<i>float</i>): \(c\) parameter in fm for Fermi parameterization. 
+                            <br><b>z</b> (<i>float</i>): \(z\) parameter in fm for Fermi parameterization.
+                            <br><b>w</b> (<i>float</i>,optional): \(w\) parameter for Fermi parameterization (default: w=0). </td>
                         </tr>
                         <tr>
                             <td>'gauss'</td>
-                            <td><b>b</b> (<i>float</i>): \(b\) parameter in fm for Gauss parameterisation. </td>
+                            <td><b>b</b> (<i>float</i>): \(b\) parameter in fm for Gauss parameterization. </td>
                         </tr>
                         <tr>
                             <td>'uniform'</td>
-                            <td><b>rc</b> (<i>float</i>): \(r_c\) parameter in fm for Uniform parameterisation. </td>
+                            <td><b>rc</b> (<i>float</i>): \(r_c\) parameter in fm for Uniform parameterization. </td>
                         </tr>
                         <tr>
                             <td>'numerical'</td>
@@ -293,7 +294,7 @@
                 \[ F_\text{Osz}(q) = e^{-u(q)/2} \sum_i C_i ~ u(q)^i; \qquad u(q)=\frac{q^2 b^2}{2} \]
                 
                 Alternatively one can also supply general descriptions for charge_density, form_factor or the different multipoles. These get the label of nucleus_type 'numerical'. 
-                Here the other quantities can be calculated based on the given ones using numerical methods. Possiple paramters are:
+                Here the other quantities can be calculated based on the given ones using numerical methods. Possible parameters are:
                 
                 <table>
                 <tr>
