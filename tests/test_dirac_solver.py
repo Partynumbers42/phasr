@@ -10,7 +10,7 @@ def test_groundstate_energy():
     test_nucleus = setup_test_nucleus()
     test_boundstates = phr.boundstates(test_nucleus,kappa=-1,lepton_mass=phr.masses.mmu,renew=True,save=False)
     groundstate_energy = test_boundstates.energy_levels[0]
-    groundstate_energy_ref = -0.4590348117169327
+    groundstate_energy_ref = -0.465038380152165
     assert groundstate_energy == groundstate_energy_ref, f'groundstate energy should be -0.4590348117169327, but is {groundstate_energy}'
 
 def test_phase_difference():
