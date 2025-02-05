@@ -88,7 +88,7 @@ default_boundstate_settings={
     "rtol":1e-9,
     "method":'DOP853',
     "dps_hyper1f1":None, # unused
-    "verbose":True, 
+    "verbose":False, 
     "renew":False, 
     "save":True, 
     }
