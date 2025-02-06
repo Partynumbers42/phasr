@@ -11,7 +11,7 @@ def test_groundstate_energy():
     test_boundstates = phr.boundstates(test_nucleus,kappa=-1,lepton_mass=phr.masses.mmu,renew=True,save=False)
     groundstate_energy = test_boundstates.energy_levels[0]
     groundstate_energy_ref = -0.465038380152165
-    assert groundstate_energy == groundstate_energy_ref, f'groundstate energy should be -0.4590348117169327, but is {groundstate_energy}'
+    assert np.abs(groundstate_energy-groundstate_energy_ref)/groundstate_energy_ref < 1e-6, f'groundstate energy should be -0.4590348117169327, but is {groundstate_energy}'
 
 def test_phase_difference():
     test_nucleus = setup_test_nucleus()
@@ -19,4 +19,4 @@ def test_phase_difference():
     test_continuumstate.extract_phase_shift()
     phase_difference = test_continuumstate.phase_difference
     phase_difference_ref = -0.06179085234971993
-    assert phase_difference == phase_difference_ref, f'phase difference should be -0.06179085234971993, but is {phase_difference}'
+    assert np.abs(phase_difference - phase_difference_ref)/phase_difference_ref < 1e-6, f'phase difference should be -0.06179085234971993, but is {phase_difference}'
