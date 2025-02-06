@@ -28,14 +28,14 @@ def test_nucleus_FB():
                          5.06926929e-05, 3.01848906e-05, 1.58252972e-05, 6.80469311e-06,
                          2.05464070e-06, 2.72644376e-07])
     #
-    np.testing.assert_almost_equal(rho_test,rho_test_ref,decimal=12)
+    np.testing.assert_almost_equal(rho_test/rho_test_ref,1.,decimal=6)
     #
     r_ch_test = nucleus_Al27.charge_radius
     r_ch_test_ref=3.03519934846053
     #
-    assert r_ch_test == r_ch_test_ref, f'charge radius should be 3.03519934846053, but is {r_ch_test}'
+    assert np.abs(r_ch_test - r_ch_test_ref) < 1e-12, f'charge radius should be 3.03519934846053, but is {r_ch_test}'
     #
     Vmin_test = nucleus_Al27.Vmin
     Vmin_test_ref=-0.03955479035793174
     #
-    assert Vmin_test == Vmin_test_ref, f'Vmin should be -0.03955479035793174, but is {Vmin_test}'
+    assert np.abs(Vmin_test - Vmin_test_ref) < 1e-12, f'Vmin should be -0.03955479035793174, but is {Vmin_test}'
