@@ -74,6 +74,7 @@ class nucleus_osz(nucleus_base):
             def V2PhippLn(r): return potential_osz(r,getattr(self,'Ci_Phipp0n'),self.b_osz,q_order=2)
             def Vch(r): return rhoch_composition_osz(r,VMLp,V2MLp,V2MLn,V2PhippLp,V2PhippLn)
             setattr(self,'electric_potential',Vch)
+            setattr(self,'Vmin',Vch(0)) # <--- maybe include in a cleaner easier/quicker to evaluate way?
         
         if hasattr(self,'rhoM0p'):
             self.proton_radius_sq=r_sq_osz(getattr(self,'Ci_M0p'),self.b_osz)
