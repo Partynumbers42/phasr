@@ -1,11 +1,12 @@
 from ... import constants, masses
 from ..base import nucleus_base
 from ...utility.basis_change import Isospin_basis_to_nucleon_basis, Nucleon_basis_to_isospin_basis
+from ...utility.math import hyper1f1_vector_arbitrary_precision as hyp1f1
 
 import numpy as np
 pi = np.pi
 
-from scipy.special import gamma, hyp1f1
+from scipy.special import gamma
 
 class nucleus_osz(nucleus_base):
     def __init__(self,name,Z,A,Ci_dict,**args): #,R_cut=None,rho_cut=None
@@ -97,9 +98,9 @@ class nucleus_osz(nucleus_base):
         # only valid for L=0
         mN/=constants.hc 
         QM_p=total_charge_osz(getattr(self,'Ci_M0p'))
-        QM_n=total_charge_osz(getattr(self,'Ci_M0p'))
+        QM_n=total_charge_osz(getattr(self,'Ci_M0n'))
         QPhipp_p=total_charge_osz(getattr(self,'Ci_Phipp0p'))
-        QPhipp_n=total_charge_osz(getattr(self,'Ci_Phipp0p'))
+        QPhipp_n=total_charge_osz(getattr(self,'Ci_Phipp0n'))
         rsqM_p=r_sq_osz(getattr(self,'Ci_M0p'),self.b_osz)
         rsq2M_p=r_sq_osz(getattr(self,'Ci_M0p'),self.b_osz,q_order=2)
         rsq2M_n=r_sq_osz(getattr(self,'Ci_M0n'),self.b_osz,q_order=2)
@@ -111,13 +112,13 @@ class nucleus_osz(nucleus_base):
         + ((1+2*kp)/(4*mN**2))*QPhipp_p*rsq2Phipp_p \
         + ((2*kn)/(4*mN**2))*QPhipp_n*rsq2Phipp_n )
     
-    def set_weak_radius_sq_osz(self,Qw_p=constants.Qw_p,Qw_n=constants.Qw_n,rsqp=constants.rsq_p,rqsn=constants.rsq_n,rsqn=constants.rsq_n,rsqsN=constants.rsq_sN,kp=constants.kappa_p,kn=constants.kappa_n,ksN=constants.kappa_sN,mN=masses.mN):
+    def set_weak_radius_sq_osz(self,Qw_p=constants.Qw_p,Qw_n=constants.Qw_n,rsqp=constants.rsq_p,rsqn=constants.rsq_n,rsqsN=constants.rsq_sN,kp=constants.kappa_p,kn=constants.kappa_n,ksN=constants.kappa_sN,mN=masses.mN):
         # only valid for L=0
         mN/=constants.hc 
         QM_p=total_charge_osz(getattr(self,'Ci_M0p'))
-        QM_n=total_charge_osz(getattr(self,'Ci_M0p'))
+        QM_n=total_charge_osz(getattr(self,'Ci_M0n'))
         QPhipp_p=total_charge_osz(getattr(self,'Ci_Phipp0p'))
-        QPhipp_n=total_charge_osz(getattr(self,'Ci_Phipp0p'))
+        QPhipp_n=total_charge_osz(getattr(self,'Ci_Phipp0n'))
         rsqM_p=r_sq_osz(getattr(self,'Ci_M0p'),self.b_osz)
         rsqM_n=r_sq_osz(getattr(self,'Ci_M0n'),self.b_osz)
         rsq2M_p=r_sq_osz(getattr(self,'Ci_M0p'),self.b_osz,q_order=2)
@@ -128,7 +129,7 @@ class nucleus_osz(nucleus_base):
         ( Qw_p*QM_p*rsqM_p - (Qw_p*((rsqp/6)+(1./(8*mN**2))) + Qw_n*((rsqn/6)+(rsqsN/6)))*QM_p*rsq2M_p \
         + Qw_n*QM_n*rsqM_n - (Qw_n*((rsqp/6)+(rsqsN/6)+(1./(8*mN**2))) + Qw_p*(rsqn/6))*QM_n*rsq2M_n \
         + ((Qw_p*(1+2*kp)+Qw_n*(2*kn+2*ksN))/(4*mN**2))*QPhipp_p*rsq2Phipp_p \
-        + ((Qw_n*(1+2*kp+2*ksN)+Qw_p*(2*kn))/(4*mN**2))*QPhipp_p*rsq2Phipp_n )
+        + ((Qw_n*(1+2*kp+2*ksN)+Qw_p*(2*kn))/(4*mN**2))*QPhipp_n*rsq2Phipp_n )
     
     def update_Ci_basis(self):
         for multipole in np.unique([key[:-1] for key in self.multipoles]):
@@ -188,6 +189,9 @@ def density_osz(r,Ci,b,L=0,q_order=0):
     hyp1f1_grid= 2**k_grid*gamma(3./2.+q_order/2.+k_grid+L/2)*hyp1f1(3./2.+q_order/2.+k_grid+L/2,3./2.+L,-z_grid)
     density = 2**(2+q_order)*(r**L)*((np.sqrt(pi)/2)/gamma(3./2.+L))*np.einsum('i,ij->j',Ci,hyp1f1_grid)/b**(3+q_order+L)
     #
+    if np.all(np.isreal(density)):
+        density=np.real(density)
+    #
     if np.isscalar(r):
         density=density[0]
     #
@@ -207,6 +211,9 @@ def field_osz(r,Ci,b,q_order=0,alpha_el=constants.alpha_el):
     z_grid=np.tile(z,(N_i,1))
     hyp1f1_grid= 2**k_grid*gamma(3./2.+q_order/2.+k_grid)*hyp1f1(3./2.+q_order/2.+k_grid,5./2.,-z_grid)
     field = np.sqrt(4*pi*alpha_el)*(r/3.)*2**(2+q_order)*np.einsum('i,ij->j',Ci,hyp1f1_grid)/b**(3+q_order)
+    #
+    if np.all(np.isreal(field)):
+        field=np.real(field)
     #
     if np.isscalar(r):
         field=field[0]
@@ -228,8 +235,12 @@ def potential_osz(r,Ci,b,q_order=0,alpha_el=constants.alpha_el):
     hyp1f1_grid= 2**k_grid*gamma(1./2.+q_order/2.+k_grid)*hyp1f1(1./2.+q_order/2.+k_grid,3./2.,-z_grid)
     potential = -4*pi*alpha_el*2**q_order*np.einsum('i,ij->j',Ci,hyp1f1_grid)/b**(1+q_order)
     #
+    if np.all(np.isreal(potential)):
+        potential=np.real(potential)
+    #
     if np.isscalar(r):
         potential=potential[0]
+    #
     return potential/(2*pi**2)
 
 def potential0_osz(Ci,b,q_order=0,alpha_el=constants.alpha_el):

@@ -30,13 +30,13 @@ def select_density(nucleus_response,response):
 def calculate_states(nucleus_potential,kappa_e=-1,recoil=True,nonzero_electron_mass=True,**args):
 
     mass_muon = masses.mmu
-    mass_electron = masses.me if not nonzero_electron_mass else 0
+    mass_electron = masses.me if nonzero_electron_mass else 0
     mass_nucleus = nucleus_potential.mass if recoil else np.inf
     
     # muon
     boundstate = boundstates(nucleus_potential,kappa=-1,lepton_mass=masses.mmu,**args)
     binding_energy = boundstate.energy_levels[0]
-
+    
     energy = eject_energy(mass_muon,mass_electron,binding_energy,mass_nucleus)
     
     # electron (me=0)
@@ -100,7 +100,7 @@ def overlap_integral_dipole(nucleus_potential,nucleus_response=None,kappa_e=-1,r
         nucleus_response = nucleus_potential
 
     electric_field = nucleus_response.electric_field
-    
+        
     if kappa_e==-1:
         def integrand(r):
             return 4/(np.sqrt(2)) * electric_field(r)*(constants.hc/masses.mmu)**2 * ( - continuumstate.wavefct_g(r)*boundstate.wavefunction_f_1s12(r) - continuumstate.wavefct_f(r)*boundstate.wavefunction_g_1s12(r) )
@@ -109,7 +109,7 @@ def overlap_integral_dipole(nucleus_potential,nucleus_response=None,kappa_e=-1,r
             return 4/(np.sqrt(2)) * electric_field(r)*(constants.hc/masses.mmu)**2 * ( + continuumstate.wavefct_f(r)*boundstate.wavefunction_f_1s12(r) - continuumstate.wavefct_g(r)*boundstate.wavefunction_g_1s12(r) )
     else:
         raise ValueError("Unphysical value for kappa_e choosen")
-    
+        
     overlap_integral, _ = quad(integrand,0,np.inf,limit=1000) # in mmu^5/2 fm^-1
     
     return overlap_integral *(masses.mmu/constants.hc) # in mmu^3/2

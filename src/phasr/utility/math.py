@@ -30,6 +30,14 @@ def radial_laplace(fct,precision_atzero=1e-3,precision_derivative=1e-6):
         return laplace
     return laplacefct
 
+from mpmath import hyper, workdps #confluent hypergeometric function
+# alternative: fp.hyper
+def hyper1f1_scalar_arbitrary_precision(a,b,z,dps=15):
+    with workdps(dps):
+        return complex(hyper([a],[b],z))
+hyper1f1_vector_z_arbitrary_precision=np.vectorize(hyper1f1_scalar_arbitrary_precision,excluded=[0,1,3])
+hyper1f1_vector_arbitrary_precision=np.vectorize(hyper1f1_scalar_arbitrary_precision,excluded=[3])
+
 def optimise_radius_highenergy_continuation(fct,x_crit,x_step,x_min=0,fct_limit=0):
     x_crit_initial=x_crit
     fct_crit=fct(x_crit)

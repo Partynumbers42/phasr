@@ -1,20 +1,12 @@
 from ... import constants
 from ..base import nucleus_base
 
-from ...utility.math import momentum, angle_shift_mod_pi
+from ...utility.math import momentum, angle_shift_mod_pi, hyper1f1_scalar_arbitrary_precision, hyper1f1_vector_z_arbitrary_precision
 
 import numpy as np
 pi = np.pi
 
 from scipy.special import factorial, gamma
-from mpmath import hyper, workdps, fp #confluent hypergeometric function
-
-# aternative: fp.hyper
-
-def hyper1f1_scalar_arbitrary_precision(a,b,z,dps=15):
-    with workdps(dps):
-        return complex(hyper([a],[b],z))
-hyper1f1_vector_arbitrary_precision=np.vectorize(hyper1f1_scalar_arbitrary_precision,excluded=[0,1,3])
 
 class nucleus_coulomb(nucleus_base):
     def __init__(self,name,Z,A,**args): 
@@ -99,7 +91,7 @@ def g_coulomb_nk(r,n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
     if np.isscalar(r):
         hyper1f1=hyper1f1_scalar_arbitrary_precision
     else:
-        hyper1f1=hyper1f1_vector_arbitrary_precision
+        hyper1f1=hyper1f1_vector_z_arbitrary_precision
     #
     return pref*(np.abs(np.sqrt(gamma(2*sigma+1+n_p)*(mass+energy)/(factorial(n_p)*y0*(y0-lam*kappa))+0j))/(gamma(2*sigma+1)))*((2*lam*mass*r)**sigma)*(np.exp(-lam*mass*r))*( -n_p*hyper1f1(-n_p+1,2*sigma+1,2*lam*mass*r)-(kappa-y0/lam)*hyper1f1(-n_p,2*sigma+1,2*lam*mass*r) )
 
@@ -119,7 +111,7 @@ def f_coulomb_nk(r,n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
     if np.isscalar(r):
         hyper1f1=hyper1f1_scalar_arbitrary_precision
     else:
-        hyper1f1=hyper1f1_vector_arbitrary_precision
+        hyper1f1=hyper1f1_vector_z_arbitrary_precision
     #
     return pref*(np.sqrt(np.abs(gamma(2*sigma+1+n_p)*(mass-energy)/(factorial(n_p)*y0*(y0-lam*kappa))+0j))/(gamma(2*sigma+1)))*((2*lam*mass*r)**sigma)*(np.exp(-lam*mass*r))*( n_p*hyper1f1(-n_p+1,2*sigma+1,2*lam*mass*r)-(kappa-y0/lam)*hyper1f1(-n_p,2*sigma+1,2*lam*mass*r) )
 
@@ -171,7 +163,7 @@ def hyper1f1_coulomb(r,kappa,Z,energy,mass,reg=+1,dps=15,alpha_el=constants.alph
     if np.isscalar(r):
         hyper1f1=hyper1f1_scalar_arbitrary_precision
     else:
-        hyper1f1=hyper1f1_vector_arbitrary_precision
+        hyper1f1=hyper1f1_vector_z_arbitrary_precision
     #
     return hyper1f1(reg*rho+1+1j*y,2*reg*rho+1,2j*k*r,dps=dps)
 
