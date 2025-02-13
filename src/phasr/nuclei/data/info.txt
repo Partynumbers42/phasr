@@ -1,2 +1,11 @@
 Initial parameterization data files were downloaded from http://discovery.phys.virginia.edu/research/groups/ncd/download.html 
-We thank them for the digitalization of the original sources. 
+We thank them for the digitalization of the original Source deVries et al. 1987. 
+
+Some Z,A values were corrected. Also Z <-> A was flipped. 
+For the Sm isotopes R=9.2 -> R=9.25 was corrected. 
+The entry
+    3He   3   2   9.9442e-03  2.0829e-02  1.8008e-02  8.9117e-03  2.3151e-03  2.3263e-03  2.5850e-03  1.9014e-03  1.2746e-03  7.0446e-04  3.0493e-04  1.1389e-04  0.0000e+00  0.0000e+00  0.0000e+00  0.0000e+00  0.0000e+00  5.0
+was remove due to wrong normalization and no consistency with the deVries et al. 1987 source.
+The source for the parameterizations for 6Li and 10B (Amin16) could not be found. Usage at own risk. 
+TODO: Check rigorously for typos
+TODO: Add additional references from Fricke 1995 et al. in particular for Pb208!
