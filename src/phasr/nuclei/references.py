@@ -1,6 +1,6 @@
 from . import nucleus
 
-import os, glob
+import os#, glob
 import numpy as np
 
 reference_data_path = os.path.join(os.path.dirname(__file__), 'data/params_FB.txt')
