@@ -1,2 +1,2 @@
-These data files were downloaded from http://discovery.phys.virginia.edu/research/groups/ncd/download.html 
+Initial parameterization data files were downloaded from http://discovery.phys.virginia.edu/research/groups/ncd/download.html 
 We thank them for the digitalization of the original sources. 
