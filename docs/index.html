@@ -164,7 +164,7 @@
                         Will raise a warning if not consistent with the normalization of a provided charge density in **args. 
                         <li>
                         <b>A</b> (<i>int</i>): Atomic mass number / nucleon number of the considered nucleus, necessary for recoil, 
-                        enables lookup of nucleon mass, spin, parity and isotope abundancy. 
+                        enables lookup of nucleon mass, spin, parity and isotope abundancy.
                         <li>
                         <b>m</b> (<i>float</i>,optional) mass of the nucleus, necessary for recoil, is looked up based on \(Z\), \(A\) if not supplied.
                         <br>
@@ -198,7 +198,7 @@
                         </tr>
                         <tr>
                             <td>'fourier-bessel'</td>
-                            <td><b>a</b> (<i>1d-array</i>): Array of parameters \(a_i\) in fm\(^{-3}\). \(N\) given by length of a.  
+                            <td><b>ai</b> (<i>1d-array</i>): Array of parameters \(a_i\) in fm\(^{-3}\). \(N\) given by length of a.  
                             <br><b>R</b> (<i>float</i>): Cutoff radius R in fm. </td>
                         </tr>
                         <tr>
@@ -232,9 +232,52 @@
                 \[ \rho_\text{Gauss}(r) = \frac{Z}{\pi^{3/2} b^3} e^{-(r/b)^2} \]
                 \[ \rho_\text{Uni}(r) = \begin{cases} \frac{3 Z}{4 \pi r_c^3} & r \leq r_c \\ 0 & r > r_c \end{cases} \]
                 \[ F_\text{Osz}(q) = e^{-u(q)/2} \sum_i C_i ~ u(q)^i; \qquad u(q)=\frac{q^2 b^2}{2} \]
-                
-                Alternatively one can also supply general descriptions for charge_density, form_factor or the different multipoles. These get the label of nucleus_type 'numerical'. 
-                Here the other quantities can be calculated based on the given ones using numerical methods. Possible parameters are:
+            
+            Apart from storing the input parameters a <code> nucleus </code> object can have the following attributes (if the prerequisites are met), that you might want to access
+            <ul>
+                <li>
+                <b>charge_density(r)</b> (<i>callable</i>): charge density in fm\(^{-3}\) for r in fm
+                <br>    
+                <li>
+                <b>form_factor(q)</b> (<i>callable</i>): normalized form factor (\(F_\text{ch}(0)=1\)) for q in MeV
+                <br>
+                <li>
+                <b>electric_field(r)</b> (<i>callable</i>): electric field in fm\(^{-2}\) for r in fm
+                <br>
+                <li>
+                <b>electric_potential(r)</b> (<i>callable</i>): electric potential in fm\(^{-1}\) for r in fm
+                <br>
+                <li>
+                <b>proton_density(r)</b> (<i>callable</i>): proton density in fm\(^{-3}\) for r in fm
+                <br>
+                <li>
+                <b>neutron_density(r)</b> (<i>callable</i>): neutron density in fm\(^{-3}\) for r in fm
+                <br>
+                <li>    
+                <b>weak_density(r)</b> (<i>callable</i>): weak density in fm\(^{-3}\) for r in fm
+                <br>
+                <li>
+                <b>charge_radius</b> (<i>float</i>): charge radius in fm (also attribute charge_radius_sq in fm\(^2\) exists)
+                <br>
+                <li>
+                <b>proton_radius</b> (<i>float</i>): proton radius in fm (also attribute proton_radius_sq in fm\(^2\) exists)
+                <br>
+                <li>
+                <b>neutron_radius</b> (<i>float</i>): neutron radius in fm (also attribute neutron_radius_sq in fm\(^2\) exists)
+                <br>
+                <li>
+                <b>weak_radius</b> (<i>float</i>): weak radius in fm (also attribute weak_radius_sq in fm\(^2\) exists)
+                <br>
+                <li>
+                <b>total_charge</b> (<i>float</i>): total charge from the charge density. Generates warning if total_charge and Z differ significantly.
+                <br> 
+                <li>
+                <b>weak_charge</b> (<i>float</i>): weak charge of the weak density 
+                <br>     
+            </ul>
+
+            One can also supply general descriptions for charge_density, form_factor or the different multipoles. These get the label of nucleus_type 'numerical'. 
+            Here the other quantities can be calculated based on the given ones using numerical methods. Possible parameters are:
                 
                 <table>
                 <tr>
@@ -274,56 +317,7 @@
                 </tr>
                 </table>
             
-            Apart from storing the input paramters a <code> nucleus </code> object can have the following attributes (if the prerequisites are met), that you might want to access
-            <ul>
-                <li>
-                <b>charge_density(r)</b> (<i>callable</i>): charge density in fm\(^{-3}\) for r in fm
-                <br>    
-                <li>
-                <b>form_factor(q)</b> (<i>callable</i>): normalized form factor (\(F_\text{ch}(0)=1\)) for q in MeV
-                <br>
-                <li>
-                <b>electric_field(r)</b> (<i>callable</i>): electric field in fm\(^{-2}\) for r in fm
-                <br>
-                <li>
-                <b>electric_potential(r)</b> (<i>callable</i>): electric potential in fm\(^{-1}\) for r in fm
-                <br>
-                <li>
-                <b>proton_density(r)</b> (<i>callable</i>): proton density in fm\(^{-3}\) for r in fm
-                <br>
-                <li>
-                <b>neutron_density(r)</b> (<i>callable</i>): neutron density in fm\(^{-3}\) for r in fm
-                <br>
-                <li>    
-                <b>weak_density(r)</b> (<i>callable</i>): weak density in fm\(^{-3}\) for r in fm
-                <br>
-                <li>
-                <b>weak_formfactor(q)</b> (<i>callable</i>): weak form factor for q in MeV
-                <br>
-                <li>
-                <b>charge_radius</b> (<i>float</i>): charge radius in fm (also attribute charge_radius_sq in fm\(^2\) exists)
-                <br>
-                <li>
-                <b>proton_radius</b> (<i>float</i>): proton radius in fm (also attribute proton_radius_sq in fm\(^2\) exists)
-                <br>
-                <li>
-                <b>neutron_radius</b> (<i>float</i>): neutron radius in fm (also attribute neutron_radius_sq in fm\(^2\) exists)
-                <br>
-                <li>
-                <b>weak_radius</b> (<i>float</i>): weak radius in fm (also attribute weak_radius_sq in fm\(^2\) exists)
-                <br>
-                <li>
-                <b>total_charge</b> (<i>float</i>): total charge from the charge density. Generates warning if total_charge and Z differ significantly.
-                <br> 
-                <li>
-                <b>weak_charge</b> (<i>float</i>): weak charge of the weak density 
-                <br>     
-            </ul>
-
-            If a form_factor_dict is supplied the the different multipoles also become attributes (as 'F'+multipole or 'rho'+multipole). the multipoles follow the naming pattern of
-            multipole = multipole_name + L + N, which gives for example : 'M0p', 'M0n', 'M2p', 'M2n', ... , 'Phipp0p', 'Phipp0n', ... , 'Delta1p', ... , 'Sigmap1n', ... , which should be the way in which the keys of the dictionary are written (as 'F'+multipole or 'rho'+multipole). 
-            Existing multipoles are collected in the attribute <code>multipoles</code>. <br>
-            Further attributes are <code>Fch(q,L=0)</code>, <code>Fw(q,L=0)</code>, <code>Fmag(q,L=1)</code>, which make it possible to also access the form factors for higher \(L\) if the necessary multipoles were supplied. 
+            
             For the 'numerical' nuclei type, related quantities first need to be calculated numerically. Scalar quantities like the total charge or charge radius are calculated by default, 
             but the construction of functions, requires the explicit call of one of the following attribute, due to their runtime. The resulting splines are saves and and can be recovered 
 
@@ -357,8 +351,12 @@
                 <br>
             </ul>
 
-            The 'fermi' nucleus_type also has a few of these attributes as not all quantities can be written in a simple closed analytic form, for this parameterization. 
-
+            The 'fermi' nucleus_type also has a few of these attributes as not all quantities can be written in a simple closed analytic form, for this parameterization.<br>
+            If a form_factor_dict or density_dict is supplied the different multipoles also become attributes (as 'F'+multipole or 'rho'+multipole). <br>
+            The multipoles follow the naming pattern of 
+            multipole = multipole_name + L + N, which gives for example : 'M0p', 'M0n', 'M2p', 'M2n', ... , 'Phipp0p', 'Phipp0n', ... , 'Delta1p', ... , 'Sigmap1n', ... , which should be the way in which the keys of the dictionaries are written (as 'F'+multipole or 'rho'+multipole). 
+            Existing multipoles are collected in the attribute <code>multipoles</code>. <br>
+            Further attributes are <code>Fch(q,L=0)</code>, <code>Fw(q,L=0)</code>, <code>Fmag(q,L=1)</code>, which make it possible to also access the form factors for higher \(L\) if the necessary multipoles were supplied. 
             </p>
 
                 <h2 id="dirac_solver">The <code>dirac_solvers</code> module</h2>
