@@ -188,7 +188,7 @@ class nucleus_base:
         FPhippLn=getattr(self,'FPhipp'+str(L)+'n')
         return Fch_composition(q,FMLp,FMLn,FPhippLp,FPhippLn,self.Z)
         
-    def Fmag(self,q,L=0):
+    def Fmag(self,q,L=1):
         
         if L>=2*self.spin+1:
             raise ValueError('This nucleus has a maximum L of '+str(2*self.spin))
