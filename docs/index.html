@@ -72,12 +72,14 @@
 
                 <h1 id="intro">Introduction</h1>
                 
-                <p> <code> phasr </code> is a python package able to calculate scattering phase shifts for arbitrary radial potentials and calculate (elastic) electron nucleus scattering crosssections based on it. 
+                <p> <code> phasr </code> is a python package able to calculate scattering phase shifts for arbitrary radial potentials and calculate (elastic) electron nucleus scattering cross sections based on it. 
                     In combination with a fitting routine it can be used to fit elastic electron nucleus scattering data to extract charge density parameterizations. It is also possible to increase the precision sufficiently to quantitatively resolve parity violating electron scattering (optimisation for this use case is planed for a future update). </p> 
             
                 <h2 id="versions">Versions/Change-Log:</h2>
              
                 <p>
+                    <b>Version 0.3.2 :</b> Extend docs.<br>
+                    <b>Version 0.3.1 :</b> Add access to reference parameterizations.<br>
                     <b>Version 0.3.0 :</b> Add overlap integrals.<br>
                     <b>Version 0.2.2 :</b> Fix some dependencies.<br>
                     <b>Version 0.2.1 :</b> First PyPI Release.<br>
@@ -90,10 +92,10 @@
                 
                 <h2 id="about">About this Package</h2>
                 
-                <p> This package was developed with the goal of extracting charge density parameterizations based on (elastic) electron nucleus scattering crosssection data while properly accounting for Coulomb corrections using the so called phase shift model. 
+                <p> This package was developed with the goal of extracting charge density parameterizations based on (elastic) electron nucleus scattering cross section data while properly accounting for Coulomb corrections using the so called phase shift model. 
                 While this procedure is known since the 60s, the documentation and availability of programs used back then, are very limited and hardly accessable. 
                 Furthermore, for a majority of nuclei the extractions of model-independent parameterizations of their charge densities have not been updated since the 80s and do not provide any uncertainty estimates. 
-                Since these also applied to the nuclei we were interested in, we build such a framework in python, which calculates elastic electron nucleus scattering crosssections based on input charge densities using the phase shift model, from which this package evolved. 
+                Since these also applied to the nuclei we were interested in, we build such a framework in python, which calculates elastic electron nucleus scattering cross sections based on input charge densities using the phase shift model, from which this package evolved. 
                 With such a more modern implementation and programming language, the calculations can become faster, broader accessable, easier to understand and easier to incorporate into existing programs. 
                 The code leading up to this package has already been used successfully in the papers <a href="https://inspirehep.net/literature/2796887"> [Noël, Hoferichter - 2024] </a> and <a href="https://inspirehep.net/literature/2856799"> [Heinz, Hoferichter, Miyagi, Noël, Schwenk - 2024] </a> 
                 to calculate and extract charge distributions for nuclei of interest to \( \mu \to e \) conversion, a beyond the Standard Model process of interest in particle physics. The package has been benchmarked for nuclei reaching from ... to ... . 
@@ -571,15 +573,96 @@
                 
                 <h1 id="advanced">Common use cases</h1>
                 
+                For common use cases we also refer to the Example.pynb notebook, which shows a selection of example usecases. It also repeats the examples shown here. 
+
                 <h2 id="ana">Calculate the scattering crosssection based on an analytic charge densitycharge distribution parametrisation</h2>
                 
-                <p> To calculate the scattering crosssection base on a analytic charge distribution parametrisation, you first construct the nucleus object
-
+                <p> To calculate the scattering cross section base on a analytic charge distribution parametrisation, you first construct the nucleus object, which you then use to calculate the cross section. 
+                    As an example, we use a Fourier Bessel parameterisation for \(^{48}\)Ti with \( R = 9.25\) fm and
+                    \[a_{1} = 0.03392 ~ \text{fm}^{-3}, ~
+                     a_{2}=0.05913 ~ \text{fm}^{-3}, ~
+                     a_{3}=0.01547 ~ \text{fm}^{-3}, ~
+                     a_{4}=-0.02550 ~ \text{fm}^{-3}, \]
+                    \[a_{5}=-0.0152 ~ \text{fm}^{-3}, ~
+                    a_{6}=0.0029 ~ \text{fm}^{-3}, ~
+                    a_{7}=0.0037 ~ \text{fm}^{-3}, \]
+                    The nucleus is then constructed by
+                <pre><code class="python">ai_48Ti=np.array([0.03392,0.05913,0.01547,-0.02550,-0.0152,0.0029,0.0037])
+R_48Ti=9.25
+nucleus_48Ti = phr.nucleus('48Ti_FB',Z=22,A=48,ai=ai_48Ti,R=R_48Ti)</code></pre>
+                We give it the name '48Ti_FB', which ideally should be unique for this parameterisation, such that temporary files can be uniquely assigned. 
+                If no temporary files are created or loaded during the calculation, the name should in principle not matter, but we advise the use of a unique name nevertheless, if alone for you personal bookkeeping. <br>
+                We can now use this to calculate the crosssection. We consider an initial energy of 249.5 MeV and scattering angles between 30\(^{\circ}\) and 120\(^{\circ}\). The angles are defined such that 0\(^{\circ}\) refers to forward scattering and 180\(^{\circ}\) to backwards scattering. 
+                We use the package matplotlib to plot the resulting cross section. 
+                <pre><code class="python">import matplotlib.pyplot as plt
+energy=249.5
+theta=np.arange(30,120,1e-1)
+plt.plot(theta,phr.crosssection_lepton_nucleus_scattering(energy,theta*pi/180,nucleus_48Ti),label=r'$E=249.5~$MeV')
+plt.yscale('log')
+plt.title(r"Cross section $^{48}$Ti")
+plt.xlabel(r"$\theta$ in deg")
+plt.ylabel(r"$\frac{\operatorname{d}\sigma}{\operatorname{d}\Omega}$ in MeV$^{-2}$")
+plt.legend()
+plt.xlim(30,120)</code></pre>
+                This results in the following graphic: <br>
+                <img src="./images/48Ti.png"> <br>
+                Which you can now for example compare to data. Depending on your maschine this calculation might take a few seconds, which might be problematic if one wants to iterate over this process many times for example in a fit. 
+                For this reason there is the option to optimise the precison of the numerical calculation for the specific nucleus, angle and energy range, to speed up the calculation. 
+                Under the assumption that the nucleus does not change to drastically during the fit these settings can then be used to increase the runtime significantly, as expensive cases like high energies or very small or very large angles are excluded. 
+                This assessment itself is however quite time intensive and may run several minutes, as it scans over a variety of different parameter combinations. We can run this funcions via
+<pre><code class="python">args=phr.optimise_crosssection_precision(energy,theta*pi/180,nucleus_48Ti,crosssection_precision=1e-2)</code></pre>
+                which in this case increases the runtime by roughtly a factor of 10x compared to maximal precision, by demanding consistency of at least relative \(10^{-2}\). Plotting now again (with the additional **args) 
+                <pre><code class="python">import matplotlib.pyplot as plt
+energy=249.5
+theta=np.arange(30,120,1e-1)
+plt.plot(theta,phr.crosssection_lepton_nucleus_scattering(energy,theta*pi/180,nucleus_48Ti,**args),label=r'$E=249.5~$MeV')
+plt.yscale('log')
+plt.title(r"Cross section $^{48}$Ti")
+plt.xlabel(r"$\theta$ in deg")
+plt.ylabel(r"$\frac{\operatorname{d}\sigma}{\operatorname{d}\Omega}$ in MeV$^{-2}$")
+plt.legend()
+plt.xlim(30,120)</code></pre>
                 </p>
-                
+                is significantly faster, but leads to an indistinguishable cross section for these energy and angle values (up to relative differences of \(10^{-2}\)). 
+
                 <h2 id="num">Calculate the scattering crosssection based on a numerical charge density parametrisation</h2>
                 
-                <p>TBD</p>
+                <p>
+                Calculating the scattering crosssection for a numerical charge density is for the most part identical to the analytical part. 
+                The only difference is that the nucleus object requires slighlty more preparation, as for example the nucleus potential needs to be calculated numerically. 
+                Let's construct the same nucleus as in the analytical case as a numerical nucleus. We do
+
+                <pre><code class="python">ai_48Ti=np.array([0.03392,0.05913,0.01547,-0.02550,-0.0152,0.0029,0.0037])
+R_48Ti=9.25
+N_48Ti=len(ai_48Ti)
+qi_48Ti = np.arange(1,N_48Ti+1)*np.pi/R_48Ti
+def rho_48Ti(r): return phr.nuclei.parameterizations.fourier_bessel.charge_density_FB(r,ai_48Ti,R_48Ti,qi_48Ti)
+nucleus_48Ti_num = phr.nucleus('48Ti_num',Z=22,A=48,charge_density=rho_48Ti)</code></pre>
+                which constructs the same charge density, but uses it as a generic (potentially numerical) input. This nucleus doe not have a nucleus potential yet. 
+                As this requires two numerical integrations. We can tell the nucleus to do these calculations either expliticitly. By doing
+                
+                <pre><code class="python">nucleus_48Ti_num.set_electric_field_from_charge_density()
+nucleus_48Ti_num.set_electric_potential_from_electric_field()</code></pre>
+                or implicitly by calling 
+                <pre><code class="python">nucleus_48Ti_num.fill_gaps()</code></pre>
+                which will however calculate anything that is missing, in this case in particular also the form factor. In either way, if you used renew=False, which is the default, 
+                the results will be saved in a file and loaded if you call these functions again. After this you can calculate the crosssection as for the analytical case 
+                <pre><code class="python">energy=249.5
+theta=np.arange(30,120,1e-1)
+plt.plot(theta,phr.crosssection_lepton_nucleus_scattering(energy,theta*pi/180,nucleus_48Ti_num),label=r'$E=249.5~$MeV')
+plt.yscale('log')
+plt.title(r"Cross section $^{48}$Ti")
+plt.xlabel(r"$\theta$ in deg")
+plt.ylabel(r"$\frac{\operatorname{d}\sigma}{\operatorname{d}\Omega}$ in MeV$^{-2}$")
+plt.legend()
+plt.xlim(30,120)
+plt.show()</code></pre>
+                which will again lead to the same figure shown above, but will probably have a bit longer runtime. In case you want to fit over numerical charge densities, 
+                you should set renew=True or iterate over the name of the nucleus such that the integrations for the electric field and electric potential are repeated with every change of the charge density. 
+                As this is necessary, we however strongly discourage this strategy, as the extra integrations will increase the runtimes to unfeasable numbers (also since the integrations are not optimised for this usecase). 
+                If you have a way of analytically calculating the nucleus potential from the charge density this should always be priotized. 
+                If the parameterization you want to use is not implemented you can always also pass the electric_potential directly to the nucleus. 
+                </p>
 
                 <h2 id="PV">Calculate the left-right asymmetry for parity violating electron scattering</h2>
                   
@@ -594,7 +677,6 @@
 
                 <div class="doublespace"></div>
                 <div class="divider" style="width:24%; margin:30px 0;"></div>
-                
 
             </div>
 

@@ -39,12 +39,12 @@ class nucleus_num(nucleus_base):
         #
         self.set_scalars_from_rho()
         if hasattr(self,'total_charge'):
-            if np.abs(self.total_charge - self.Z)/self.Z>1e-4:
-                print('Warning total charge for '+self.name+' deviates more than 1e-4: Z='+str(self.Z)+', Q(num)='+str(self.total_charge))
+            if np.abs(self.total_charge - self.Z)/self.Z>1e-3:
+                print('Warning total charge for '+self.name+' deviates more than 1e-3: Z='+str(self.Z)+', Q(num)='+str(self.total_charge))
         #
         if hasattr(self,'weak_charge'):
-            if np.abs(self.weak_charge - self.Qw)/self.Qw>1e-4:
-                print('Warning weak_charge for '+self.name+' deviates more than 1e-4: Qw='+str(self.Qw)+', Qw(num)='+str(self.weak_charge))
+            if np.abs(self.weak_charge - self.Qw)/self.Qw>1e-3:
+                print('Warning weak_charge for '+self.name+' deviates more than 1e-3: Qw='+str(self.Qw)+', Qw(num)='+str(self.weak_charge))
         #
         if hasattr(self,'electric_potential') and (not hasattr(self,'Vmin')):
             self.set_Vmin()

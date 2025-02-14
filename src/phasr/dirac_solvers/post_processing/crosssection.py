@@ -72,7 +72,7 @@ def optimise_crosssection_precision(energy,theta,nucleus,lepton_mass=0,recoil=Tr
             if np.all(crossections_difference<crosssection_precision) and (runtime-best_time)/best_time<1e-2:
                 if True:#verbose:
                     print('new best:',args)
-                    print('time:',runtime,np.max(crossections_difference))
+                    print('time:',runtime,'diff:',np.max(crossections_difference))
                 best_time=runtime
                 best_args=copy.copy(args)
             
@@ -188,7 +188,6 @@ def coefficient_nonspinflip_amplitude(kappa,subtractions,N_partial_waves,phase_s
             raise ValueError("only defined for kappa <= Nmax")
 
     return this_coefficient_kappa
-#
 
 def spinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts):
     k=momentum(energy,lepton_mass)

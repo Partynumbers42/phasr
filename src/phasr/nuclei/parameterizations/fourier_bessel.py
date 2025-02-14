@@ -28,8 +28,8 @@ class nucleus_FB(nucleus_base):
         self.total_charge = total_charge_FB(self.ai,self.qi,self.N_a)
         self.total_charge_jacobian = total_charge_FB_jacob(self.qi,self.N_a)
         #
-        if np.abs(self.total_charge - self.Z)/self.Z>1e-4:
-            print('Warning total charge for '+self.name+' deviates more than 1e-4: Z='+str(self.Z)+', Q='+str(self.total_charge))
+        if np.abs(self.total_charge - self.Z)/self.Z>1e-3:
+            print('Warning total charge for '+self.name+' deviates more than 1e-3: Z='+str(self.Z)+', Q='+str(self.total_charge))
         #
         self.charge_radius_sq = charge_radius_sq_FB(self.ai,self.qi,self.total_charge,self.N_a)
         self.charge_radius_sq_jacobian = charge_radius_sq_FB_jacob(self.qi,self.total_charge,self.N_a)
