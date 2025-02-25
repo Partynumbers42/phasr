@@ -31,6 +31,8 @@ class nucleus_num(nucleus_base):
         
         if 'weak_density' in args:
              self.weak_density =  args['weak_density']
+        if 'weak_potential' in args:
+            self.weak_potential =  args['weak_potential']
 
         self.update_dependencies()
         

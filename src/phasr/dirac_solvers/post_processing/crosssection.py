@@ -231,3 +231,20 @@ def mass_correction_amplitude(energy,theta,lepton_mass,N_partial_waves,phase_shi
         coefficient=np.exp(2j*phase_shifts[kappa])-np.exp(2j*phase_shifts[-kappa])
         amplitude+=coefficient*(kappa*np.tan(theta/2)*associated_legendre(0,kappa-1,np.cos(theta)) - associated_legendre(1,kappa-1,np.cos(theta)))
     return amplitude/(2j*k)
+
+def left_right_asymmetry_lepton_nucleus_scattering(energy,theta,nucleus,verbose=False,**args):
+    
+    args['verbose']=verbose
+    
+    nucleus_L = copy.copy(nucleus)
+    def potential_left(r): return nucleus.electric_potential(r) + nucleus.weak_potential(r)
+    nucleus_L.electric_potential = potential_left
+    crosssection_L = crosssection_lepton_nucleus_scattering(energy,theta,nucleus_L,**args)
+    
+    nucleus_R = copy.copy(nucleus)
+    def potential_right(r): return nucleus.electric_potential(r) + nucleus.weak_potential(r)
+    nucleus_R.electric_potential = potential_right
+    crosssection_R = crosssection_lepton_nucleus_scattering(energy,theta,nucleus_R,**args)
+    
+    return (crosssection_L - crosssection_R)/(crosssection_L + crosssection_R)
+    

@@ -9,8 +9,10 @@ class constants():
     # physical constants
     alpha_el=1./137.035999084
     hc=197.3269804 # MeV fm
-    GF= 1.1663788e-11 #(6) MeV^-2
-
+    fermi_constant= 1.1663788e-11 #(6) MeV^-2
+    sin_sq_theta_weinberg = 0.23129 #(4) PDG value at M_Z in MSbar
+    W_mass_over_Z_mass = 0.88136 #(15) = m_W / m_Z
+    
     # proton/neutron charge radii and anomalous magnetic moment
     # from Hoferichter 2020
     rsq_p=0.7071#(7) #fm^2

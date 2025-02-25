@@ -33,7 +33,7 @@ class nucleus_base:
             self.k_barrett = args['k_barrett']
             self.alpha_barrett = args['alpha_barrett']
         #
-        # move to numcerical?
+        # move to numerical?
         if 'form_factor_dict' in args:
             form_factor_dict=args['form_factor_dict']
             multipoles_form_factor = [key[1:] for key in form_factor_dict]
@@ -90,6 +90,10 @@ class nucleus_base:
         if (not hasattr(self,'weak_density')) and (hasattr(self,'rhoM0p') and hasattr(self,'rhoM0n') and hasattr(self,'rhoPhipp0p') and hasattr(self,'rhoPhipp0n')):
             def rhow(r): return self.rhow(r)
             self.weak_density = rhow
+        
+        if (not hasattr(self,'weak_potential')) and hasattr(self,'weak_density'):
+            def Vweak(r): return constants.fermi_constant/(2**(3./2.))*(4*constants.W_mass_over_Z_mass**2/pi)*self.weak_density(r)
+            self.weak_potential = Vweak
         
         if (not hasattr(self,'electric_field')) and (hasattr(self,'ElM0p') and hasattr(self,'ElM0n') and hasattr(self,'ElPhipp0p') and hasattr(self,'ElPhipp0n')):
             def Elch(r): return self.Elch(r)
