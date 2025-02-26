@@ -236,12 +236,18 @@ def left_right_asymmetry_lepton_nucleus_scattering(energy,theta,nucleus,verbose=
     
     args['verbose']=verbose
     
-    nucleus_L = copy.copy(nucleus)
+    if verbose:
+        print('Calculate left crosssection ...')
+
+    nucleus_L = copy.deepcopy(nucleus)
     def potential_left(r): return nucleus.electric_potential(r) + nucleus.weak_potential(r)
     nucleus_L.electric_potential = potential_left
     crosssection_L = crosssection_lepton_nucleus_scattering(energy,theta,nucleus_L,**args)
     
-    nucleus_R = copy.copy(nucleus)
+    if verbose:
+        print('Calculate right crosssection ...')
+
+    nucleus_R = copy.deepcopy(nucleus)
     def potential_right(r): return nucleus.electric_potential(r) + nucleus.weak_potential(r)
     nucleus_R.electric_potential = potential_right
     crosssection_R = crosssection_lepton_nucleus_scattering(energy,theta,nucleus_R,**args)
