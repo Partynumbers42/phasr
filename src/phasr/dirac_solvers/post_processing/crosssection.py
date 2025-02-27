@@ -25,6 +25,8 @@ parameter_steps={
 
 def optimise_crosssection_precision(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,crosssection_precision=1e-3,jump_forward_dist=1,verbose=False):
 
+    #parallise?
+
     insufficient_args=[]
     
     first=True
@@ -240,7 +242,7 @@ def left_right_asymmetry_lepton_nucleus_scattering(energy,theta,nucleus,verbose=
         print('Calculate left crosssection ...')
 
     nucleus_L = copy.deepcopy(nucleus)
-    def potential_left(r): return nucleus.electric_potential(r) + nucleus.weak_potential(r)
+    def potential_left(r): return nucleus.electric_potential(r) - nucleus.weak_potential(r)
     nucleus_L.electric_potential = potential_left
     crosssection_L = crosssection_lepton_nucleus_scattering(energy,theta,nucleus_L,**args)
     
@@ -252,5 +254,5 @@ def left_right_asymmetry_lepton_nucleus_scattering(energy,theta,nucleus,verbose=
     nucleus_R.electric_potential = potential_right
     crosssection_R = crosssection_lepton_nucleus_scattering(energy,theta,nucleus_R,**args)
     
-    return (crosssection_L - crosssection_R)/(crosssection_L + crosssection_R)
+    return (crosssection_R - crosssection_L)/(crosssection_R + crosssection_L)
     
