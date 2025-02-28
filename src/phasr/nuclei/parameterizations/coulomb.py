@@ -8,6 +8,10 @@ pi = np.pi
 
 from scipy.special import factorial, gamma
 
+from mpmath import gamma as mp_gamma, arg as mp_arg
+def angle_gamma_large(z):
+    return float(mp_arg(mp_gamma(z)))
+
 class nucleus_coulomb(nucleus_base):
     def __init__(self,name,Z,A,**args): 
         nucleus_base.__init__(self,name,Z,A,**args)
@@ -181,8 +185,9 @@ def delta_coulomb(kappa,Z,energy,mass,reg,pass_eta=None,alpha_el=constants.alpha
     if np.abs(gamma_z) < np.inf:
         angle_gamma_z=np.angle(gamma_z)
     else:
-        print("warning: Gamma(z) overflows, angle replaced with approximation")
-        angle_gamma_z=angle_shift_mod_pi(y*np.log(sigma))
+        angle_gamma_z = angle_gamma_large(z) #only used for when scipy overflows b/c a lot slower
+        #print("warning: Gamma(z) overflows, angle replaced with approximation")
+        #angle_gamma_z=angle_shift_mod_pi(y*np.log(sigma))
     #
     return delta_pis(kappa) - angle_gamma_z + pass_eta - pi*sigma/2
 
