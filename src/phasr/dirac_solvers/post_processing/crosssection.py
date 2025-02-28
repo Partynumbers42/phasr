@@ -22,7 +22,7 @@ MPSentinel.As_master()
 
 parameter_steps={
     'method' : np.array(['DOP853']), #,'LSODA' 
-    'N_partial_waves' : np.append(np.arange(170,50-10,-10),np.arange(50,20-5,-5)),
+    'N_partial_waves' : np.append(np.arange(150,50-10,-10),np.arange(50,20-5,-5)),
     'atol' : 10**np.arange(-13,-6+1,1,dtype=float),
     'rtol' : 10**np.arange(-13,-6+1,1,dtype=float),
     'energy_norm': constants.hc*10**np.arange(0,-6-1,-1,dtype=float),

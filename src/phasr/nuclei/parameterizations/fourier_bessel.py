@@ -14,14 +14,27 @@ class nucleus_FB(nucleus_base):
         self.ai=ai
         self.R=R
         #
-        # add ai_proton, R_proton, etc as options? Maybe via formfactor_dict, charge_density_dict
+        # for others maybe restructure -> dicts etc. ? maybe disentangle nuclei and parametrization for a part? gets complicated
+        #
+        if ('ai_proton' in args) and ('R_proton' in args) :
+            self.ai_proton=args['ai_proton']
+            self.R_proton=args['R_proton']
+        
+        if ('ai_neutron' in args) and ('R_neutron' in args) :
+            self.ai_neutron=args['ai_neutron']
+            self.R_neutron=args['R_neutron']
+        
+        if ('ai_weak' in args) and ('R_weak' in args) :
+            self.ai_weak=args['ai_weak']
+            self.R_weak=args['R_weak']
         #
         self.update_dependencies()
 
     def update_dependencies(self):
-        nucleus_base.update_dependencies(self)
+        
         self.N_a=len(self.ai)
         self.qi=np.arange(1,self.N_a+1)*pi/self.R
+        #
         #self.rrange[1]=self.R 
         #self.qrange[1]=self.qi[-1]*constants.hc 
         #
@@ -42,6 +55,29 @@ class nucleus_FB(nucleus_base):
         if hasattr(self,'k_barrett') and hasattr(self,'alpha_barrett'):
             self.barrett_moment = Barrett_moment_FB(self.ai,self.R,self.qi,self.total_charge,self.k_barrett,self.alpha_barrett)
             self.barrett_moment_jacobian = Barrett_moment_FB_jacob(self.R,self.qi,self.total_charge,self.k_barrett,self.alpha_barrett)
+        
+        #
+        if hasattr(self,'ai_proton') and hasattr(self,'R_proton'):
+            self.N_a_proton=len(self.ai_proton)
+            self.qi_proton=np.arange(1,self.N_a_proton+1)*pi/self.R_proton
+            def rho_p(r): charge_density_FB(r,self.ai_proton,self.R_proton,self.qi_proton)
+            self.proton_density(r) = rho_p
+        
+        #
+        if hasattr(self,'ai_neutron') and hasattr(self,'R_neutron'):
+            self.N_a_neutron=len(self.ai_neutron)
+            self.qi_neutron=np.arange(1,self.N_a_neutron+1)*pi/self.R_neutron
+            def rho_n(r): charge_density_FB(r,self.ai_neutron,self.R_neutron,self.qi_neutron)
+            self.proton_density(r) = rho_n
+        #
+        if hasattr(self,'ai_weak') and hasattr(self,'R_weak'):
+            self.N_a_weak=len(self.ai_weak)
+            self.qi_weak=np.arange(1,self.N_a_weak+1)*pi/self.R_weak
+            def rho_w(r): charge_density_FB(r,self.ai_weak,self.R_weak,self.qi_weak)
+            self.proton_density(r) = rho_w
+        
+        nucleus_base.update_dependencies(self)
+
 
     def update_R(self,R):
         self.R=R
