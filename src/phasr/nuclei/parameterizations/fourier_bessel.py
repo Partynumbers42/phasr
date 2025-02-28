@@ -60,21 +60,21 @@ class nucleus_FB(nucleus_base):
         if hasattr(self,'ai_proton') and hasattr(self,'R_proton'):
             self.N_a_proton=len(self.ai_proton)
             self.qi_proton=np.arange(1,self.N_a_proton+1)*pi/self.R_proton
-            def rho_p(r): charge_density_FB(r,self.ai_proton,self.R_proton,self.qi_proton)
-            self.proton_density(r) = rho_p
+            def rho_p(r): return charge_density_FB(r,self.ai_proton,self.R_proton,self.qi_proton)
+            self.proton_density = rho_p
         
         #
         if hasattr(self,'ai_neutron') and hasattr(self,'R_neutron'):
             self.N_a_neutron=len(self.ai_neutron)
             self.qi_neutron=np.arange(1,self.N_a_neutron+1)*pi/self.R_neutron
-            def rho_n(r): charge_density_FB(r,self.ai_neutron,self.R_neutron,self.qi_neutron)
-            self.proton_density(r) = rho_n
+            def rho_n(r): return charge_density_FB(r,self.ai_neutron,self.R_neutron,self.qi_neutron)
+            self.neutron_density = rho_n
         #
         if hasattr(self,'ai_weak') and hasattr(self,'R_weak'):
             self.N_a_weak=len(self.ai_weak)
             self.qi_weak=np.arange(1,self.N_a_weak+1)*pi/self.R_weak
-            def rho_w(r): charge_density_FB(r,self.ai_weak,self.R_weak,self.qi_weak)
-            self.proton_density(r) = rho_w
+            def rho_w(r): return charge_density_FB(r,self.ai_weak,self.R_weak,self.qi_weak)
+            self.weak_density = rho_w
         
         nucleus_base.update_dependencies(self)
 
