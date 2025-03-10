@@ -4,6 +4,8 @@ from ..base import nucleus_base
 import numpy as np
 pi = np.pi
 
+from functools import partial
+
 from scipy.special import spherical_jn
 from mpmath import gammainc
 
@@ -60,21 +62,21 @@ class nucleus_FB(nucleus_base):
         if hasattr(self,'ai_proton') and hasattr(self,'R_proton'):
             self.N_a_proton=len(self.ai_proton)
             self.qi_proton=np.arange(1,self.N_a_proton+1)*pi/self.R_proton
-            def rho_p(r): return charge_density_FB(r,self.ai_proton,self.R_proton,self.qi_proton)
-            self.proton_density = rho_p
+            #def rho_p(r): return charge_density_FB(r,self.ai_proton,self.R_proton,self.qi_proton)
+            self.proton_density = partial(charge_density_FB,ai=self.ai_proton,R=self.R_proton,qi=self.qi_proton)
         
         #
         if hasattr(self,'ai_neutron') and hasattr(self,'R_neutron'):
             self.N_a_neutron=len(self.ai_neutron)
             self.qi_neutron=np.arange(1,self.N_a_neutron+1)*pi/self.R_neutron
-            def rho_n(r): return charge_density_FB(r,self.ai_neutron,self.R_neutron,self.qi_neutron)
-            self.neutron_density = rho_n
+            #def rho_n(r): return charge_density_FB(r,self.ai_neutron,self.R_neutron,self.qi_neutron)
+            self.neutron_density = partial(charge_density_FB,ai=self.ai_neutron,R=self.R_neutron,qi=self.qi_neutron)
         #
         if hasattr(self,'ai_weak') and hasattr(self,'R_weak'):
             self.N_a_weak=len(self.ai_weak)
             self.qi_weak=np.arange(1,self.N_a_weak+1)*pi/self.R_weak
-            def rho_w(r): return charge_density_FB(r,self.ai_weak,self.R_weak,self.qi_weak)
-            self.weak_density = rho_w
+            #def rho_w(r): return charge_density_FB(r,self.ai_weak,self.R_weak,self.qi_weak)
+            self.weak_density = partial(charge_density_FB,ai=self.ai_weak,R=self.R_weak,qi=self.qi_weak)
         
         nucleus_base.update_dependencies(self)
 

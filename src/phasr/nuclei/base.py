@@ -6,6 +6,8 @@ from ..utility.math import radial_laplace
 import numpy as np
 pi = np.pi
 
+from functools import partial
+
 class nucleus_base:
     def __init__(self,name,Z, A, mass=None, abundance=None, spin=None, parity=None,# weak_charge=None,#spline_hyp1f1=None, fp=False, ap_dps=15, 
                  **args):
@@ -80,28 +82,28 @@ class nucleus_base:
             self.neutron_density = self.rhoM0n
         
         if (not hasattr(self,'form_factor')) and (hasattr(self,'FM0p') and hasattr(self,'FM0n') and hasattr(self,'FPhipp0p') and hasattr(self,'FPhipp0n')):
-            def F0ch(q): return self.Fch(q,0)
-            self.form_factor = F0ch
+            #def F0ch(q): return self.Fch(q,0)
+            self.form_factor = partial(self.Fch,L=0)
         
         if (not hasattr(self,'charge_density')) and (hasattr(self,'rhoM0p') and hasattr(self,'rhoM0n') and hasattr(self,'rhoPhipp0p') and hasattr(self,'rhoPhipp0n')):
-            def rhoch(r): return self.rhoch(r)
-            self.charge_density = rhoch
+            #def rhoch(r): return self.rhoch(r)
+            self.charge_density = self.rhoch
         
         if (not hasattr(self,'weak_density')) and (hasattr(self,'rhoM0p') and hasattr(self,'rhoM0n') and hasattr(self,'rhoPhipp0p') and hasattr(self,'rhoPhipp0n')):
-            def rhow(r): return self.rhow(r)
-            self.weak_density = rhow
+            #def rhow(r): return self.rhow(r)
+            self.weak_density = self.rhow
         
         if (not hasattr(self,'weak_potential')) and hasattr(self,'weak_density'):
-            def Vweak(r): return constants.fermi_constant/(2**(3./2.))*(4*constants.W_mass_over_Z_mass**2/pi)*self.weak_density(r)
-            self.weak_potential = Vweak
+            #def Vweak(r): return constants.fermi_constant*constants.hc**2/(2**(3./2.))*self.weak_density(r)
+            self.weak_potential = self.Vweak
         
         if (not hasattr(self,'electric_field')) and (hasattr(self,'ElM0p') and hasattr(self,'ElM0n') and hasattr(self,'ElPhipp0p') and hasattr(self,'ElPhipp0n')):
-            def Elch(r): return self.Elch(r)
-            self.electric_field = Elch
+            #def Elch(r): return self.Elch(r)
+            self.electric_field = self.Elch
         
         if (not hasattr(self,'electric_potential')) and (hasattr(self,'VM0p') and hasattr(self,'VM0n') and hasattr(self,'VPhipp0p') and hasattr(self,'VPhipp0n')):
-            def Vch(r): return self.Vch(r)
-            self.electric_potential = Vch
+            #def Vch(r): return self.Vch(r)
+            self.electric_potential = self.Vch
     
     # introduce this option again?
     # def update_basis_representations(self):
@@ -273,6 +275,10 @@ class nucleus_base:
         VPhippLp=getattr(self,'VPhipp'+str(L)+'p')
         VPhippLn=getattr(self,'VPhipp'+str(L)+'n')
         return rho0ch_composition(r,VMLp,VMLn,VPhippLp,VPhippLn)
+    
+    def Vweak(self,r):
+        return constants.fermi_constant*constants.hc**2/(2**(3./2.))*self.weak_density(r)
+            
 
 def Fch_composition(q,FM_p,FM_n,FPhipp_p,FPhipp_n,Z,rsqp=constants.rsq_p,rsqn=constants.rsq_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
     rsqp/=constants.hc**2
