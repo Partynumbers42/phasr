@@ -30,15 +30,15 @@ def radial_dirac_eq_norm(r_norm,y,potential,energy,mass,kappa,energy_norm,contai
     hc=constants.hc
     return radial_dirac_eq_fm(r_norm*hc/energy_norm,y,potential,energy,mass,kappa,contain=contain)*hc/energy_norm
 
-def initial_values_fm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=None,alpha_el=constants.alpha_el): 
+def initial_values_fm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=None,contain=False,alpha_el=constants.alpha_el): 
     
     if not nucleus_type=="coulomb":
-        return beginning_radius_fm*initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=nucleus_type,alpha_el=alpha_el)
+        return beginning_radius_fm*initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=nucleus_type,contain=contain,alpha_el=alpha_el)
     else:
         rho_kappa = np.sqrt(kappa**2 - (alpha_el*Z)**2)
-        return (beginning_radius_fm)**rho_kappa*initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=nucleus_type,alpha_el=alpha_el)
+        return (beginning_radius_fm)**rho_kappa*initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=nucleus_type,contain=contain,alpha_el=alpha_el)
     
-def initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=None,alpha_el=constants.alpha_el): 
+def initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=None,contain=False,alpha_el=constants.alpha_el): 
     
     hc=constants.hc # MeV fm
     
@@ -59,12 +59,22 @@ def initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass
         rho_kappa = np.sqrt(kappa**2 - (alpha_el*Z)**2)
         g_kappa=-1*(kappa-rho_kappa)/(alpha_el*Z)
         f_kappa=-1
-        
-    return np.array([g_kappa,f_kappa])
 
-def initial_values_norm(beginning_radius_norm,electric_potential_V0,energy,mass,kappa,Z,energy_norm,nucleus_type=None,alpha_el=constants.alpha_el): 
+    y0 = np.array([g_kappa,f_kappa])
+
+    if contain:
+       # use only if total norm irrelevant
+       while np.any(np.abs(y0)>1e100):
+           y0*=1e-100
+           
+       while np.any(np.abs(y0)<1e-50):
+           y0*=1e50
+           
+    return y0
+
+def initial_values_norm(beginning_radius_norm,electric_potential_V0,energy,mass,kappa,Z,energy_norm,nucleus_type=None,contain=False,alpha_el=constants.alpha_el): 
     hc=constants.hc # MeV fm
-    initials_fm = initial_values_fm(beginning_radius_norm*hc/energy_norm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=nucleus_type,alpha_el=alpha_el)
+    initials_fm = initial_values_fm(beginning_radius_norm*hc/energy_norm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=nucleus_type,contain=contain,alpha_el=alpha_el)
     if not nucleus_type=="coulomb":
         return initials_fm*(energy_norm/hc)
     else:

@@ -353,8 +353,6 @@ def crosssection_lepton_nucleus_scattering_multithreaded(energy,theta,nucleus,le
 
 def crosssection_lepton_nucleus_scattering_singlethreaded(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,N_partial_waves=100,verbose=False,phase_difference_limit=0,**args):
     
-    args['verbose']=verbose
-
     nucleus_mass=nucleus.mass
     charge = nucleus.total_charge
 
@@ -370,22 +368,29 @@ def crosssection_lepton_nucleus_scattering_singlethreaded(energy,theta,nucleus,l
     phase_difference_gr0 = True
     # calculate beginning and critical radius only once, since independent on kappa
     if (not ('beginning_radius' in args)) or (not ('critical_radius' in args)):
-        initialiser = continuumstates(nucleus,-1,energy,lepton_mass,**args)
+        initialiser = continuumstates(nucleus,-1,energy,lepton_mass,verbose=verbose,**args)
     if not 'beginning_radius' in args:
         args['beginning_radius']=initialiser.solver_setting.beginning_radius
     if not 'critical_radius' in args:
         args['critical_radius']=initialiser.solver_setting.critical_radius
 
     for kappa in np.arange(-1,-(N_partial_waves+1+1),-1,dtype=int):
+        
         if phase_difference_gr0:    
             
-            phase_shifts[kappa], phase_differences[kappa] = phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args) #phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args)
+            if verbose:
+                print('Calculate phaseshift for kappa=',kappa)
+
+            phase_shifts[kappa], phase_differences[kappa] = phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,verbose=False,**args) #phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args)
             
             if -kappa < N_partial_waves+1:
                 if lepton_mass==0:
                     phase_shifts[-kappa] = phase_shifts[kappa]
+                    phase_differences[-kappa] = phase_differences[kappa]
                 else:
-                    phase_shifts[kappa], phase_differences[kappa] = phase_shift_from_partial_wave(nucleus,-kappa,energy,lepton_mass,**args) #phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args
+                    if verbose:
+                        print('Calculate phaseshift for kappa=',-kappa)
+                    phase_shifts[-kappa], phase_differences[-kappa] = phase_shift_from_partial_wave(nucleus,-kappa,energy,lepton_mass,verbose=False,**args) #phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args
                 if np.abs(phase_differences[kappa])<=phase_difference_limit:
                     phase_difference_gr0 = False
                     if verbose:

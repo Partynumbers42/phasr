@@ -70,9 +70,7 @@ class continuumstates():
         self.solver_setting = solver_settings(energy_norm=self.energy_norm,**self.inital_continuumstate_settings)
         if self.solver_setting.verbose:
             print("r0=",self.solver_setting.beginning_radius,"fm")
-            #print("r0=",self.solver_setting.beginning_radius_norm,"/Enorm")
             print("rc=",self.solver_setting.critical_radius,"fm")
-            #print("rc=",self.solver_setting.critical_radius_norm,"/Enorm")
             
     def update_eta_coulomb(self):
         self.pass_eta_regular=eta_coulomb(self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1)
@@ -175,7 +173,7 @@ class continuumstates():
         beginning_radius_norm = self.solver_setting.beginning_radius_norm
         critical_radius_norm = self.solver_setting.critical_radius_norm
         
-        self.set_initials()
+        self.set_initials(contain=True)
         
         if self.solver_setting.verbose:
             print("y0=",self.initials)
@@ -198,22 +196,32 @@ class continuumstates():
                                                  pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular)
         self.phase_shift = delta_coulomb(self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular) + self.phase_difference
 
-    def set_initials(self):
+    def set_initials(self,contain=False):
         
         beginning_radius = self.solver_setting.beginning_radius
         critical_radius = self.solver_setting.critical_radius
         
-        initials= initial_values_fm_norm(beginning_radius_fm=beginning_radius,electric_potential_V0=self.Vmin,energy=self.energy,mass=self.lepton_mass,kappa=self.kappa,Z=self.Z,nucleus_type=self.nucleus_type) #,energy_norm=energy_norm
+        initials= initial_values_fm_norm(beginning_radius_fm=beginning_radius,electric_potential_V0=self.Vmin,energy=self.energy,mass=self.lepton_mass,kappa=self.kappa,Z=self.Z,nucleus_type=self.nucleus_type,contain=contain) #,energy_norm=energy_norm
         
         initial_coulomb=g_coulomb(beginning_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
         critical_coulomb=g_coulomb(critical_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
+
+        scale_coulomb = np.abs(critical_coulomb)/np.abs(initial_coulomb) if (critical_coulomb!=0 and initial_coulomb !=0) else 0
         
-        scale_coulomb = np.abs(critical_coulomb)/np.abs(initial_coulomb)
         scale_initial=initials[0]*np.sqrt(scale_coulomb)
         if scale_initial==0:
             scale_initial=1
             print("Warning: could not rescale initials")    
-        self.initials= initials/scale_initial
+        initials_scaled=initials/scale_initial
+
+        if contain:
+            while np.any(np.abs(initials_scaled)>1e100):
+                initials_scaled*=1e-100
+            while np.any(np.abs(initials_scaled)<1e-50):
+                initials_scaled*=1e50
+        
+        self.initials=initials_scaled
+
     
 def g_highenergy(r,weight_regular,weight_irregular,kappa,Z,energy,mass,pass_hyper1f1_regular=None,pass_hyper1f1_irregular=None,pass_eta_regular=None,pass_eta_irregular=None,dps_hyper1f1=15,alpha_el=constants.alpha_el):
     g_coulomb_regular=g_coulomb(r,kappa,Z,energy,mass,reg=+1,pass_eta=pass_eta_regular,pass_hyper1f1=pass_hyper1f1_regular,dps_hyper1f1=dps_hyper1f1,alpha_el=alpha_el)

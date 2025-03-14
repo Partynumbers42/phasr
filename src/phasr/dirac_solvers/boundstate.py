@@ -207,7 +207,7 @@ def find_asymptotic_flip(nucleus,energy_limit_lower,energy_limit_upper,kappa,lep
     for energy in np.linspace(energy_limit_lower,energy_limit_upper,solver_setting.energy_subdivisions):
         
         def DGL(r,y): return radial_dirac_eq_norm(r,y,potential=nucleus.electric_potential,energy=energy,mass=lepton_mass,kappa=kappa,energy_norm=energy_norm,contain=True)
-        initials= scale_initial*initial_values_norm(beginning_radius_norm=beginning_radius,electric_potential_V0=nucleus.Vmin,energy=energy,mass=lepton_mass,kappa=kappa,Z=nucleus.Z,energy_norm=energy_norm,nucleus_type=nucleus.nucleus_type)
+        initials= scale_initial*initial_values_norm(beginning_radius_norm=beginning_radius,electric_potential_V0=nucleus.Vmin,energy=energy,mass=lepton_mass,kappa=kappa,Z=nucleus.Z,energy_norm=energy_norm,nucleus_type=nucleus.nucleus_type,contain=True)
         
         radial_dirac = solve_ivp(DGL, (beginning_radius,asymptotic_radius), initials, t_eval=np.array([asymptotic_radius]), method=solver_setting.method, atol=solver_setting.atol, rtol=solver_setting.rtol)
         sign=np.sign(radial_dirac.y[0][-1])
