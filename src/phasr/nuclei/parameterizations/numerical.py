@@ -221,7 +221,7 @@ class nucleus_num(nucleus_base):
             else:
                 raise ValueError("Need at least one input out of charge_density, electric_field, electric_potential and form_factor to deduce the others")
         
-        if not hasattr(self,"electric field"):
+        if not hasattr(self,"electric_field"):
             self.set_electric_field_from_charge_density()
 
         if not hasattr(self,"electric_potential"):
