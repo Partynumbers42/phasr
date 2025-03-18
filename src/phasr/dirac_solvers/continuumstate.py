@@ -206,8 +206,13 @@ class continuumstates():
         initial_coulomb=g_coulomb(beginning_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
         critical_coulomb=g_coulomb(critical_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
 
-        scale_coulomb = np.abs(critical_coulomb)/np.abs(initial_coulomb) if (critical_coulomb!=0 and initial_coulomb !=0) else 0
+        if (critical_coulomb!=0 and initial_coulomb !=0):
+            scale_coulomb = np.abs(critical_coulomb)/np.abs(initial_coulomb)
+        else:
+            scale_coulomb = (critical_radius/beginning_radius)**np.abs(self.kappa)
         
+        #print(scale_coulomb)
+
         scale_initial=initials[0]*np.sqrt(scale_coulomb)
         if scale_initial==0:
             scale_initial=1

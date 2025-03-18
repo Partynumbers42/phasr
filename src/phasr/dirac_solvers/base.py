@@ -61,12 +61,12 @@ def initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass
         f_kappa=-1
 
     y0 = np.array([g_kappa,f_kappa])
+    #print(y0)
 
     if contain:
        # use only if total norm irrelevant
        while np.any(np.abs(y0)>1e100):
-           y0*=1e-100
-           
+           y0*=1e-100    
        while np.any(np.abs(y0)<1e-50):
            y0*=1e50
            
