@@ -5,7 +5,7 @@ from .numerical import nucleus_num
 import numpy as np
 pi = np.pi
 
-from mpmath import lerchphi, fp, polylog
+from mpmath import fp, polylog#, lerchphi
 
 class nucleus_fermi(nucleus_base):
     def __init__(self,name,Z,A,c,z,**args): 
@@ -28,11 +28,16 @@ class nucleus_fermi(nucleus_base):
         self.polylog7 = float(polylog(7,-np.exp(self.c/self.z)))
         self.charge_density_norm = self.total_charge/(4*pi)*1./(-2*self.z**3*self.polylog3-24*self.w*self.z**5*self.polylog5/self.c**2)
         #
-        self.nucleus_num = nucleus_num(name+self.nucleus_type,Z=Z,A=A,charge_density=self.charge_density) 
-        #
         self.update_dependencies()
 
     def update_dependencies(self):
+        #
+        structures_num={}
+        for structure in ['charge_density','electric_field','electric_potential','form_factor','weak_density','proton_density','neutron_density']:
+            if hasattr(self,structure):
+                structures_num[structure]=getattr(self,structure) 
+        self.nucleus_num = nucleus_num(self.name+self.nucleus_type,Z=self.Z,A=self.A,**structures_num) 
+        #
         nucleus_base.update_dependencies(self)
         self.charge_radius_sq = charge_radius_sq_fermi(self.c,self.z,self.w,self.polylog5,self.polylog7,self.charge_density_norm,self.total_charge)
         self.charge_radius = np.sqrt(self.charge_radius_sq) if self.charge_radius_sq>=0 else np.sqrt(self.charge_radius_sq+0j)
@@ -48,6 +53,11 @@ class nucleus_fermi(nucleus_base):
         self.electric_potential = self.nucleus_num.electric_potential
         self.electric_field = self.nucleus_num.electric_field
         self.Vmin = self.nucleus_num.Vmin
+        
+        for attribute in ['weak_charge','weak_radius','weak_radius_sq','proton_density','proton_radius','proton_radius_sq','neutron_density','neutron_radius','neutron_radius_sq']:
+            if hasattr(self.nucleus_num,attribute):
+                setattr(self,attribute,getattr(self.nucleus_num,attribute))
+        
         self.update_dependencies()
 
     def charge_density(self,r):

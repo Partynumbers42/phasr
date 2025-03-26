@@ -6,6 +6,10 @@ pi = np.pi
 
 from scipy.special import spherical_jn
 
+from mpmath import besselj as mp_besselj, sqrt as mp_sqrt
+def mp_spherical_jn(n,z):
+    return mp_sqrt(pi/(2*z))*mp_besselj(n+0.5,z)
+
 def radial_dirac_eq_fm(r_fm,y,potential,energy,mass,kappa,contain=False): #
     # only scalar r in fm, potential in fm^-1, mass & energy in MeV, 
     # dy/dr = A y -> [A]=[r]=fm
@@ -47,29 +51,45 @@ def initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass
     z0=k0*beginning_radius_fm/hc
     
     if not nucleus_type=="coulomb":
+        
+        y0_overflow = False
+        jn_test = spherical_jn(np.abs(kappa),z0)
+        if z0!=0 and np.abs(jn_test)>0:
+            spherical_jn_fct=spherical_jn
+        else:
+            spherical_jn_fct=mp_spherical_jn
+            y0_overflow = True
+            print('overflow')
+        
         if kappa>0:
-            g_kappa=-np.sqrt((Ebar+mass)/(Ebar-mass))*spherical_jn(kappa,z0)
-            f_kappa=-spherical_jn(kappa-1,z0)
+            g_kappa=-np.sqrt((Ebar+mass)/(Ebar-mass))*spherical_jn_fct(kappa,z0)
+            f_kappa=-spherical_jn_fct(kappa-1,z0)
         elif kappa<0:
-            g_kappa=+spherical_jn(-kappa-1,z0)
-            f_kappa=-np.sqrt((Ebar-mass)/(Ebar+mass))*spherical_jn(-kappa,z0)
+            g_kappa=+spherical_jn_fct(-kappa-1,z0)
+            f_kappa=-np.sqrt((Ebar-mass)/(Ebar+mass))*spherical_jn_fct(-kappa,z0)
         else:
             raise ValueError("kappa=0 not allowed")
+        
     else:
         rho_kappa = np.sqrt(kappa**2 - (alpha_el*Z)**2)
         g_kappa=-1*(kappa-rho_kappa)/(alpha_el*Z)
         f_kappa=-1
-
+    
     y0 = np.array([g_kappa,f_kappa])
-    #print(y0)
-
-    if contain:
+    print(y0)
+    
+    if contain or y0_overflow:
        # use only if total norm irrelevant
        while np.any(np.abs(y0)>1e100):
            y0*=1e-100    
        while np.any(np.abs(y0)<1e-50):
            y0*=1e50
-           
+    
+    if y0_overflow:
+        y0=np.array([float(y0[0]),float(y0[1])])
+    
+    print(y0)
+    
     return y0
 
 def initial_values_norm(beginning_radius_norm,electric_potential_V0,energy,mass,kappa,Z,energy_norm,nucleus_type=None,contain=False,alpha_el=constants.alpha_el): 

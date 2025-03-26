@@ -323,13 +323,15 @@ def spline_field(field,fieldtype,name,rrange,renew):
 def highenergycont_field(field_spl,R,n):
     def field_ultimate(r,R1=R):
         E_crit=field_spl(R1)
-        dE=deriv(field_spl,1e-6)
-        dE_crit=dE(R1)
-        field=highenergy_continuation_poly(r,R1,E_crit,dE_crit,0,n=n)
-        if np.any(r<=R1):
-            field = field_spl(r)
-        if np.size(field)>1:
-            field[np.where(r>R1)]=highenergy_continuation_poly(r[np.where(r>R1)],R1,E_crit,dE_crit,0,n=n)
+        r_arr = np.atleast_1d(r)
+        field=np.zeros(len(r_arr))
+        mask_r = r_arr<=R1
+        if np.any(mask_r):
+            field[mask_r] = field_spl(r_arr[mask_r])
+        if np.any(~mask_r):
+            field[~mask_r] = highenergy_continuation_poly(r_arr[~mask_r],R1,E_crit,0,n=n)
+        if np.isscalar(r):
+           field=field[0]
         return field
     return field_ultimate
 
@@ -338,21 +340,53 @@ def highenergycont_rho(field_spl,R,val,t): # often val=0, t=0
         E_crit=field_spl(R1)
         dE=deriv(field_spl,1e-6)
         dE_crit=dE(R1)
-        field=highenergy_continuation_exp(r,R1,E_crit,dE_crit,val,t=t)
-        if np.any(r<=R1):
-            field = field_spl(r)
-        if np.size(field)>1:
-            field[np.where(r>R1)]=highenergy_continuation_exp(r[np.where(r>R1)],R1,E_crit,dE_crit,val,t=t)
+        r_arr = np.atleast_1d(r)
+        field=np.zeros(len(r_arr))
+        mask_r = r_arr<=R1
+        if np.any(mask_r):
+            field[mask_r] = field_spl(r_arr[mask_r])
+        if np.any(~mask_r):
+            field[~mask_r] = highenergy_continuation_exp(r_arr[~mask_r],R1,E_crit,dE_crit,val,t=t)
+        if np.isscalar(r):
+           field=field[0]
         return field
     return field_ultimate
+
+# def highenergycont_rho(field_spl,R,val,t): # often val=0, t=0
+#     def field_ultimate(r,R1=R):
+#         E_crit=field_spl(R1)
+#         dE=deriv(field_spl,1e-6)
+#         dE_crit=dE(R1)
+#         field=highenergy_continuation_exp(r,R1,E_crit,dE_crit,val,t=t)
+#         if np.any(r<=R1):
+#             field = field_spl(r)
+#         if np.size(field)>1:
+#             field[np.where(r>R1)]=highenergy_continuation_exp(r[np.where(r>R1)],R1,E_crit,dE_crit,val,t=t)
+#         return field
+#     return field_ultimate
 
 def highenergycutoff_field(field_spl,R,val=np.nan):
     # For r>R return val (default:nan, common choice: 0)
     def field_ultimate(r,R1=R):
-        field=np.full(len(np.atleast_1d(r)), val)
-        if np.any(r<=R1):
-            field = field_spl(r)
-        if np.size(field)>1:
-            field[np.where(r>R1)]=r[np.where(r>R1)]*val
+        r_arr = np.atleast_1d(r)
+        field=np.zeros(len(r_arr))
+        mask_r = r_arr<=R1
+        if np.any(mask_r):
+            field[mask_r] = field_spl(r_arr[mask_r])
+        if np.any(~mask_r):
+            field[~mask_r] = val
+        if np.isscalar(r):
+           field=field[0]
         return field
     return field_ultimate
+
+# def highenergycutoff_field(field_spl,R,val=np.nan):
+#     # For r>R return val (default:nan, common choice: 0)
+#     def field_ultimate(r,R1=R):
+#         field=np.full(len(np.atleast_1d(r)), val)
+#         if np.any(r<=R1):
+#             field = field_spl(r)
+#         if np.size(field)>1:
+#             field[np.where(r>R1)]=r[np.where(r>R1)]*val
+#         return field
+#     return field_ultimate

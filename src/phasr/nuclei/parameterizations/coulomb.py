@@ -8,9 +8,12 @@ pi = np.pi
 
 from scipy.special import factorial, gamma
 
-from mpmath import gamma as mp_gamma, arg as mp_arg
+from mpmath import gamma as mp_gamma, arg as mp_arg, fabs as mp_abs, exp as mp_exp
 def angle_gamma_large(z):
     return float(mp_arg(mp_gamma(z)))
+
+def wavefunction_prestructure_large(sigma,y): 
+    return float((mp_exp(pi*y/2))*(mp_abs(mp_gamma(sigma+1j*y))/(mp_gamma(2*sigma+1))))
 
 class nucleus_coulomb(nucleus_base):
     def __init__(self,name,Z,A,**args): 
@@ -119,6 +122,8 @@ def f_coulomb_nk(r,n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
     #
     return pref*(np.sqrt(np.abs(gamma(2*sigma+1+n_p)*(mass-energy)/(factorial(n_p)*y0*(y0-lam*kappa))+0j))/(gamma(2*sigma+1)))*((2*lam*mass*r)**sigma)*(np.exp(-lam*mass*r))*( n_p*hyper1f1(-n_p+1,2*sigma+1,2*lam*mass*r)-(kappa-y0/lam)*hyper1f1(-n_p,2*sigma+1,2*lam*mass*r) )
 
+# todo build mpmath g_coulomb and f_coulomb <---------------
+
 def g_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyper1f1=15,alpha_el=constants.alpha_el):
     # r in fm
 
@@ -135,8 +140,20 @@ def g_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyp
     prefactor=(-1)*np.sign(kappa)*np.sqrt(2*(energy+mass)/k)
     
     r=r/constants.hc
-
-    return prefactor*((2*k*r)**sigma)*(np.exp(pi*y/2))*(np.abs(gamma(sigma+1j*y))/(gamma(2*sigma+1)))*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
+    
+    mp_necessary=True
+    gamma_test=gamma(2*sigma+1)
+    if 0 < np.abs(gamma_test) < np.inf:
+        prestructure_test = (np.exp(pi*y/2))*(np.abs(gamma(sigma+1j*y))/(gamma(2*sigma+1)))
+        if np.abs(prestructure_test) < np.inf:
+            mp_necessary=False
+            
+    if mp_necessary:
+        prestructure = wavefunction_prestructure_large(sigma,y)
+    else:
+        prestructure = prestructure_test
+    
+    return prefactor*((2*k*r)**sigma)*prestructure*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
 
 def f_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyper1f1=15,alpha_el=constants.alpha_el):
     # r in fm
@@ -150,12 +167,24 @@ def f_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyp
         pass_eta = eta_coulomb(kappa,Z,energy,mass,reg,alpha_el=alpha_el)
     if pass_hyper1f1 is None:
         pass_hyper1f1=hyper1f1_coulomb(r,kappa,Z,energy,mass,reg,dps=dps_hyper1f1,alpha_el=alpha_el)
-
+    
     prefactor=np.sign(kappa)*np.sqrt(2*(energy-mass)/k)
     
     r=r/constants.hc
 
-    return prefactor*((2*k*r)**sigma)*(np.exp(pi*y/2))*(np.abs(gamma(sigma+1j*y))/(gamma(2*sigma+1)))*np.imag((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
+    mp_necessary=True
+    gamma_test=gamma(2*sigma+1)
+    if 0 < np.abs(gamma_test) < np.inf:
+        prestructure_test = (np.exp(pi*y/2))*(np.abs(gamma(sigma+1j*y))/(gamma(2*sigma+1)))
+        if np.abs(prestructure_test) < np.inf:
+            mp_necessary=False
+            
+    if mp_necessary:
+        prestructure = wavefunction_prestructure_large(sigma,y)
+    else:
+        prestructure = prestructure_test
+        
+    return prefactor*((2*k*r)**sigma)*prestructure*np.imag((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
 
 def hyper1f1_coulomb(r,kappa,Z,energy,mass,reg=+1,dps=15,alpha_el=constants.alpha_el):
     # r in fm
