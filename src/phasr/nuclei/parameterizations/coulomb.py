@@ -12,8 +12,8 @@ from mpmath import gamma as mp_gamma, arg as mp_arg, fabs as mp_abs, exp as mp_e
 def angle_gamma_large(z):
     return float(mp_arg(mp_gamma(z)))
 
-def wavefunction_prestructure_large(sigma,y): 
-    return float((mp_exp(pi*y/2))*(mp_abs(mp_gamma(sigma+1j*y))/(mp_gamma(2*sigma+1))))
+def mp_prestructure(sigma,y): 
+    return (mp_exp(pi*y/2))*(mp_abs(mp_gamma(sigma+1j*y))/(mp_gamma(2*sigma+1)))
 
 class nucleus_coulomb(nucleus_base):
     def __init__(self,name,Z,A,**args): 
@@ -122,7 +122,7 @@ def f_coulomb_nk(r,n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
     #
     return pref*(np.sqrt(np.abs(gamma(2*sigma+1+n_p)*(mass-energy)/(factorial(n_p)*y0*(y0-lam*kappa))+0j))/(gamma(2*sigma+1)))*((2*lam*mass*r)**sigma)*(np.exp(-lam*mass*r))*( n_p*hyper1f1(-n_p+1,2*sigma+1,2*lam*mass*r)-(kappa-y0/lam)*hyper1f1(-n_p,2*sigma+1,2*lam*mass*r) )
 
-# todo build mpmath g_coulomb and f_coulomb <---------------
+# ????
 
 def g_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyper1f1=15,alpha_el=constants.alpha_el):
     # r in fm
@@ -149,11 +149,13 @@ def g_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyp
             mp_necessary=False
             
     if mp_necessary:
-        prestructure = wavefunction_prestructure_large(sigma,y)
+        prestructure = mp_prestructure(sigma,y)
+        wavefct = float(prefactor*((2*k*r)**sigma)*prestructure*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1))
     else:
         prestructure = prestructure_test
+        wavefct = prefactor*((2*k*r)**sigma)*prestructure*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
     
-    return prefactor*((2*k*r)**sigma)*prestructure*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
+    return wavefct
 
 def f_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyper1f1=15,alpha_el=constants.alpha_el):
     # r in fm
@@ -180,11 +182,13 @@ def f_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyp
             mp_necessary=False
             
     if mp_necessary:
-        prestructure = wavefunction_prestructure_large(sigma,y)
+        prestructure = mp_prestructure(sigma,y)
+        wavefct = float(prefactor*((2*k*r)**sigma)*prestructure*np.imag((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1))
     else:
         prestructure = prestructure_test
+        wavefct = prefactor*((2*k*r)**sigma)*prestructure*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
         
-    return prefactor*((2*k*r)**sigma)*prestructure*np.imag((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
+    return wavefct
 
 def hyper1f1_coulomb(r,kappa,Z,energy,mass,reg=+1,dps=15,alpha_el=constants.alpha_el):
     # r in fm
