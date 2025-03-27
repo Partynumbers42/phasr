@@ -149,8 +149,8 @@ def g_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyp
             mp_necessary=False
             
     if mp_necessary:
-        prestructure = mp_prestructure(sigma,y)
-        wavefct = float(prefactor*((2*k*r)**sigma)*prestructure*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1))
+        prestructure = float(mp_prestructure(sigma,y))
+        wavefct = prefactor*((2*k*r)**sigma)*prestructure*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
     else:
         prestructure = prestructure_test
         wavefct = prefactor*((2*k*r)**sigma)*prestructure*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
@@ -182,8 +182,8 @@ def f_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyp
             mp_necessary=False
             
     if mp_necessary:
-        prestructure = mp_prestructure(sigma,y)
-        wavefct = float(prefactor*((2*k*r)**sigma)*prestructure*np.imag((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1))
+        prestructure = float(mp_prestructure(sigma,y))
+        wavefct = prefactor*((2*k*r)**sigma)*prestructure*np.imag((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
     else:
         prestructure = prestructure_test
         wavefct = prefactor*((2*k*r)**sigma)*prestructure*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)

@@ -379,12 +379,12 @@ def crosssection_lepton_nucleus_scattering_singlethreaded(energy,theta,nucleus,l
         if phase_difference_gr0:    
             
             if verbose:
-                print('Calculate phaseshift for kappa=',kappa,', delta_diff= ',end="")
+                print('Calculate phaseshift for kappa=',kappa,', ',end="")
 
             phase_shifts[kappa], phase_differences[kappa] = phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,verbose=False,**args) #phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args)
             
             if verbose:
-                print(phase_differences[kappa])
+                print('delta_diff= ',phase_differences[kappa])
 
             if -kappa < N_partial_waves+1:
                 if lepton_mass==0:
