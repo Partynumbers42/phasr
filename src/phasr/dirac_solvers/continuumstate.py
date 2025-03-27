@@ -213,49 +213,76 @@ class continuumstates():
         
         initials= initial_values_fm_norm(beginning_radius_fm=beginning_radius,electric_potential_V0=self.Vmin,energy=self.energy,mass=self.lepton_mass,kappa=self.kappa,Z=self.Z,nucleus_type=self.nucleus_type,contain=contain) #,energy_norm=energy_norm
         
+        print('y0_0',initials)
+        
+        #radius_optimise_step = self.solver_setting.radius_optimise_step
+        #radii_test = np.arange(beginning_radius,critical_radius+radius_optimise_step,radius_optimise_step)
+        
+        #print('r=',radii_test)
+        # slow???
+        #coulomb_test = g_coulomb(radii_test,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
+        
+        #print('coulomb=',coulomb_test)
+        
+        #initial_coulomb=np.min(np.abs(coulomb_test[coulomb_test!=0]))
+        #critical_coulomb=np.max(np.abs(coulomb_test[coulomb_test!=np.inf]))
+        
+        #print('coulomb_min',initial_coulomb)
+        #print('coulomb_max',critical_coulomb)
+        
+        # old
         initial_coulomb=g_coulomb(beginning_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
-        critical_coulomb=g_coulomb(critical_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
-
-        print(initial_coulomb)
-        print(critical_coulomb)
+        #critical_coulomb=g_coulomb(critical_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
         
-        scale_coulomb_finite=False
-        if (0<np.abs(critical_coulomb)<np.inf and 0<np.abs(initial_coulomb)<np.inf):
-            try:
-                scale_coulomb = np.abs(critical_coulomb)/np.abs(initial_coulomb)
-                if 0 < scale_coulomb < np.inf:
-                    scale_coulomb_finite = True
-            except OverflowError: #<--- todo find the right catch
-                print('overfloat')
-                pass
-            
-        if not scale_coulomb_finite:
-            scale_coulomb = mpmathify(critical_radius/beginning_radius)**np.abs(self.kappa)
-            print(scale_coulomb)
+        #print(initial_coulomb)
+        #print(critical_coulomb)
         
+        #scale_coulomb = np.abs(critical_coulomb)/np.abs(initial_coulomb)        
+        
+        #print('scale_factor=',np.sqrt(scale_coulomb))
+        
+        initials_scaled=initials#initial_coulomb*initials/initials[0]
+        
+        print('y0_scaled',initials_scaled)
+        
+        #scale_coulomb_finite=False
+        #if (0<np.abs(critical_coulomb)<np.inf and 0<np.abs(initial_coulomb)<np.inf):
+        #    try:
+        #        scale_coulomb = np.abs(critical_coulomb)/np.abs(initial_coulomb)
+        #        if 0 < scale_coulomb < np.inf:
+        #            scale_coulomb_finite = True
+        #    except OverflowError: #<--- todo find the right catch
+        #        print('overfloat')
+        #        pass
+        #    
+        #if not scale_coulomb_finite:
+        #    scale_coulomb = mpmathify(critical_radius/beginning_radius)**np.abs(self.kappa)
+        #    print(scale_coulomb)
+        # 
         #scale_coulomb = np.min([np.max([1e-300,scale_coulomb]),1e300])
-        
-        print(scale_coulomb)
+        #
+        #print(scale_coulomb)
+        #
+        #
+        #scale_initial=initials[0]*np.sqrt(scale_coulomb)
+        #
+        #if not scale_coulomb_finite:
+        #    scale_initial = float(scale_initial)
+        #
+        #if scale_initial==0:
+        #    scale_initial=1
+        #    print("Warning: could not rescale initials")    
+        #initials_scaled=initials/scale_initial
 
-        scale_initial=initials[0]*np.sqrt(scale_coulomb)
-        
-        if not scale_coulomb_finite:
-            scale_initial = float(scale_initial)
-        
-        if scale_initial==0:
-            scale_initial=1
-            print("Warning: could not rescale initials")    
-        initials_scaled=initials/scale_initial
+        #print(initials_scaled)
 
-        print(initials_scaled)
-
-        if contain:
-            while np.any(np.abs(initials_scaled)>1e100):
-                initials_scaled*=1e-100
-            while np.any(np.abs(initials_scaled)<1e-50):
-                initials_scaled*=1e50
+        #if contain:
+        #    while np.any(np.abs(initials_scaled)>1e100):
+        #        initials_scaled*=1e-100
+        #    while np.any(np.abs(initials_scaled)<1e-50):
+        #        initials_scaled*=1e50
         
-        print(initials_scaled)
+        #print(initials_scaled)
         
         self.initials=initials_scaled
 

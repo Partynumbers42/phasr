@@ -8,12 +8,9 @@ pi = np.pi
 
 from scipy.special import factorial, gamma
 
-from mpmath import gamma as mp_gamma, arg as mp_arg, fabs as mp_abs, exp as mp_exp
+from mpmath import gamma as mp_gamma, arg as mp_arg, fabs as mp_abs, exp as mp_exp, convert as convert_to_mp, sqrt as mp_sqrt
 def angle_gamma_large(z):
     return float(mp_arg(mp_gamma(z)))
-
-def mp_prestructure(sigma,y): 
-    return (mp_exp(pi*y/2))*(mp_abs(mp_gamma(sigma+1j*y))/(mp_gamma(2*sigma+1)))
 
 class nucleus_coulomb(nucleus_base):
     def __init__(self,name,Z,A,**args): 
@@ -127,68 +124,142 @@ def f_coulomb_nk(r,n,kappa,Z,mass,reg=+1,alpha_el=constants.alpha_el):
 def g_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyper1f1=15,alpha_el=constants.alpha_el):
     # r in fm
 
-    k=momentum(energy,mass)
-    y=alpha_el*Z*energy/k
     rho=rho_kappa(kappa,Z)
     sigma=rho*reg
     
-    if pass_eta is None:
-        pass_eta = eta_coulomb(kappa,Z,energy,mass,reg,alpha_el=alpha_el)
-    if pass_hyper1f1 is None:
-        pass_hyper1f1=hyper1f1_coulomb(r,kappa,Z,energy,mass,reg,dps=dps_hyper1f1,alpha_el=alpha_el)
-    
-    prefactor=(-1)*np.sign(kappa)*np.sqrt(2*(energy+mass)/k)
-    
-    r=r/constants.hc
-    
-    mp_necessary=True
-    gamma_test=gamma(2*sigma+1)
-    if 0 < np.abs(gamma_test) < np.inf:
-        prestructure_test = (np.exp(pi*y/2))*(np.abs(gamma(sigma+1j*y))/(gamma(2*sigma+1)))
-        if np.abs(prestructure_test) < np.inf:
-            mp_necessary=False
-            
-    if mp_necessary:
-        prestructure = float(mp_prestructure(sigma,y))
-        wavefct = prefactor*((2*k*r)**sigma)*prestructure*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
+    if 0<gamma(2*sigma+1)<np.inf:
+        k=momentum(energy,mass)
+        y=alpha_el*Z*energy/k
+        
+        if pass_eta is None:
+            pass_eta = eta_coulomb(kappa,Z,energy,mass,reg,alpha_el=alpha_el)
+        if pass_hyper1f1 is None:
+            pass_hyper1f1=hyper1f1_coulomb(r,kappa,Z,energy,mass,reg,dps=dps_hyper1f1,alpha_el=alpha_el)
+        
+        prefactor=(-1)*np.sign(kappa)*np.sqrt(2*(energy+mass)/k)
+        
+        r=r/constants.hc
+        
+        return prefactor*((2*k*r)**sigma)*(np.exp(pi*y/2))*(np.abs(gamma(sigma+1j*y))/(gamma(2*sigma+1)))*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
     else:
-        prestructure = prestructure_test
-        wavefct = prefactor*((2*k*r)**sigma)*prestructure*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
+        if np.isscalar(r):
+            return mp_g_coulomb_scalar(r,kappa,Z,energy,mass,reg,pass_eta,pass_hyper1f1,dps_hyper1f1,alpha_el)
+        else:
+            return mp_g_coulomb(r,kappa,Z,energy,mass,reg,pass_eta,pass_hyper1f1,dps_hyper1f1,alpha_el)
     
-    return wavefct
+    # mp_necessary=True
+    # gamma_test=gamma(2*sigma+1)
+    # if 0 < np.abs(gamma_test) < np.inf:
+    #     prestructure_test = (np.exp(pi*y/2))*(np.abs(gamma(sigma+1j*y))/(gamma(2*sigma+1)))
+    #     if np.abs(prestructure_test) < np.inf:
+    #         mp_necessary=False
+            
+    # if mp_necessary:
+    #     prestructure = float(mp_prestructure(sigma,y))
+    #     wavefct = prefactor*((2*k*r)**sigma)*prestructure*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
+    # else:
+    #     prestructure = prestructure_test
+    #     wavefct = prefactor*((2*k*r)**sigma)*prestructure*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
+    
+    # return wavefct
 
 def f_coulomb(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyper1f1=15,alpha_el=constants.alpha_el):
     # r in fm
 
-    k=momentum(energy,mass)
-    y=alpha_el*Z*energy/k
     rho=rho_kappa(kappa,Z)
     sigma=rho*reg
+    
+    if 0<gamma(2*sigma+1)<np.inf:
+        k=momentum(energy,mass)
+        y=alpha_el*Z*energy/k
+        
+        if pass_eta is None:
+            pass_eta = eta_coulomb(kappa,Z,energy,mass,reg,alpha_el=alpha_el)
+        if pass_hyper1f1 is None:
+            pass_hyper1f1=hyper1f1_coulomb(r,kappa,Z,energy,mass,reg,dps=dps_hyper1f1,alpha_el=alpha_el)
+        
+        prefactor=np.sign(kappa)*np.sqrt(2*(energy-mass)/k)
+        
+        r=r/constants.hc
+
+        return prefactor*((2*k*r)**sigma)*(np.exp(pi*y/2))*(np.abs(gamma(sigma+1j*y))/(gamma(2*sigma+1)))*np.imag((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
+    else:
+        if np.isscalar(r):
+            return mp_f_coulomb_scalar(r,kappa,Z,energy,mass,reg,pass_eta,pass_hyper1f1,dps_hyper1f1,alpha_el)
+        else:
+            return mp_f_coulomb(r,kappa,Z,energy,mass,reg,pass_eta,pass_hyper1f1,dps_hyper1f1,alpha_el)
+
+#def mp_prestructure(sigma,y): 
+#    return (mp_exp(pi*y/2))*(mp_abs(mp_gamma(sigma+1j*y))/(mp_gamma(2*sigma+1)))
+
+
+def mp_g_coulomb_scalar(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyper1f1=15,alpha_el=constants.alpha_el):
+    # r in fm
 
     if pass_eta is None:
         pass_eta = eta_coulomb(kappa,Z,energy,mass,reg,alpha_el=alpha_el)
     if pass_hyper1f1 is None:
         pass_hyper1f1=hyper1f1_coulomb(r,kappa,Z,energy,mass,reg,dps=dps_hyper1f1,alpha_el=alpha_el)
     
+    energy=convert_to_mp(energy)
+    mass=convert_to_mp(mass)
+    pass_eta = convert_to_mp(pass_eta)
+    pass_hyper1f1 = convert_to_mp(pass_hyper1f1)
+    
+    k=momentum(energy,mass)
+    y=alpha_el*Z*energy/k
+    rho=rho_kappa(kappa,Z)
+    sigma=rho*reg
+    
+    prefactor=(-1)*np.sign(kappa)*mp_sqrt(2*(energy+mass)/k)
+    
+    r=r/constants.hc
+    
+    return prefactor*((2*k*r)**sigma)*(mp_exp(pi*y/2))*(mp_abs(mp_gamma(sigma+1j*y))/(mp_gamma(2*sigma+1)))*np.real((mp_exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
+
+mp_g_coulomb =  np.vectorize(mp_g_coulomb_scalar,excluded=[1,2,3,4,5,6,7,8,9])
+
+def mp_f_coulomb_scalar(r,kappa,Z,energy,mass,reg,pass_eta=None,pass_hyper1f1=None,dps_hyper1f1=15,alpha_el=constants.alpha_el):
+    # r in fm
+
+    if pass_eta is None:
+        pass_eta = eta_coulomb(kappa,Z,energy,mass,reg,alpha_el=alpha_el)
+    if pass_hyper1f1 is None:
+        pass_hyper1f1=hyper1f1_coulomb(r,kappa,Z,energy,mass,reg,dps=dps_hyper1f1,alpha_el=alpha_el)
+    
+    energy=convert_to_mp(energy)
+    mass=convert_to_mp(mass)
+    pass_eta = convert_to_mp(pass_eta)
+    pass_hyper1f1 = convert_to_mp(pass_hyper1f1)
+    
+    k=momentum(energy,mass)
+    y=alpha_el*Z*energy/k
+    rho=rho_kappa(kappa,Z)
+    sigma=rho*reg    
+    
     prefactor=np.sign(kappa)*np.sqrt(2*(energy-mass)/k)
     
     r=r/constants.hc
-
-    mp_necessary=True
-    gamma_test=gamma(2*sigma+1)
-    if 0 < np.abs(gamma_test) < np.inf:
-        prestructure_test = (np.exp(pi*y/2))*(np.abs(gamma(sigma+1j*y))/(gamma(2*sigma+1)))
-        if np.abs(prestructure_test) < np.inf:
-            mp_necessary=False
+    
+    return prefactor*((2*k*r)**sigma)*(mp_exp(pi*y/2))*(mp_abs(mp_gamma(sigma+1j*y))/(mp_gamma(2*sigma+1)))*np.imag((mp_exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
+    
+mp_f_coulomb =  np.vectorize(mp_f_coulomb_scalar,excluded=[1,2,3,4,5,6,7,8,9])
+    
+    # mp_necessary=True
+    # gamma_test=gamma(2*sigma+1)
+    # if 0 < np.abs(gamma_test) < np.inf:
+    #     prestructure_test = (np.exp(pi*y/2))*(np.abs(gamma(sigma+1j*y))/(gamma(2*sigma+1)))
+    #     if np.abs(prestructure_test) < np.inf:
+    #         mp_necessary=False
             
-    if mp_necessary:
-        prestructure = float(mp_prestructure(sigma,y))
-        wavefct = prefactor*((2*k*r)**sigma)*prestructure*np.imag((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
-    else:
-        prestructure = prestructure_test
-        wavefct = prefactor*((2*k*r)**sigma)*prestructure*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
+    # if mp_necessary:
+    #     prestructure = float(mp_prestructure(sigma,y))
+    #     wavefct = prefactor*((2*k*r)**sigma)*prestructure*np.imag((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
+    # else:
+    #     prestructure = prestructure_test
+    #     wavefct = prefactor*((2*k*r)**sigma)*prestructure*np.real((np.exp(-1j*k*r+1j*pass_eta))*(sigma+1j*y)*pass_hyper1f1)
         
-    return wavefct
+    # return wavefct
 
 def hyper1f1_coulomb(r,kappa,Z,energy,mass,reg=+1,dps=15,alpha_el=constants.alpha_el):
     # r in fm

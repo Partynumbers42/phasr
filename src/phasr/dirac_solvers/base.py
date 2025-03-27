@@ -52,14 +52,11 @@ def initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass
     
     if not nucleus_type=="coulomb":
         
-        y0_overflow = False
         jn_test = spherical_jn(np.abs(kappa),z0)
         if z0!=0 and np.abs(jn_test)>0:
             spherical_jn_fct=spherical_jn
         else:
             spherical_jn_fct=mp_spherical_jn
-            y0_overflow = True
-            print('overflow')
         
         if kappa>0:
             g_kappa=-np.sqrt((Ebar+mass)/(Ebar-mass))*spherical_jn_fct(kappa,z0)
@@ -76,19 +73,6 @@ def initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass
         f_kappa=-1
     
     y0 = np.array([g_kappa,f_kappa])
-    print(y0)
-    
-    if contain or y0_overflow:
-       # use only if total norm irrelevant
-       while np.any(np.abs(y0)>1e100):
-           y0*=1e-100    
-       while np.any(np.abs(y0)<1e-50):
-           y0*=1e50
-    
-    if y0_overflow:
-        y0=np.array([float(y0[0]),float(y0[1])])
-    
-    print(y0)
     
     return y0
 
