@@ -20,11 +20,11 @@ def radial_dirac_eq_fm(r_fm,y,potential,energy,mass,kappa,contain=False): #
     #print(r,y,A)
     if contain:
        # use only if total norm irrelevant
-       if np.any(np.abs(y)>1e100):
-           y*=1e-100
+       if np.any(np.abs(y)>1e200):
+           y*=1e200/np.max(y)
            #print("downscaled at r=",r_fm,"fm")
-       if np.any(np.abs(y)<1e-50):
-           y*=1e50
+       if np.any(np.abs(y)<1e-200):
+           y*=1e-200/np.min(y)
            #print("upscaled at r=",r_fm,"fm")
     
     return np.array([[-kappa/r_fm,(Ebar+mass)/hc],[-(Ebar-mass)/hc,kappa/r_fm]]) @ y
@@ -52,11 +52,13 @@ def initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass
     
     if not nucleus_type=="coulomb":
         
+        mp_type=False
         jn_test = spherical_jn(np.abs(kappa),z0)
         if z0!=0 and np.abs(jn_test)>0:
             spherical_jn_fct=spherical_jn
         else:
             spherical_jn_fct=mp_spherical_jn
+            mp_type=True
         
         if kappa>0:
             g_kappa=-np.sqrt((Ebar+mass)/(Ebar-mass))*spherical_jn_fct(kappa,z0)
@@ -74,6 +76,16 @@ def initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass
     
     y0 = np.array([g_kappa,f_kappa])
     
+    if contain or mp_type:
+        if np.any(np.abs(y0)>1e200):
+           y0*=1e200/np.max(y0)
+        if np.any(np.abs(y0)<1e-200):
+           y0*=1e-200/np.min(y0)
+       
+    if mp_type:
+        y0=np.array([float(y0[0]),float(y0[1])])
+    
+        
     return y0
 
 def initial_values_norm(beginning_radius_norm,electric_potential_V0,energy,mass,kappa,Z,energy_norm,nucleus_type=None,contain=False,alpha_el=constants.alpha_el): 

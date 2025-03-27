@@ -215,6 +215,8 @@ class continuumstates():
         
         print('y0_0',initials)
         
+        # introduce a scaling !!!
+        
         #radius_optimise_step = self.solver_setting.radius_optimise_step
         #radii_test = np.arange(beginning_radius,critical_radius+radius_optimise_step,radius_optimise_step)
         
@@ -231,7 +233,7 @@ class continuumstates():
         #print('coulomb_max',critical_coulomb)
         
         # old
-        initial_coulomb=g_coulomb(beginning_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
+        #initial_coulomb=g_coulomb(beginning_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
         #critical_coulomb=g_coulomb(critical_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,pass_eta=self.pass_eta_regular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
         
         #print(initial_coulomb)
@@ -241,7 +243,7 @@ class continuumstates():
         
         #print('scale_factor=',np.sqrt(scale_coulomb))
         
-        initials_scaled=initials#initial_coulomb*initials/initials[0]
+        initials_scaled=initials#/(initials[0]*np.sqrt(scale_coulomb))
         
         print('y0_scaled',initials_scaled)
         
