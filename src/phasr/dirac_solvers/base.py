@@ -19,14 +19,10 @@ def radial_dirac_eq_fm(r_fm,y,potential,energy,mass,kappa,contain=False): #
     
     #print(r,y,A)
     if contain:
-       # use only if total norm irrelevant
-       if np.any(np.abs(y)>1e200):
-           y*=1e200/np.max(y)
-           #print("downscaled at r=",r_fm,"fm")
-       if np.any(np.abs(y)<1e-200):
-           y*=1e-200/np.min(y)
-           #print("upscaled at r=",r_fm,"fm")
-    
+        # use only if total norm irrelevant
+        if np.any(np.abs(y)>1e100):
+           y*=1e0/np.max(y)
+       
     return np.array([[-kappa/r_fm,(Ebar+mass)/hc],[-(Ebar-mass)/hc,kappa/r_fm]]) @ y
 
 def radial_dirac_eq_norm(r_norm,y,potential,energy,mass,kappa,energy_norm,contain=False): 
@@ -77,10 +73,9 @@ def initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass
     y0 = np.array([g_kappa,f_kappa])
     
     if contain or mp_type:
-        if np.any(np.abs(y0)>1e200):
-           y0*=1e200/np.max(y0)
-        if np.any(np.abs(y0)<1e-200):
-           y0*=1e-200/np.min(y0)
+        min_lim=1e-200
+        if np.any(np.abs(y0)<min_lim):
+           y0*=min_lim/np.min(y0)
        
     if mp_type:
         y0=np.array([float(y0[0]),float(y0[1])])
