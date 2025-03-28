@@ -3,7 +3,7 @@ from ..config import local_paths
 from .base import radial_dirac_eq_norm, initial_values_norm, solver_settings, default_boundstate_settings
 
 from ..utility.math import optimise_radius_highenergy_continuation,derivative
-from ..utility.spliner import saveandload
+from ..utility.spliner import save_and_load
 from ..utility.continuer import highenergy_continuation_exp
 
 from ..nuclei.parameterizations.coulomb import energy_coulomb_nk
@@ -89,10 +89,10 @@ class boundstates():
             self.principal_quantum_numbers.append(self._current_principal_quantum_number)
             self._current_bindingenergy_limit_lower=self.energy_levels[-1]+self.solver_setting.energy_precision
             self.update_solver_setting()
-            
+        
         path=local_paths.energy_path+self.name+"_"+state_name(self._current_principal_quantum_number,self.kappa)+"_m"+str(self.lepton_mass)+".txt" # add more parameters, fct solver_setting to str
         
-        self._current_bindingenergy = saveandload(path,self.solver_setting.renew,self.solver_setting.save,self.solver_setting.verbose,fmt='%.50e',fct=find_bindingenergy,nucleus=self.nucleus,bindingenergy_limit_lower=self._current_bindingenergy_limit_lower,bindingenergy_limit_upper=self.bindingenergy_limit_upper,kappa=self.kappa,lepton_mass=self.lepton_mass,solver_setting=self.solver_setting)
+        self._current_bindingenergy = save_and_load(path,self.solver_setting.renew,self.solver_setting.save,self.solver_setting.verbose,fmt='%.50e',fct=find_bindingenergy,tracked_params=self.solver_setting.as_dict(),nucleus=self.nucleus,bindingenergy_limit_lower=self._current_bindingenergy_limit_lower,bindingenergy_limit_upper=self.bindingenergy_limit_upper,kappa=self.kappa,lepton_mass=self.lepton_mass,solver_setting=self.solver_setting)
         
         self.energy_levels.append(self._current_bindingenergy)
         
@@ -103,7 +103,7 @@ class boundstates():
         energy_norm=self.solver_setting.energy_norm
         def DGL(r,fct): return radial_dirac_eq_norm(r,fct,potential=self.nucleus.electric_potential,energy=self._current_energy,mass=self.lepton_mass,kappa=self.kappa,energy_norm=energy_norm)  
         
-        scale_initial=1 # TODO also other optimisers
+        scale_initial=1 
         
         beginning_radius = self.solver_setting.beginning_radius_norm
         critical_radius = self.solver_setting.critical_radius_norm
@@ -111,6 +111,9 @@ class boundstates():
         radius_optimise_step = self.solver_setting.radius_optimise_step_norm
                 
         initials= scale_initial*initial_values_norm(beginning_radius_norm=beginning_radius,electric_potential_V0=self.Vmin,energy=self._current_energy,mass=self.lepton_mass,kappa=self.kappa,Z=self.Z,energy_norm=energy_norm,nucleus_type=self.nucleus_type)
+        
+        if self.solver_setting.verbose:
+            print('y0=',initials)
         
         radial_dirac = solve_ivp(DGL, (beginning_radius,asymptotic_radius), initials, dense_output=True, method=self.solver_setting.method, atol=self.solver_setting.atol, rtol=self.solver_setting.rtol)
 
@@ -208,6 +211,9 @@ def find_asymptotic_flip(nucleus,energy_limit_lower,energy_limit_upper,kappa,lep
         
         def DGL(r,y): return radial_dirac_eq_norm(r,y,potential=nucleus.electric_potential,energy=energy,mass=lepton_mass,kappa=kappa,energy_norm=energy_norm,contain=True)
         initials= scale_initial*initial_values_norm(beginning_radius_norm=beginning_radius,electric_potential_V0=nucleus.Vmin,energy=energy,mass=lepton_mass,kappa=kappa,Z=nucleus.Z,energy_norm=energy_norm,nucleus_type=nucleus.nucleus_type,contain=True)
+        
+        #if solver_setting.verbose:
+        #    print('y0=',initials)
         
         radial_dirac = solve_ivp(DGL, (beginning_radius,asymptotic_radius), initials, t_eval=np.array([asymptotic_radius]), method=solver_setting.method, atol=solver_setting.atol, rtol=solver_setting.rtol)
         sign=np.sign(radial_dirac.y[0][-1])

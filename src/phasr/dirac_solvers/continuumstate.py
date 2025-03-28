@@ -79,7 +79,7 @@ class continuumstates():
         self.pass_eta_irregular=eta_coulomb(self.kappa,self.Z,self.energy,self.lepton_mass,reg=-1,pass_eta_regular=self.pass_eta_regular)
 
     def update_hyper1f1_coulomb_at_critical_radius(self):
-        self.pass_hyper1f1_regular_at_crtical_radius=hyper1f1_coulomb(self.solver_setting.critical_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,dps=self.solver_setting.dps_hyper1f1)
+        self.pass_hyper1f1_regular_at_critical_radius=hyper1f1_coulomb(self.solver_setting.critical_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=+1,dps=self.solver_setting.dps_hyper1f1)
         self.pass_hyper1f1_irregular_at_critical_radius=hyper1f1_coulomb(self.solver_setting.critical_radius,self.kappa,self.Z,self.energy,self.lepton_mass,reg=-1,dps=self.solver_setting.dps_hyper1f1)
 
     def solve_IVP(self):
@@ -113,11 +113,11 @@ class continuumstates():
         critical_radius = self.solver_setting.critical_radius
         
         self.regular_irregular_fraction = regular_irregular_fraction(wavefct_f_critical_radius,wavefct_g_critical_radius,critical_radius,kappa=self.kappa,Z=self.Z,energy=self.energy,mass=self.lepton_mass,
-                                                                     pass_hyper1f1_regular=self.pass_hyper1f1_regular_at_crtical_radius,pass_hyper1f1_irregular=self.pass_hyper1f1_irregular_at_critical_radius,
+                                                                     pass_hyper1f1_regular=self.pass_hyper1f1_regular_at_critical_radius,pass_hyper1f1_irregular=self.pass_hyper1f1_irregular_at_critical_radius,
                                                                      pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
         
         weight_regular = wavefct_g_critical_radius / g_highenergy(critical_radius,1.,1./self.regular_irregular_fraction,self.kappa,self.Z,self.energy,self.lepton_mass,
-                                                                  pass_hyper1f1_regular=self.pass_hyper1f1_regular_at_crtical_radius,pass_hyper1f1_irregular=self.pass_hyper1f1_irregular_at_critical_radius,
+                                                                  pass_hyper1f1_regular=self.pass_hyper1f1_regular_at_critical_radius,pass_hyper1f1_irregular=self.pass_hyper1f1_irregular_at_critical_radius,
                                                                   pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
         weight_irregular = weight_regular / self.regular_irregular_fraction
         
@@ -196,7 +196,7 @@ class continuumstates():
         critical_radius = self.solver_setting.critical_radius
         
         self.regular_irregular_fraction = regular_irregular_fraction(wavefct_f_critical_radius,wavefct_g_critical_radius,critical_radius,kappa=self.kappa,Z=self.Z,energy=self.energy,mass=self.lepton_mass,
-                                                                     pass_hyper1f1_regular=self.pass_hyper1f1_regular_at_crtical_radius,pass_hyper1f1_irregular=self.pass_hyper1f1_irregular_at_critical_radius,
+                                                                     pass_hyper1f1_regular=self.pass_hyper1f1_regular_at_critical_radius,pass_hyper1f1_irregular=self.pass_hyper1f1_irregular_at_critical_radius,
                                                                      pass_eta_regular=self.pass_eta_regular,pass_eta_irregular=self.pass_eta_irregular,dps_hyper1f1=self.solver_setting.dps_hyper1f1)
         
         if self.solver_setting.verbose:
@@ -226,12 +226,12 @@ class continuumstates():
         scale_coulomb = float(np.sqrt(np.abs(critical_coulomb)/np.abs(initial_coulomb)))
         #print('scale',scale_coulomb)
         
-        initials_scaled=initials/(initials[0]*scale_coulomb)
+        initials_scaled=initials/np.abs(initials[0]*scale_coulomb)
         
         if contain:
             min_lim=1e-50
             if np.any(np.abs(initials_scaled)<min_lim):
-                initials_scaled*=min_lim/np.min(initials_scaled)
+                initials_scaled*=min_lim/np.min(np.abs(initials_scaled))
         
         #print('y0_scaled',initials_scaled)
         
@@ -269,7 +269,6 @@ def regular_irregular_fraction(wavefct_f_radius,wavefct_g_radius,radius,kappa,Z,
     #print('gr',g_coulomb_regular)
     #print('fi',f_coulomb_irregular)
     #print('gi',g_coulomb_irregular)
-    #
     #
     regular=f_coulomb_irregular - g_coulomb_irregular *(wavefct_f_radius/wavefct_g_radius)
     irregular= f_coulomb_regular - g_coulomb_regular*(wavefct_f_radius/wavefct_g_radius)

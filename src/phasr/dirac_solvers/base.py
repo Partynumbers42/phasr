@@ -21,7 +21,7 @@ def radial_dirac_eq_fm(r_fm,y,potential,energy,mass,kappa,contain=False): #
     if contain:
         # use only if total norm irrelevant
         if np.any(np.abs(y)>1e100):
-           y*=1e0/np.max(y)
+           y*=1e0/np.max(np.abs(y))
        
     return np.array([[-kappa/r_fm,(Ebar+mass)/hc],[-(Ebar-mass)/hc,kappa/r_fm]]) @ y
 
@@ -32,11 +32,14 @@ def radial_dirac_eq_norm(r_norm,y,potential,energy,mass,kappa,energy_norm,contai
 
 def initial_values_fm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=None,contain=False,alpha_el=constants.alpha_el): 
     
+    initials = initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=nucleus_type,contain=contain,alpha_el=alpha_el)
+    initials = initials/np.abs(initials[0])
+    
     if not nucleus_type=="coulomb":
-        return beginning_radius_fm*initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=nucleus_type,contain=contain,alpha_el=alpha_el)
+        return beginning_radius_fm*initials
     else:
         rho_kappa = np.sqrt(kappa**2 - (alpha_el*Z)**2)
-        return (beginning_radius_fm)**rho_kappa*initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=nucleus_type,contain=contain,alpha_el=alpha_el)
+        return (beginning_radius_fm)**rho_kappa*initials
     
 def initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass,kappa,Z,nucleus_type=None,contain=False,alpha_el=constants.alpha_el): 
     
@@ -75,12 +78,11 @@ def initial_values_fm_norm(beginning_radius_fm,electric_potential_V0,energy,mass
     if contain or mp_type:
         min_lim=1e-200
         if np.any(np.abs(y0)<min_lim):
-           y0*=min_lim/np.min(y0)
+           y0*=min_lim/np.min(np.abs(y0))
        
     if mp_type:
         y0=np.array([float(y0[0]),float(y0[1])])
     
-        
     return y0
 
 def initial_values_norm(beginning_radius_norm,electric_potential_V0,energy,mass,kappa,Z,energy_norm,nucleus_type=None,contain=False,alpha_el=constants.alpha_el): 
@@ -173,4 +175,30 @@ class solver_settings():
                 setattr(self,radius_norm_str,getattr(self,radius_str)/norm)
             elif not (getattr(self,radius_norm_str) is None):
                 setattr(self,radius_str,getattr(self,radius_norm_str)*norm)
+    
+    def as_dict(self):
+        relevant_keys = [
+            "beginning_radius_norm", 
+            "beginning_radius", 
+            "critical_radius_norm",  
+            "critical_radius", 
+            "asymptotic_radius_norm", 
+            "asymptotic_radius", 
+            "radius_optimise_step_norm", 
+            "radius_optimise_step",
+            "energy_precision_norm",
+            "energy_precision",
+            "energy_subdivisions",
+            "potential_precision",
+            "atol",
+            "rtol",
+            "method",
+            "dps_hyper1f1"]
+        settings_dict={}
+        for key in relevant_keys:
+            if hasattr(self,key):
+                setting_val = getattr(self,key)
+                if setting_val is not None:
+                    settings_dict[key]=setting_val
+        return settings_dict
 

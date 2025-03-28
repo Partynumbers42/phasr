@@ -22,7 +22,7 @@ MPSentinel.As_master()
 
 parameter_steps={
     'method' : np.array(['DOP853']), #,'LSODA' 
-    'N_partial_waves' : np.append(np.arange(120,50-10,-10),np.arange(50,20-5,-5)),
+    'N_partial_waves' : np.append([250,200,150],np.append(np.arange(120,50-10,-10),np.arange(50,20-5,-5))),
     'atol' : 10**np.arange(-13,-6+1,1,dtype=float),
     'rtol' : 10**np.arange(-13,-6+1,1,dtype=float),
     'energy_norm': constants.hc*10**np.arange(0,-6-1,-1,dtype=float),
@@ -239,17 +239,21 @@ def recoil_quantities(energy_lab,theta_lab,mass):
     return energy_CMS, theta_CMS, scalefactor_crosssection_CMS
 
 def phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args):
+    
+    # check save and save if wanted <---
+    # add save and load option here ???
+    
     partial_wave_kappa = continuumstates(nucleus,kappa,energy,lepton_mass,**args)
     partial_wave_kappa.extract_phase_shift()
     return partial_wave_kappa.phase_shift, partial_wave_kappa.phase_difference
 
-def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,N_partial_waves=100,verbose=False,phase_difference_limit=0,N_processes=1,**args):
+def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,N_partial_waves=250,verbose=False,phase_difference_limit=0,N_processes=1,**args):
     if N_processes>1:
         return crosssection_lepton_nucleus_scattering_multithreaded(energy,theta,nucleus,lepton_mass=lepton_mass,recoil=recoil,subtractions=subtractions,N_partial_waves=N_partial_waves,verbose=verbose,phase_difference_limit=phase_difference_limit,N_max_cpu=N_processes,**args)
     else:
         return crosssection_lepton_nucleus_scattering_singlethreaded(energy,theta,nucleus,lepton_mass=lepton_mass,recoil=recoil,subtractions=subtractions,N_partial_waves=N_partial_waves,verbose=verbose,phase_difference_limit=phase_difference_limit,**args)
 
-def crosssection_lepton_nucleus_scattering_multithreaded(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,N_partial_waves=100,verbose=False,phase_difference_limit=0,N_max_cpu=cpu_count()-1,**args):
+def crosssection_lepton_nucleus_scattering_multithreaded(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,N_partial_waves=250,verbose=False,phase_difference_limit=0,N_max_cpu=cpu_count()-1,**args):
     
     args['verbose']=verbose
 
@@ -351,7 +355,7 @@ def crosssection_lepton_nucleus_scattering_multithreaded(energy,theta,nucleus,le
         
     return scale_crosssection * crosssection
 
-def crosssection_lepton_nucleus_scattering_singlethreaded(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,N_partial_waves=100,verbose=False,phase_difference_limit=0,**args):
+def crosssection_lepton_nucleus_scattering_singlethreaded(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,N_partial_waves=250,verbose=False,phase_difference_limit=0,**args):
     
     nucleus_mass=nucleus.mass
     charge = nucleus.total_charge
