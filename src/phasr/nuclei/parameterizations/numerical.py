@@ -7,7 +7,7 @@ pi = np.pi
 from scipy.integrate import quad
 from scipy.special import spherical_jn
 
-from ...utility import calcandspline
+from ...utility import calc_and_spline
 from ...utility.continuer import highenergy_continuation_exp, highenergy_continuation_poly
 from ...utility.math import optimise_radius_highenergy_continuation
 from ...utility.math import derivative as deriv
@@ -317,7 +317,7 @@ def quad_seperator(integrand,Rs):
     return integral
 
 def spline_field(field,fieldtype,name,rrange,renew):
-    field_spl=calcandspline(field, rrange, fieldtype+"_"+name,dtype=float,renew=renew)
+    field_spl=calc_and_spline(field, rrange, fieldtype+"_"+name,dtype=float,renew=renew)
     return field_spl
 
 def highenergycont_field(field_spl,R,n):

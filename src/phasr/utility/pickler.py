@@ -6,7 +6,7 @@ import pickle
 import glob
 import hashlib
 
-# --> TODO Rework
+# --> TODO Rework unused atm
 
 def path_gen(params_dict,txtname,folder_path='./lib/fits',label_afix=""):
     str_header=write_header_underscore(params_dict)
