@@ -528,9 +528,11 @@ def crosssection_lepton_nucleus_scattering_chirality(energy,theta,nucleus,chiral
     nucleus_chiral.electric_potential = potential_chiral
     return crosssection_lepton_nucleus_scattering(energy,theta,nucleus_chiral,**args)
 
-def left_right_asymmetry_lepton_nucleus_scattering(energy,theta,nucleus,verbose=False,parallelize_LR=False,**args):
+def left_right_asymmetry_lepton_nucleus_scattering(energy,theta,nucleus,verbose=False,parallelize_LR=False,atol=1e-13,rtol=1e-13,**args):
     
     args['verbose']=verbose
+    args['atol']=atol
+    args['rtol']=rtol
     
     if parallelize_LR:
         # left and right are run in parallel
