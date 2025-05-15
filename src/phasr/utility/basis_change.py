@@ -1,4 +1,4 @@
-def Isospin_basis_to_nucleon_basis(F0,F1,nuc):
+def Isospin_basis_to_nucleon_basis(F0,F1,nuc:str):
     if nuc=='p':
         pm=+1
     elif nuc=='n':
@@ -7,7 +7,7 @@ def Isospin_basis_to_nucleon_basis(F0,F1,nuc):
         raise ValueError("Needs nuc='p','n'")
     return (F0 + pm*F1)/2
 
-def Nucleon_basis_to_isospin_basis(Fp,Fn,iso):
+def Nucleon_basis_to_isospin_basis(Fp,Fn,iso:str):
     if iso=='0':
         pm=+1
     elif iso=='1':
