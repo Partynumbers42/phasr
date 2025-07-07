@@ -1,15 +1,21 @@
 default_spline_path = "./tmp/nucleus_splines/"
 default_energy_path = "./tmp/binding_energies/"
 default_fit_path = "./tmp/crosssection_fits/"
+default_cross_section_data_path = "./tmp/cross_section_data/"
+default_barrett_moment_data_path = "./tmp/barrett_moment_data/"
 
 class paths():
     # 
-    def __init__(self,spline_path,energy_path,fit_path):
+    def __init__(self,cross_section_data_path,barrett_moment_data_path,spline_path,energy_path,fit_path):
+        self.cross_section_data_path = cross_section_data_path
+        self.barrett_moment_data_path = barrett_moment_data_path
         self.spline_path = spline_path
         self.fit_path = fit_path
         self.energy_path = energy_path
     #
     def print_paths(self):
+        print('After insertion, transformed cross section data is placed at:',self.cross_section_data_path)
+        print('After insertion, transformed barret moment data is placed at:',self.barrett_moment_data_path)
         print('Splines are saved at:',self.spline_path)
         print('Binding energies are saved at:',self.energy_path)
         print('Fits are saved at:',self.fit_path)
@@ -20,4 +26,4 @@ class paths():
     def change_fit_path(self,path):
         self.fit_path = path
 
-local_paths=paths(default_spline_path,default_energy_path,default_fit_path)
+local_paths=paths(default_cross_section_data_path,default_barrett_moment_data_path,default_spline_path,default_energy_path,default_fit_path)
