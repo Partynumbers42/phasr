@@ -6,7 +6,7 @@ pi = np.pi
 
 from ..dirac_solvers import crosssection_lepton_nucleus_scattering
 
-def load_data(path,**args): #,correlation_stat_uncertainty=None,correlation_syst_uncertainty=None
+def load_data(path,Z,A,correlation_stat_uncertainty=None,correlation_syst_uncertainty=None,**args):
     
     with open( path, "rb" ) as file:
         cross_section_dataset_input = np.loadtxt( file , **args )
@@ -61,7 +61,6 @@ def load_data(path,**args): #,correlation_stat_uncertainty=None,correlation_syst
         cross_section_data = cross_section_dataset_input[:,cross_section_col]*cross_section_scale
         
         stat_vs_syst = input("Does the data distinguish between statistical and systematical uncertainties? (y or n)")
-        # Ask for correlations? But how would these be supplied?
         
         if stat_vs_syst == 'y':
             
@@ -137,18 +136,25 @@ def load_data(path,**args): #,correlation_stat_uncertainty=None,correlation_syst
             cross_section_uncertainty_stat_data = cross_section_uncertainty_stat_and_syst_data*cross_section_uncertainty_stat_split
             cross_section_uncertainty_syst_data = cross_section_uncertainty_stat_and_syst_data*cross_section_uncertainty_syst_split
         
-        # set correlations
-        cross_section_correlation_stat_data = np.identity(N_data)
-        cross_section_correlation_syst_data = np.ones((N_data,N_data))
+        # Set correlations
+        if correlation_stat_uncertainty is None:
+            cross_section_correlation_stat_data = np.identity(N_data)
+        else:
+            cross_section_correlation_stat_data = correlation_stat_uncertainty
+            
+        if correlation_syst_uncertainty is None:
+            cross_section_correlation_syst_data = np.ones((N_data,N_data))
+        else:
+            cross_section_correlation_syst_data = correlation_syst_uncertainty
         
     elif cross_section_or_fraction=="relative":
 
         # Collect 
-        Z, N = input("Relative to which nucleus was the data measured? (answer with: Z,N)")
+        Z_ref, A_ref = input("Relative to which nucleus was the data measured? (answer with: Z,N)")
         
-        reference_nucleus = SOLUTION_LOADER_TODO(Z,N) #TODO
+        reference_nucleus = SOLUTION_LOADER_TODO(Z_ref,A_ref) #TODO
         
-        # if not raise info to first load data for that nucleus
+        # if it does not exist raise info to first load data for that nucleus
         
         cross_section_reference_data=np.array([])
         for E in np.unique(E_data):
@@ -158,7 +164,7 @@ def load_data(path,**args): #,correlation_stat_uncertainty=None,correlation_syst
         
         q_data=2*E_data/constants.hc*np.sin(theta_data/2)
         
-        form_factor_reference = FF_TODO(q_data,reference_nucleus) #TODO
+        form_factor_reference = reference_nucleus.form_factor(q_data) #TODO
         form_factor_uncertainty_reference = FF_UNCERT_TODO(q_data,reference_nucleus) #TODO
         form_factor_correlation_reference = FF_CORR_TODO(q_data,reference_nucleus) #TODO
         dcross_section_dform_factor = 2*(cross_section_reference_data/np.abs(form_factor_reference))
@@ -201,8 +207,18 @@ def load_data(path,**args): #,correlation_stat_uncertainty=None,correlation_syst
         cross_section_uncertainty_syst_from_rel = cross_section_rel_uncertainty_syst_data*cross_section_reference_data*2/(1+cross_section_rel_data)**2
         cross_section_uncertainty_syst_data = np.sqrt(cross_section_uncertainty_reference_data**2 + cross_section_uncertainty_syst_from_rel**2)
         
-        cross_section_correlation_stat_data = np.identity(N_data)
-        cross_section_correlation_syst_from_rel = np.ones((N_data,N_data))
+        # Set correlations
+        if correlation_stat_uncertainty is None:
+            cross_section_correlation_stat_data = np.identity(N_data)
+        else:
+            cross_section_correlation_stat_data = correlation_stat_uncertainty
+        
+        if correlation_syst_uncertainty is None:
+            cross_section_correlation_syst_from_rel = np.ones((N_data,N_data))
+        else:
+            cross_section_correlation_syst_from_rel = correlation_syst_uncertainty
+        
+        # Add model uncertainties
         cross_section_covariance_syst_from_rel = np.einsum("i,ij,j->ij",cross_section_uncertainty_syst_from_rel,cross_section_correlation_syst_from_rel,cross_section_uncertainty_syst_from_rel)
         cross_section_covariance_syst_data = cross_section_covariance_reference_data + cross_section_covariance_syst_from_rel
         cross_section_correlation_syst_data = np.einsum("i,ij,j->ij",1./cross_section_uncertainty_syst_data,cross_section_covariance_syst_data,1./cross_section_uncertainty_syst_data)
