@@ -51,8 +51,8 @@ def stableIsotopes(name):
     return np.stack([isos['z']+isos['n'],isos['abundance']],axis=-1)
 #
 
-p_half=re.compile('\(?([0-9]{1,}/2)\)?\(?([+-])\)?')
-p_full=re.compile('\(?[^/]?([0-9]{1,})\)?\(?([+-])\)?')
+p_half=re.compile(r'\(?([0-9]{1,}/2)\)?\(?([+-])\)?')
+p_full=re.compile(r'\(?[^/]?([0-9]{1,})\)?\(?([+-])\)?')
 #
 def JPofnucleus(name,A):
     JP = nuclii['jp'][np.argwhere(np.logical_and(nuclii['symbol']==name,nuclii['z']+nuclii['n']==A))][0,0]
