@@ -4,6 +4,7 @@ from .. import trafos
 import numpy as np
 pi = np.pi
 
+from ..dirac_solvers import crosssection_lepton_nucleus_scattering
 
 def load_data(path,**args): #,correlation_stat_uncertainty=None,correlation_syst_uncertainty=None
     
@@ -21,6 +22,8 @@ def load_data(path,**args): #,correlation_stat_uncertainty=None,correlation_syst
         E_scale=float(input("Unknown unit. With what factor would I need to multiply these values to transform them to MeV?"))
     
     E_data = cross_section_dataset_input[:,E_col]*E_scale
+    
+    N_data=len(E_data)
     
     # Collect angles
     theta_col = int(input("What column (starting at 0) contains the central values for the angles?"))
@@ -133,21 +136,86 @@ def load_data(path,**args): #,correlation_stat_uncertainty=None,correlation_syst
             
             cross_section_uncertainty_stat_data = cross_section_uncertainty_stat_and_syst_data*cross_section_uncertainty_stat_split
             cross_section_uncertainty_syst_data = cross_section_uncertainty_stat_and_syst_data*cross_section_uncertainty_syst_split
-            
-            
-            
+        
+        # set correlations
+        cross_section_correlation_stat_data = np.identity(N_data)
+        cross_section_correlation_syst_data = np.ones((N_data,N_data))
         
     elif cross_section_or_fraction=="relative":
-        raise ValueError("Not implemented yet")
+
+        # Collect 
+        Z, N = input("Relative to which nucleus was the data measured? (answer with: Z,N)")
+        
+        reference_nucleus = SOLUTION_LOADER_TODO(Z,N) #TODO
+        
+        # if not raise info to first load data for that nucleus
+        
+        cross_section_reference_data=np.array([])
+        for E in np.unique(E_data):
+            theta_data_E = theta_data[E_data==E]
+            cross_section_reference_data_E = crosssection_lepton_nucleus_scattering(E,theta_data_E,reference_nucleus) # set args for this nucleus 
+            cross_section_reference_data = np.append(cross_section_reference_data,cross_section_reference_data_E)
+        
+        q_data=2*E_data/constants.hc*np.sin(theta_data/2)
+        
+        form_factor_reference = FF_TODO(q_data,reference_nucleus) #TODO
+        form_factor_uncertainty_reference = FF_UNCERT_TODO(q_data,reference_nucleus) #TODO
+        form_factor_correlation_reference = FF_CORR_TODO(q_data,reference_nucleus) #TODO
+        dcross_section_dform_factor = 2*(cross_section_reference_data/np.abs(form_factor_reference))
+        
+        cross_section_uncertainty_reference_data = dcross_section_dform_factor * form_factor_uncertainty_reference
+        cross_section_correlation_reference_data = form_factor_correlation_reference
+        cross_section_covariance_reference_data = np.einsum("i,ij,j->ij",cross_section_uncertainty_reference_data,cross_section_correlation_reference_data,cross_section_uncertainty_reference_data)
+        
+        # Collect relative cross section measurement
+        cross_section_rel_col = int(input("What column (starting at 0) contains the central values for the relative cross section?"))
+        cross_section_rel_percent = input("Are the relative cross sections in percent and thus need to divided by 100? (y or n)")
+        if cross_section_rel_percent == "y":
+            cross_section_rel_scale = 1e-2
+        elif cross_section_rel_percent == "n":
+            cross_section_rel_scale = 1
+        
+        cross_section_rel_sign = float(input("If the relative measurement is assumed to be sign*(reference - target)/(reference + target). What value would sign have for your measurement?"))
+        cross_section_rel_data = cross_section_rel_sign*cross_section_dataset_input[:,cross_section_rel_col]*cross_section_rel_scale
+        
+        cross_section_data=cross_section_reference_data * (1.-cross_section_rel_data)/(1.+cross_section_rel_data)
+        
+        # Collect statistical uncertainties
+        cross_section_rel_uncertainty_stat_cols = tuple(input("What columns (starting at 0), if any, contain statistical uncertainties for the relative cross sections (separate by comma)?"))
+        if len(cross_section_rel_uncertainty_stat_cols)>0:
+            cross_section_rel_uncertainty_stat_data = cross_section_dataset_input[:,cross_section_rel_uncertainty_stat_cols]*cross_section_rel_scale    
+        else:
+            cross_section_rel_uncertainty_stat_rel_global= float(input("What global relative uncertainty w.r.t. the cross section should instead be considered as a statistical uncertainty (value between 0 and 1, type 0 if you do not want to consider this uncertainty component)?"))
+            cross_section_rel_uncertainty_stat_data = cross_section_rel_data*cross_section_rel_uncertainty_stat_rel_global
+        
+        cross_section_uncertainty_stat_data = cross_section_rel_uncertainty_stat_data*cross_section_reference_data*2/(1+cross_section_rel_data)**2
     
+        # Collect systematical uncertainties
+        cross_section_rel_uncertainty_syst_cols = tuple(input("What columns (starting at 0), if any, contain systematical uncertainties for the relative cross sections (separate by comma)?"))
+        if len(cross_section_rel_uncertainty_syst_cols)>0:
+            cross_section_rel_uncertainty_syst_data = cross_section_dataset_input[:,cross_section_rel_uncertainty_syst_cols]*cross_section_rel_scale    
+        else:
+            cross_section_rel_uncertainty_syst_rel_global= float(input("What global relative uncertainty w.r.t. the relative cross section should instead be considered as a systematical uncertainty (for 3%% input 0.03 here, type 0 if you do not want to consider this uncertainty component)?"))
+            cross_section_rel_uncertainty_syst_data = cross_section_rel_data*cross_section_rel_uncertainty_syst_rel_global
+        
+        cross_section_uncertainty_syst_from_rel = cross_section_rel_uncertainty_syst_data*cross_section_reference_data*2/(1+cross_section_rel_data)**2
+        cross_section_uncertainty_syst_data = np.sqrt(cross_section_uncertainty_reference_data**2 + cross_section_uncertainty_syst_from_rel**2)
+        
+        cross_section_correlation_stat_data = np.identity(N_data)
+        cross_section_correlation_syst_from_rel = np.ones((N_data,N_data))
+        cross_section_covariance_syst_from_rel = np.einsum("i,ij,j->ij",cross_section_uncertainty_syst_from_rel,cross_section_correlation_syst_from_rel,cross_section_uncertainty_syst_from_rel)
+        cross_section_covariance_syst_data = cross_section_covariance_reference_data + cross_section_covariance_syst_from_rel
+        cross_section_correlation_syst_data = np.einsum("i,ij,j->ij",1./cross_section_uncertainty_syst_data,cross_section_covariance_syst_data,1./cross_section_uncertainty_syst_data)
+        
     else:
-    
-        raise ValueError("input is not either direct or relative")
+        raise ValueError("input is not either direct or relative.")
 
     cross_section_dataset_for_fit = np.concatenate((E_data,theta_data,cross_section_data,cross_section_uncertainty_stat_data,cross_section_uncertainty_syst_data),axis=-1)
     cross_section_dataset_for_fit = data_sorter(cross_section_dataset_for_fit,(0,1))
     
-    return cross_section_dataset_for_fit
+    # save these to a fixed location for later access
+    
+    return cross_section_dataset_for_fit, cross_section_correlation_stat_data, cross_section_correlation_syst_data
 
 def data_sorter(data,sort_cols=(0,)):
     transformed_data=np.copy(data)
@@ -159,4 +227,3 @@ def data_sorter(data,sort_cols=(0,)):
         else:
             transformed_data=transformed_data[transformed_data[:,col].argsort(kind='mergesort'),:]
     return transformed_data
-
