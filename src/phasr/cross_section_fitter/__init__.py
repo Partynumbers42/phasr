@@ -1,1 +1,1 @@
-from .data_prepper import load_data
+from .data_prepper import import_dataset

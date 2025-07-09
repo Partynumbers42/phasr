@@ -1,12 +1,19 @@
+import os
+
+from ..config import local_paths
+
 from .. import constants
 from .. import trafos
 
 import numpy as np
 pi = np.pi
 
+import glob
+import re
+
 from ..dirac_solvers import crosssection_lepton_nucleus_scattering
 
-def load_data(path,Z,A,correlation_stat_uncertainty=None,correlation_syst_uncertainty=None,**args):
+def import_dataset(path:str,save_name:str,Z:int,A:int,correlation_stat_uncertainty=None,correlation_syst_uncertainty=None,**args):
     
     with open( path, "rb" ) as file:
         cross_section_dataset_input = np.loadtxt( file , **args )
@@ -161,6 +168,8 @@ def load_data(path,Z,A,correlation_stat_uncertainty=None,correlation_syst_uncert
         
     elif cross_section_or_fraction=="relative":
 
+        # TODO once everything is set up
+        
         # Collect 
         Z_ref, A_ref = input("Relative to which nucleus was the data measured? (answer with: Z,N)")
         
@@ -241,9 +250,59 @@ def load_data(path,Z,A,correlation_stat_uncertainty=None,correlation_syst_uncert
         raise ValueError("input is not either direct or relative.")
 
     cross_section_dataset_for_fit = np.concatenate((E_data,theta_data,cross_section_data,cross_section_uncertainty_stat_data,cross_section_uncertainty_syst_data),axis=-1)
-    cross_section_dataset_for_fit = data_sorter(cross_section_dataset_for_fit,(0,1))
+    #cross_section_dataset_for_fit = data_sorter(cross_section_dataset_for_fit,(0,1))
     
-    # save these to a fixed location for later access y-----------------------------
+    dataset_name = save_name + "_Z"+str(Z) + "_A"+str(A)
+    save_path_cross_section = local_paths.cross_section_data_path + "cross_section_" + dataset_name + ".txt"
+    save_path_cross_section_correlation_stat = local_paths.cross_section_data_path + "cross_section_" + dataset_name + "_correlation_stat.txt"
+    save_path_cross_section_correlation_syst = local_paths.cross_section_data_path + "cross_section_" + dataset_name + "_correlation_syst.txt"
+    
+    os.makedirs(os.path.dirname(save_path_cross_section), exist_ok=True)
+    
+    with open(save_path_cross_section, "wb" ) as file:
+        np.savetxt(file,cross_section_dataset_for_fit)
+        print("cross section data saved in ", save_path_cross_section)
+    
+    with open(save_path_cross_section_correlation_stat, "wb" ) as file:
+        np.savetxt(file,cross_section_correlation_stat_data)
+        print("cross section statistical correlation data saved in ", save_path_cross_section_correlation_stat)
+    
+    with open(save_path_cross_section_correlation_syst, "wb" ) as file:
+        np.savetxt(file,cross_section_correlation_syst_data)
+        print("cross section systematical correlation data saved in ", save_path_cross_section_correlation_syst)
+    
+    print("The dataset "+dataset_name+" can now be accessed by the fitting routines")
+
+def list_datasets(Z,A):
+    path_beginning = local_paths.cross_section_data_path + "cross_section_"
+    path_ending = "_Z"+str(Z) + "_A"+str(A) + ".txt"
+    path_pattern = path_beginning + "*" + path_ending
+    existing_paths = glob.glob(path_pattern)
+    existing_datasets =[path[len(path_beginning):-len(path_ending)] for path in existing_paths]
+    print("These loaded datasets were found for Z="+str(Z)+" and A="+str(A)+":")
+    print(existing_datasets)
+
+def load_dataset(name,Z,A,verbose=True):
+    
+    dataset_name = name + "_Z"+str(Z) + "_A"+str(A)
+    save_path_cross_section = local_paths.cross_section_data_path + "cross_section_" + dataset_name + ".txt"
+    save_path_cross_section_correlation_stat = local_paths.cross_section_data_path + "cross_section_" + dataset_name + "_correlation_stat.txt"
+    save_path_cross_section_correlation_syst = local_paths.cross_section_data_path + "cross_section_" + dataset_name + "_correlation_syst.txt"
+    
+    with open(save_path_cross_section, "rb" ) as file:
+        cross_section_dataset_for_fit = np.loadtxt(file, dtype=float)
+        if verbose:
+            print("cross section data loaded from ", save_path_cross_section)
+    
+    with open(save_path_cross_section_correlation_stat, "rb" ) as file:
+        cross_section_correlation_stat_data = np.loadtxt(file, dtype=float)
+        if verbose:
+            print("cross section statistical correlation data loaded from ", save_path_cross_section_correlation_stat)
+    
+    with open(save_path_cross_section_correlation_syst, "rb" ) as file:
+        cross_section_correlation_syst_data = np.loadtxt(file, dtype=float)
+        if verbose:
+            print("cross section systematical correlation data loaded from ", save_path_cross_section_correlation_syst)
     
     return cross_section_dataset_for_fit, cross_section_correlation_stat_data, cross_section_correlation_syst_data
 

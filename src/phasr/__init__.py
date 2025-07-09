@@ -17,4 +17,4 @@ from .dirac_solvers import default_boundstate_settings, default_continuumstate_s
 from .dirac_solvers import crosssection_lepton_nucleus_scattering, left_right_asymmetry_lepton_nucleus_scattering
 from .dirac_solvers import overlap_integral_scalar, overlap_integral_vector, overlap_integral_dipole
 from .dirac_solvers.post_processing.crosssection import optimise_crosssection_precision, optimise_left_right_asymmetry_precision
-from .cross_section_fitter import load_data
+from .cross_section_fitter import import_dataset
