@@ -273,6 +273,7 @@ def import_dataset(path:str,save_name:str,Z:int,A:int,correlation_stat_uncertain
     
     print("The dataset "+dataset_name+" can now be accessed by the fitting routines")
 
+
 def list_datasets(Z,A):
     path_beginning = local_paths.cross_section_data_path + "cross_section_"
     path_ending = "_Z"+str(Z) + "_A"+str(A) + ".txt"
@@ -305,6 +306,45 @@ def load_dataset(name,Z,A,verbose=True):
             print("cross section systematical correlation data loaded from ", save_path_cross_section_correlation_syst)
     
     return cross_section_dataset_for_fit, cross_section_correlation_stat_data, cross_section_correlation_syst_data
+
+
+def import_barrett_moment(name:str,Z:int,A:int,k:float,alpha:float,barrett:float,dbarrett:float):
+    
+    barrett_data = np.array([('k',k),('alpha',alpha),('barrett',barrett),('dbarrett',dbarrett)],dtype=[('var','<U10'),('val','<f8')])
+    
+    dataset_name = name + "_Z"+str(Z) + "_A"+str(A)
+    save_path_barrett = local_paths.barrett_moment_data_path + "barrett_moment_" + dataset_name + ".txt"
+    
+    os.makedirs(os.path.dirname(save_path_barrett), exist_ok=True)
+    
+    with open(save_path_barrett, "wb" ) as file:
+        np.savetxt(file,barrett_data,fmt="%s %.4f")
+        print("barrett moment value saved in ", save_path_barrett)
+    
+    print("The barrett moment value with label "+dataset_name+" can now be accessed by the fitting routines")
+
+def list_barrett_moments(Z,A):
+    path_beginning = local_paths.barrett_moment_data_path + "barrett_moment_"
+    path_ending = "_Z"+str(Z) + "_A"+str(A) + ".txt"
+    path_pattern = path_beginning + "*" + path_ending
+    existing_paths = glob.glob(path_pattern)
+    existing_datasets =[path[len(path_beginning):-len(path_ending)] for path in existing_paths]
+    print("These loaded datasets were found for Z="+str(Z)+" and A="+str(A)+":")
+    print(existing_datasets)
+
+def load_barrett_moment(name,Z,A,verbose=True):
+    
+    dataset_name = name + "_Z"+str(Z) + "_A"+str(A)
+    save_path_barrett = local_paths.barrett_moment_data_path + "barrett_moment_" + dataset_name + ".txt"
+    
+    with open(save_path_barrett, "rb" ) as file:
+        barrett_moment_data = np.genfromtxt( file,names=None,dtype=['<U10',float])       
+        if verbose:
+            print("barrett moment value loaded from ", save_path_barrett)
+    
+    barrett_moment_dict = {str(barrett_moment_data['f0'][i]):float(barrett_moment_data['f1'][i]) for i in range(4)}
+    
+    return barrett_moment_dict
 
 def data_sorter(data,sort_cols=(0,)):
     transformed_data=np.copy(data)
