@@ -153,10 +153,10 @@ def import_dataset(path:str,save_name:str,Z:int,A:int,correlation_stat_uncertain
             cross_section_uncertainty_stat_data = cross_section_uncertainty_stat_and_syst_data*cross_section_uncertainty_stat_split
             cross_section_uncertainty_syst_data = cross_section_uncertainty_stat_and_syst_data*cross_section_uncertainty_syst_split
         
-        cross_section_uncertainty_stat_rel_global= float(input("Do you want to add a global relative statistical uncertainty w.r.t. the cross section as an (additional) uncertainty component (For 1%% insert 0.01, type 0 if you do not want to do so)?"))
+        cross_section_uncertainty_stat_rel_global= float(input("Do you want to add a global relative statistical uncertainty w.r.t. the cross section as an (additional) uncertainty component? (For 3% insert 3, type 0 if you do not want to do so)?"))/100
         cross_section_uncertainty_stat_data = np.sqrt(cross_section_uncertainty_stat_data**2 + (cross_section_data*cross_section_uncertainty_stat_rel_global)**2)
         
-        cross_section_uncertainty_syst_rel_global= float(input("Do you want to add a global relative systematical uncertainty w.r.t. the cross section as an (additional) uncertainty component (For 1%% insert 0.01, type 0 if you do not want to do so)?"))
+        cross_section_uncertainty_syst_rel_global= float(input("Do you want to add a global relative systematical uncertainty w.r.t. the cross section as an (additional) uncertainty component? (For 3% insert 3, type 0 if you do not want to do so)?"))/100
         cross_section_uncertainty_syst_data = np.sqrt(cross_section_uncertainty_syst_data**2 + (cross_section_data*cross_section_uncertainty_syst_rel_global)**2)    
         
         # Set correlations
