@@ -3,11 +3,6 @@ pi = np.pi
 
 from scipy.linalg import inv
 
-class residual():
-    
-    def __init__(self)
-    
-
 
 class minimization_measures():
     
@@ -43,8 +38,6 @@ class minimization_measures():
     def loss(self,*params_args,**params_kwds):
         residual = self.residual(*params_args,**params_kwds)
         return np.einsum('i,ij,j',residual,self.inv_cov_data,residual)
-    
-    
 
 
 class Parameter_set():
