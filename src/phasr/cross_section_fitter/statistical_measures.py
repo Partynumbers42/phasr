@@ -3,7 +3,6 @@ pi = np.pi
 
 from scipy.linalg import inv
 
-
 class minimization_measures():
     
     def __init__(self,test_function,x_data,y_data,cov_stat_data,cov_syst_data):
