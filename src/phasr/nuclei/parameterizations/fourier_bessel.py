@@ -87,7 +87,12 @@ class nucleus_FB(nucleus_base):
     
     def update_ai(self,ai):
         self.ai=ai
-        self.update_dependencies()    
+        self.update_dependencies()
+    
+    def update_R_and_ai(self,R,ai):
+        self.R=R
+        self.ai=ai
+        self.update_dependencies()
         
     def charge_density(self,r):
         return charge_density_FB(r,self.ai,self.R,self.qi)
@@ -257,6 +262,7 @@ def form_factor_FB_jacob(q,R,qi,Z,N):
         dF_dai = dF_dai[:,0]
     return dF_dai/Z
 
+# TODO add
 # def dcharge_density_dr_FB(r,ai,R,qi):
 #     scalar=False
 #     if len(np.shape(r))==0:

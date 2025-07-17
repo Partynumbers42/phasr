@@ -5,9 +5,11 @@ from scipy.special import sici
 
 from ..nuclei import load_reference_nucleus, nucleus
 
+from .parameters import ai_abs_bounds_default
+
 class initializer():
     
-    def __init__(self,Z:int,A:int,R:float,N:int,ai=None):
+    def __init__(self,Z:int,A:int,R:float,N:int,ai=None,ai_abs_bound=None):
         
         self.Z = Z
         self.A = A
@@ -15,17 +17,28 @@ class initializer():
         self.R = R
         self.N = N
         
+        if ai_abs_bound is None:
+            self.ai_abs_bound = ai_abs_bounds_default(np.arange(1,self.N+1),self.R,self.Z)
+        else:
+            self.ai_abs_bound = ai_abs_bound
+        
         if ai is None:
+            
+            # TODO add option to load previous fit results
+            
             self.ref_index=0
-            self.set_nucleus_from_reference()
+            self.set_ai_from_reference()
         else:
             self.ai = np.zeros(self.N)
             self.ai[:min(self.N,len(ai))] = ai[:min(self.N,len(ai))]
-            self.nucleus = nucleus(name="initialized_nucleus_Z"+str(Z)+"_A"+str(A),Z=self.Z,A=self.A,ai=self.ai,R=self.R)
         
-    def set_nucleus_from_reference(self):
+        self.overwrite_aN_from_total_charge_if_sensible()
         
-        nuclei_reference =  load_reference_nucleus(self.Z,self.A)
+        self.nucleus = nucleus(name="initialized_nucleus_Z"+str(self.Z)+"_A"+str(self.A),Z=self.Z,A=self.A,ai=self.ai,R=self.R)
+    
+    def set_ai_from_reference(self):
+        
+        nuclei_reference = load_reference_nucleus(self.Z,self.A)
         self.number_of_references = len(nuclei_reference)
         
         if self.number_of_references>1:    
@@ -37,20 +50,33 @@ class initializer():
         N_reference = nucleus_reference.N_a
         ai_reference = nucleus_reference.ai
         
+        if self.R != R_reference:
+            # guess for ai based on R
+            ai_reference*=transformation_factor_ai(np.arange(1,N_reference+1),self.R,R_reference)
+        
         self.ai = np.zeros(self.N)
         self.ai[:min(self.N,N_reference)] = ai_reference[:min(self.N,N_reference)]
-        
-        # <------------------------------------ continue here
-        
-        if self.R == self.R_reference:
-            self.ai = ai_reference
-        
-        
     
+    def overwrite_aN_from_total_charge_if_sensible(self):
+        aN = aN_from_total_charge(self.N,self.Z,self.ai,self.R)
+        if -self.ai_abs_bound[self.N-1]<=aN<=self.ai_abs_bound[self.N-1]:         
+            self.ai[self.N-1]=aN 
+        
+    def update_nucleus_ai(self):
+        self.nucleus.update_ai(self.ai)
+            
     def cycle_references(self):
         self.ref_index = (self.ref_index + 1) % self.number_of_references
-        self.set_nucleus_from_reference()
-    
+        self.set_ai_from_reference()
+        self.overwrite_aN_from_total_charge_if_sensible()
+        self.update_nucleus_ai()
+
+def aN_from_total_charge(N,total_charge,ai,R):
+    ''' only the first N-1 elements of ai are used'''
+    i=np.arange(1,N)
+    return -(-1)**N*((N*pi/R)**2)*( total_charge/(4*pi*R) + np.sum((-1)**i*ai[:N]/(i*pi/R)**2) )
+
+
 def transformation_factor_ai(i:int,R_target:float,R_source:float):
     
     # numerical calculation was replaced by analytical result
