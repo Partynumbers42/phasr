@@ -51,8 +51,14 @@ class initializer():
         ai_reference = nucleus_reference.ai
         
         if self.R != R_reference:
-            # guess for ai based on R
-            ai_reference*=transformation_factor_ai(np.arange(1,N_reference+1),self.R,R_reference)
+            # guess for ai based on R 
+            ni = np.arange(1,N_reference+1)
+            transformation_factor_unnormalized = transformation_factor_ai(ni,self.R,R_reference)
+            ai_reference*=transformation_factor_unnormalized
+            qi = ni*pi/self.R
+            weighting = 1
+            unnormalized_weighted_total_charge = 4*pi*np.sum(-weighting*(-1)**ni*(ni*pi)*ai_reference/qi**3)
+            ai_reference*=weighting*self.Z/unnormalized_weighted_total_charge
         
         self.ai = np.zeros(self.N)
         self.ai[:min(self.N,N_reference)] = ai_reference[:min(self.N,N_reference)]
@@ -67,14 +73,15 @@ class initializer():
             
     def cycle_references(self):
         self.ref_index = (self.ref_index + 1) % self.number_of_references
+        print('select reference Nr.:',self.ref_index)
         self.set_ai_from_reference()
         self.overwrite_aN_from_total_charge_if_sensible()
         self.update_nucleus_ai()
 
 def aN_from_total_charge(N,total_charge,ai,R):
     ''' only the first N-1 elements of ai are used'''
-    i=np.arange(1,N)
-    return -(-1)**N*((N*pi/R)**2)*( total_charge/(4*pi*R) + np.sum((-1)**i*ai[:N]/(i*pi/R)**2) )
+    ni=np.arange(1,N)
+    return -(-1)**N*((N*pi/R)**2)*( total_charge/(4*pi*R) + np.sum((-1)**ni*ai[:N-1]/(ni*pi/R)**2) )
 
 
 def transformation_factor_ai(ni,R_target:float,R_source:float):

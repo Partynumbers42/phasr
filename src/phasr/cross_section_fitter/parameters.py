@@ -48,7 +48,7 @@ class parameter_set():
         xi_dummy = np.zeros(self.N_x)
         for j in range(1,self.N_x+1):
             aj_tilde_implied_min, aj_tilde_implied_max = ai_tilde_implied_bounds(j,self.ai_tilde,self.ai_abs_bound,self.qi,self.N_a,self.R,self.total_charge)
-            xi_dummy[j-1] = (self.ai_tilde[j-1] - aj_tilde_implied_min[:-1])/(aj_tilde_implied_max[:-1]-aj_tilde_implied_min[:-1]) 
+            xi_dummy[j-1] = (self.ai_tilde[j-1] - aj_tilde_implied_min)/(aj_tilde_implied_max-aj_tilde_implied_min) 
         # make sure xi are between 0 and 1
         xi_dummy[xi_dummy<0]=0
         xi_dummy[xi_dummy>1]=1
@@ -58,7 +58,7 @@ class parameter_set():
     def set_ai_tilde_from_xi(self):
         ai_tilde_dummy = np.zeros(self.N_a)
         for j in range(1,self.N_a+1):
-            aj_tilde_implied_min, aj_tilde_implied_max = ai_tilde_implied_bounds(j,self.ai_tilde,self.ai_abs_bound,self.qi,self.N_a,self.R,self.total_charge)
+            aj_tilde_implied_min, aj_tilde_implied_max = ai_tilde_implied_bounds(j,ai_tilde_dummy,self.ai_abs_bound,self.qi,self.N_a,self.R,self.total_charge)
             ai_tilde_dummy[j-1] = self.xi[j-1]*(aj_tilde_implied_max-aj_tilde_implied_min) + aj_tilde_implied_min if j<self.N_a else aj_tilde_implied_min
         self.ai_tilde = ai_tilde_dummy
     
