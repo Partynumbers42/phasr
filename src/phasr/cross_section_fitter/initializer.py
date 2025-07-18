@@ -38,13 +38,13 @@ class initializer():
     
     def set_ai_from_reference(self):
         
-        nuclei_reference = load_reference_nucleus(self.Z,self.A)
-        self.number_of_references = len(nuclei_reference)
+        nuclei_references = load_reference_nucleus(self.Z,self.A)
+        self.number_of_references = len(nuclei_references)
         
         if self.number_of_references>1:    
-            nucleus_reference = nuclei_reference
+            nucleus_reference = nuclei_references[self.ref_index]
         else:
-            nucleus_reference = nuclei_reference[self.ref_index]
+            nucleus_reference = nuclei_references
         
         R_reference = nucleus_reference.R
         N_reference = nucleus_reference.N_a
@@ -77,9 +77,9 @@ def aN_from_total_charge(N,total_charge,ai,R):
     return -(-1)**N*((N*pi/R)**2)*( total_charge/(4*pi*R) + np.sum((-1)**i*ai[:N]/(i*pi/R)**2) )
 
 
-def transformation_factor_ai(i:int,R_target:float,R_source:float):
+def transformation_factor_ai(ni,R_target:float,R_source:float):
     
-    # numerical calculation was replaced by analytical result
+    # numerical calculation was replaced by analytical vectorized result
     #I1=quad(lambda r: spherical_jn(0,pi*nu*r/R)*spherical_jn(0,pi*nu*r/R_ref),0,min(R,R_ref),limit=1000)
     #I2=quad(lambda r: spherical_jn(0,pi*nu*r/R)**2,0,R,limit=1000)
     #scale_factor = I1[0]/I2[0]
@@ -88,4 +88,12 @@ def transformation_factor_ai(i:int,R_target:float,R_source:float):
     R_sum = R_target + R_source
     R_dif = R_target - R_source
     
-    return (R_sum*sici(i*pi*R_sum/R_max)[0] - R_dif*sici(i*pi*R_dif/R_max)[0])/(2*R_target*sici(2*i*pi)[0]) if i!=0 else 1
+    ni_vec = np.atleast_1d(ni)
+    transformation_factor = np.ones(len(ni_vec))
+    mask_ni = (ni!=0)
+    if np.any(mask_ni):
+        transformation_factor[mask_ni] = (R_sum*sici(ni[mask_ni]*pi*R_sum/R_max)[0] - R_dif*sici(ni[mask_ni]*pi*R_dif/R_max)[0])/(2*R_target*sici(2*ni[mask_ni]*pi)[0])
+    if np.isscalar(ni):
+        transformation_factor=transformation_factor[0]    
+    return transformation_factor
+
