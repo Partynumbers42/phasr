@@ -156,6 +156,11 @@ class nucleus_base:
     def update_alpha_barrett(self,alpha_barrett):
         self.alpha_barrett=alpha_barrett
         self.update_dependencies()
+    
+    def update_k_and_alpha_barrett(self,k_barrett,alpha_barrett):
+        self.k_barrett=k_barrett
+        self.alpha_barrett=alpha_barrett
+        self.update_dependencies()
 
     def update_abundance(self,abundance):
         self.abundance=abundance

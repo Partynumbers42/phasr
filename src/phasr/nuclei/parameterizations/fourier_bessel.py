@@ -80,7 +80,6 @@ class nucleus_FB(nucleus_base):
         
         nucleus_base.update_dependencies(self)
 
-
     def update_R(self,R):
         self.R=R
         self.update_dependencies()
@@ -100,6 +99,9 @@ class nucleus_FB(nucleus_base):
     def charge_density_jacobian(self,r):
         return charge_density_FB_jacob(r,self.R,self.qi,self.N_a)
     
+    def dcharge_density_dr(self,r):
+        return dcharge_density_dr_FB(r,self.ai,self.R,self.qi)
+
     def electric_field(self,r):
         return electric_field_FB(r,self.ai,self.R,self.qi,self.total_charge,alpha_el=constants.alpha_el)
     
@@ -230,7 +232,7 @@ def electric_potential_FB_jacob(r,R,qi,N,alpha_el=constants.alpha_el):
         dV_dai = dV_dai[:,0]
     return dV_dai
 
-def form_factor_FB(q,ai,R,qi,Z,N): # TODO remove singularities at q=qi by calculating limit or averaging left and right of singularity
+def form_factor_FB(q,ai,R,qi,Z,N): 
     q=q/constants.hc
     q_arr = np.atleast_1d(q)
     N_q=len(q_arr)
@@ -262,21 +264,13 @@ def form_factor_FB_jacob(q,R,qi,Z,N):
         dF_dai = dF_dai[:,0]
     return dF_dai/Z
 
-# TODO add
-# def dcharge_density_dr_FB(r,ai,R,qi):
-#     scalar=False
-#     if len(np.shape(r))==0:
-#         scalar=True
-#         r=np.array([r])
-#     drho_dr=np.array([0])
-#     if np.any(r<=R):
-#         qr=np.einsum('i,j->ij',qi,r)
-#         drho_dr = np.einsum('i,ij->j',-ai*qi,spherical_jn(1,qr))
-#     if np.any(r>R):
-#         if np.size(drho_dr)>1:
-#             drho_dr[np.where(r>R)]=np.array([0])
-#         else:
-#             drho_dr=np.array([0])
-#     if scalar:
-#         drho_dr=drho_dr[0]
-#     return drho_dr
+def dcharge_density_dr_FB(r,ai,R,qi):
+    r_arr = np.atleast_1d(r)
+    drho_dr=np.zeros(len(r_arr))
+    mask_r = r_arr<=R
+    if np.any(mask_r):
+        qr=np.einsum('i,j->ij',qi,r_arr[mask_r])
+        drho_dr[mask_r] = np.einsum('i,ij->j',-ai*qi,spherical_jn(1,qr))
+    if np.isscalar(r):
+        drho_dr=drho_dr[0]
+    return drho_dr
