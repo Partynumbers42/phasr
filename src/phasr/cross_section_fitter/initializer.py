@@ -39,7 +39,7 @@ class initializer():
     def set_ai_from_reference(self):
         
         nuclei_references = load_reference_nucleus(self.Z,self.A)
-        self.number_of_references = len(nuclei_references)
+        self.number_of_references = len(nuclei_references) if type(nuclei_references)==list else 1
         
         if self.number_of_references>1:    
             nucleus_reference = nuclei_references[self.ref_index]

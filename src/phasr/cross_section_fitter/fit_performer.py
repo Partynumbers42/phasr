@@ -1,12 +1,13 @@
 from ..config import local_paths
 
 from .. import constants
-from .. import trafos
 
 import numpy as np
 pi = np.pi
 
-from scipy.optimize import minimize
+import copy
+
+from scipy.optimize import minimize, OptimizeResult
 from scipy.integrate import quad
 
 from .statistical_measures import minimization_measures
@@ -24,7 +25,7 @@ def fitter_single(datasets_keys:list,initialization:initializer,barrett_moment_k
     # default: monotonous_decrease_precision=0.04
     
     initial_parameters = parameter_set(initialization.R,initialization.Z,ai=initialization.ai,ai_abs_bound=initialization.ai_abs_bound)
-    current_nucleus = initialization.nucleus 
+    current_nucleus = copy.deepcopy(initialization.nucleus) 
     
     datasets = {}
     barrett_moment_constraint = (len(barrett_moment_keys)>0)
@@ -45,13 +46,13 @@ def fitter_single(datasets_keys:list,initialization:initializer,barrett_moment_k
         cross_section = np.zeros(len(energies))
         for energy in np.unique(energies):
             mask = (energy==energies)
-            cross_section[mask] = crosssection_lepton_nucleus_scattering(energy,thetas[mask],nucleus,**cross_section_args)
+            cross_section[mask] = crosssection_lepton_nucleus_scattering(energy,thetas[mask],nucleus,**cross_section_args)*constants.hc**2
         return cross_section
     
     measures={}
     for dataset_key in datasets:
         measures[dataset_key]=minimization_measures(cross_section,**datasets[dataset_key])
-        measures[dataset_key].set_cov(current_nucleus)
+        #measures[dataset_key].set_cov(current_nucleus)
     
     if barrett_moment_constraint:
         barrett_moments = {}
@@ -69,7 +70,7 @@ def fitter_single(datasets_keys:list,initialization:initializer,barrett_moment_k
         
         for barrett_moment_key in barrett_moment_keys:
             measures['barrett_moment']=minimization_measures(barrett_moment,**barrett_moments[barrett_moment_key])
-            measures['barrett_moment'].set_cov(current_nucleus)
+            #measures['barrett_moment'].set_cov(current_nucleus)
     
     if monotonous_decrease_constraint:
         def positive_slope_component_to_radius_squared(_,nucleus):
@@ -78,24 +79,38 @@ def fitter_single(datasets_keys:list,initialization:initializer,barrett_moment_k
             positive_slope_component = quad(integrand_positive_slope,0,nucleus.R,limit=1000)[0]
             return np.atleast_1d(positive_slope_component)
         
-        measures['monotonous_decrease']=minimization_measures(positive_slope_component_to_radius_squared,x_data=np.nan,y_data=0,cov_stat=monotonous_decrease_precision**2,cov_syst=0)
-        measures['monotonous_decrease'].set_cov(current_nucleus)
+        measures['monotonous_decrease']=minimization_measures(positive_slope_component_to_radius_squared,x_data=np.nan,y_data=0,cov_stat_data=monotonous_decrease_precision**2,cov_syst_data=0)
+        #measures['monotonous_decrease'].set_cov(current_nucleus)
         
     def loss_function(xi):
-    
+        
         parameters = parameter_set(initialization.R,initialization.Z,xi=xi,ai_abs_bound=initialization.ai_abs_bound)
         current_nucleus.update_ai(parameters.get_ai())
+        
+        print("xi",parameters.xi)
+        print("ai",current_nucleus.ai)
         
         loss=0
         for dataset_key in measures:
             loss += measures[dataset_key].loss(current_nucleus)
 
+        print("loss",loss)
+        
         return loss
 
     xi_initial = initial_parameters.get_xi()
     xi_bounds = len(xi_initial)*[(0,1)]
+    
+    # add for loop
+    
+    for key in measures:
+        measures[key].set_cov(current_nucleus)
+        #if measures[key].
+    
     result = minimize(loss_function,xi_initial,bounds=xi_bounds,**minimizer_args)
     
-    return result
+    #out_parameters = parameter_set(initialization.R,initialization.Z,xi=result.x,ai_abs_bound=initialization.ai_abs_bound)
+    
+    return result, current_nucleus, measures
     
     
