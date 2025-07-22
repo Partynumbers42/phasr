@@ -52,8 +52,10 @@ class parameter_set():
         # make sure xi are between 0 and 1
         xi_dummy[xi_dummy<0]=0
         xi_dummy[xi_dummy>1]=1
-        
         self.xi = xi_dummy
+        
+        #if hasattr(self,'cov_ai_tilde'):
+        # not needed atm potentially add later #TODO
     
     def set_ai_tilde_from_xi(self):
         ai_tilde_dummy = np.zeros(self.N_a)
@@ -61,18 +63,45 @@ class parameter_set():
             aj_tilde_implied_min, aj_tilde_implied_max = ai_tilde_implied_bounds(j,ai_tilde_dummy,self.ai_abs_bound,self.qi,self.N_a,self.R,self.total_charge)
             ai_tilde_dummy[j-1] = self.xi[j-1]*(aj_tilde_implied_max-aj_tilde_implied_min) + aj_tilde_implied_min if j<self.N_a else aj_tilde_implied_min
         self.ai_tilde = ai_tilde_dummy
+        
+        if hasattr(self,'cov_xi'):
+            jacobian = np.zeros((self.N_a,self.N_x))
+            for j in range(1,self.N_a+1):
+                aj_tilde_implied_min, aj_tilde_implied_max = ai_tilde_implied_bounds(j,ai_tilde_dummy,self.ai_abs_bound,self.qi,self.N_a,self.R,self.total_charge)
+                for k in range(1,self.N_x+1):
+                    implied_min_max_derivative = -np.sum(jacobian[0:j-1,k-1]*(j/np.arange(1,j))**2)
+                    jacobian[j-1,k-1] = ( ((aj_tilde_implied_max-aj_tilde_implied_min) if j==k else 0) + \
+                                               ( self.xi[j-1]*implied_min_max_derivative if aj_tilde_implied_max<self.ai_abs_bound[j-1] else 0 ) + \
+                                               ( (1-self.xi[j-1])*implied_min_max_derivative  if -self.ai_abs_bound[j-1]<aj_tilde_implied_min else 0 ) ) \
+                                                    if j<self.N_a else implied_min_max_derivative
+            self.cov_ai_tilde = np.einsum('ij,jk,lk->il',jacobian,self.cov_xi,jacobian)
     
     def set_ai_tilde_from_ai(self):
         self.ai_tilde = self.ai*(-1)**(self.ni+1)
+        
+        if hasattr(self,'cov_ai'):
+            dai_tilde_dai = (-1)**(self.ni+1)
+            self.cov_ai_tilde = np.einsum('i,ij,j->ij',dai_tilde_dai,self.cov_ai,dai_tilde_dai)
+    
     
     def set_ai_from_ai_tilde(self):
         self.ai = self.ai_tilde*(-1)**(self.ni+1)
+        
+        if hasattr(self,'cov_ai_tilde'):
+            dai_dai_tilde = (-1)**(self.ni+1)
+            self.cov_ai = np.einsum('i,ij,j->ij',dai_dai_tilde,self.cov_ai_tilde,dai_dai_tilde)
     
     def get_ai(self):
         return self.ai
     
     def get_xi(self):
         return self.xi
+    
+    def set_cov_xi(self,cov_xi):
+        self.cov_xi = cov_xi
+    
+    def set_cov_ai(self,cov_ai):
+        self.cov_ai = cov_ai
 
 def ai_tilde_implied_bounds(j,ai_tilde,ai_abs_bound,qi,N_a,R,total_charge):
     
