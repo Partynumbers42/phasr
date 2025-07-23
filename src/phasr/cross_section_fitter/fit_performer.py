@@ -1,5 +1,3 @@
-from ..config import local_paths
-
 from .. import constants
 
 import numpy as np
@@ -11,7 +9,7 @@ import copy
 import numdifftools as ndt
 from scipy.linalg import inv
 
-from scipy.optimize import minimize, OptimizeResult
+from scipy.optimize import minimize#, OptimizeResult
 from scipy.integrate import quad
 
 from .statistical_measures import minimization_measures
@@ -20,8 +18,6 @@ from .parameters import parameter_set
 from .data_prepper import load_dataset, load_barrett_moment
 
 from ..dirac_solvers import crosssection_lepton_nucleus_scattering
-
-# TODO rigorous check what nucleus is used at which step of the fit iteration
 
 def fitter(datasets_keys:list,initialization:initializer,barrett_moment_key=None,monotonous_decrease_precision=np.inf,xi_diff_convergence_limit=1e-4,numdifftools_step=1.e-4,verbose=True,cross_section_args={},**minimizer_args):
     ''' **args is passed to scipy minimize '''
@@ -78,8 +74,14 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_key=None
             positive_slope_component = quad(integrand_positive_slope,0,nucleus.R,limit=1000)[0]
             return np.atleast_1d(positive_slope_component)
         measures['monotonous_decrease']=minimization_measures(positive_slope_component_to_radius_squared,x_data=np.nan,y_data=0,cov_stat_data=monotonous_decrease_precision**2,cov_syst_data=0)
-        
+    
+    global loss_eval
+    loss_eval = 0 
+    
     def loss_function(xi):
+        
+        global loss_eval
+        loss_eval+=1
         
         parameters = parameter_set(initialization.R,initialization.Z,xi=xi,ai_abs_bound=initialization.ai_abs_bound)
         current_nucleus.update_ai(parameters.get_ai())
@@ -88,7 +90,8 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_key=None
         for dataset_key in measures:
             loss += measures[dataset_key].loss(current_nucleus)
 
-        #print("loss",loss)
+        if loss_eval%10==0:
+            print("Loss (R="+str(current_nucleus.R)+",N="+str(current_nucleus.N_a)+",eval:"+str(loss_eval)+") =",loss)
         
         return loss
 
@@ -139,6 +142,10 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_key=None
     out_parameters.set_cov_xi(covariance)
     out_parameters.set_ai_tilde_from_xi()
     out_parameters.set_ai_from_ai_tilde()
+    
+    # ADD structure to save fit 
+    
+    # ADD save
     
     return result, current_nucleus, measures, out_parameters, covariance
     
