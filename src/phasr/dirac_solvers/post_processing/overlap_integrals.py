@@ -6,7 +6,7 @@ from ... import masses,constants
 
 from scipy.integrate import quad
 
-def eject_energy(initial_lepton_mass,final_lepton_mass,binding_energy,nucleus_mass=np.inf):
+def ejection_energy(initial_lepton_mass,final_lepton_mass,binding_energy,nucleus_mass=np.inf):
     #
     if nucleus_mass < np.inf:
         binding_mass = nucleus_mass + initial_lepton_mass + binding_energy
@@ -37,7 +37,7 @@ def calculate_states(nucleus_potential,kappa_e=-1,recoil=True,nonzero_electron_m
     boundstate = boundstates(nucleus_potential,kappa=-1,lepton_mass=masses.mmu,**args)
     binding_energy = boundstate.energy_levels[0]
     
-    energy = eject_energy(mass_muon,mass_electron,binding_energy,mass_nucleus)
+    energy = ejection_energy(mass_muon,mass_electron,binding_energy,mass_nucleus)
     
     # electron (me=0)
     continuumstate = continuumstates(nucleus_potential,kappa=kappa_e,energy=energy,lepton_mass=mass_electron,**args)

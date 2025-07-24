@@ -1,6 +1,5 @@
 from .. import constants, masses
 from ..physical_constants.iaea_nds import massofnucleusZN, abundanceofnucleusZN, JPofnucleusZN
-#from ..utility.basis_change import Isospin_basis_to_nucleon_basis, Nucleon_basis_to_isospin_basis
 from ..utility.math import radial_laplace
 
 import numpy as np
