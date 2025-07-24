@@ -289,7 +289,7 @@ def fourier_transform_mom_to_pos(fct_q,name,qrange,rrange,L=0,norm=1,renew=False
     fct_r_spl = spline_field(fct_r_vec,"charge_density",name,rrange,renew=renew)
     #
     # TODO test:
-    r_crit = optimise_radius_highenergy_continuation(fct_r_spl,r_crit,1e-3) # set xmin to radius
+    r_crit = optimise_radius_highenergy_continuation(fct_r_spl,rrange[1],1e-3) # set xmin to radius
     # highenergy exponential decay for rho
     fct_r = highenergycont_rho(fct_r_spl,r_crit,val=0,t=0)  # Asymptotic: exp(-r)
     #fct_r = highenergycutoff_field(fct_r_spl,rrange[1],val=0) # alternative
