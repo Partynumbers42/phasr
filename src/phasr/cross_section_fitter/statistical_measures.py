@@ -28,7 +28,7 @@ class minimization_measures():
     def set_cov(self,*params_args,**params_kwds):
         
         if np.any(self.cov_syst_data != 0):
-            y_test = self.test_function(self.x_data,*params_args,**params_kwds)       
+            y_test = self.test_function_eval(*params_args,**params_kwds)       
             scale_syst = y_test/self.y_data
             cov_syst_data_rescaled =np.einsum('i,ij,j->ij',scale_syst,self.cov_syst_data,scale_syst)
         else:
@@ -38,10 +38,13 @@ class minimization_measures():
         self.inv_cov_data = inv(self.cov_data) 
         
     def residual(self,*params_args,weighted=True,**params_kwds):
-        y_test = self.test_function(self.x_data,*params_args,**params_kwds)
+        y_test = self.test_function_eval(*params_args,**params_kwds)
         self.y_test_last_eval = y_test
         return (y_test - self.y_data)/(self.dy_data if weighted else 1. ) 
         
     def loss(self,*params_args,**params_kwds):
         residual = self.residual(*params_args,weighted=False,**params_kwds)
         return np.einsum('i,ij,j',residual,self.inv_cov_data,residual)
+    
+    def test_function_eval(self,*params_args,**params_kwds):
+        return self.test_function(self.x_data,*params_args,**params_kwds)
