@@ -6,10 +6,11 @@ from scipy.special import sici
 from ..nuclei import load_reference_nucleus, nucleus
 
 from .parameters import ai_abs_bounds_default
+from .fit_pickler import pickle_load_all_results_dicts
 
 class initializer():
     
-    def __init__(self,Z:int,A:int,R:float,N:int,ai=None,ai_abs_bound=None):
+    def __init__(self,Z:int,A:int,R:float,N:int,ai=None,ai_abs_bound=None,check_other_fits=False):
         
         self.Z = Z
         self.A = A
@@ -23,11 +24,25 @@ class initializer():
             self.ai_abs_bound = ai_abs_bound
         
         if ai is None:
-            
-            # TODO add option to load previous fit results
-            
-            self.ref_index=0
-            self.set_ai_from_reference()
+            if check_other_fits:
+                results_dicts = pickle_load_all_results_dicts(Z,A,R,N)
+                if len(results_dicts)>0:
+                    best_p_val = 0
+                    best_key = None
+                    for results_dict_key in results_dicts:
+                        current_p_val = results_dicts[results_dict_key]['p_val']
+                        if current_p_val>best_p_val:
+                            best_key= results_dict_key
+                            best_p_val = current_p_val
+                    ai_best_fit = results_dicts[best_key]['ai']
+                    self.ai = np.zeros(self.N)
+                    self.ai[:min(self.N,len(ai_best_fit))] = ai[:min(self.N,len(ai_best_fit))]
+                else:
+                    self.ref_index=0
+                    self.set_ai_from_reference()
+            else:
+                self.ref_index=0
+                self.set_ai_from_reference()
         else:
             self.ai = np.zeros(self.N)
             self.ai[:min(self.N,len(ai))] = ai[:min(self.N,len(ai))]

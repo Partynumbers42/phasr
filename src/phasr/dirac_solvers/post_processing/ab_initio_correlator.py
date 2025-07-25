@@ -128,7 +128,7 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None): #,r_cut=8
     
     return AI_datasets
 
-def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,theta_exp=None,renew=False,verbose=True,verboseLoad=True):
+def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,theta_exp=None,renew=False,verbose=True,verboseLoad=True,left_right_asymmetry_args={}):
     #
     for AI_model in AI_datasets:
         
@@ -143,10 +143,10 @@ def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_
             
             AI_datasets[AI_model]={**AI_datasets[AI_model],**{quantity_tuple[0]:quantity_tuple[1] for quantity_tuple in correlation_quantities_array}}
             if verboseLoad:
-                print("Loaded overlap integrals for "+str(AI_model)+" from ",path_correlation_quantities)
+                print("Loaded correlation quantities for "+str(AI_model)+" from ",path_correlation_quantities)
         else:
             if verbose:
-                print('Calculating overlap integrals for: ',AI_model)
+                print('Calculating correlation quantities for: ',AI_model)
             #
             atom_key = AI_datasets[AI_model]['atom']
             AI_datasets[AI_model]['rch']=atom_key.charge_radius
@@ -168,7 +168,7 @@ def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_
                 AI_datasets[AI_model]['V_'+nuc] = overlap_integral_vector(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True)
             #
             if E_exp is not None and theta_exp is not None:
-                AI_datasets[AI_model]['APV'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,verbose=True)
+                AI_datasets[AI_model]['APV'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,verbose=True,**left_right_asymmetry_args)
             #
             with open( path_correlation_quantities, "w" ) as file:
                 file.write('')
@@ -178,7 +178,7 @@ def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_
                         line='{},{val:.16e}'.format(key,val=AI_datasets[AI_model][key]) #key+','+str(a[key])
                         file.write(line+'\n')
             if verboseLoad:
-                print("Correlation quantites (overlap integrals, radii, etc.) saved in ", path_correlation_quantities)
+                print("Correlation quantities (overlap integrals, radii, etc.) saved in ", path_correlation_quantities)
         
     return AI_datasets
 

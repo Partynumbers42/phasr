@@ -16,10 +16,11 @@ from .statistical_measures import minimization_measures
 from .initializer import initializer
 from .parameters import parameter_set
 from .data_prepper import load_dataset, load_barrett_moment
+from.fit_pickler import pickle_load_result_dict, pickle_dump_result_dict
 
 from ..dirac_solvers import crosssection_lepton_nucleus_scattering
 
-def fitter(datasets_keys:list,initialization:initializer,barrett_moment_key=None,monotonous_decrease_precision=np.inf,xi_diff_convergence_limit=1e-4,numdifftools_step=1.e-4,verbose=True,cross_section_args={},**minimizer_args):
+def fitter(datasets_keys:list,initialization:initializer,barrett_moment_key=None,monotonous_decrease_precision=np.inf,xi_diff_convergence_limit=1e-4,numdifftools_step=1.e-4,verbose=True,renew=False,cross_section_args={},**minimizer_args):
     ''' **minimzer_args is passed to scipy minimize '''
     # usually: monotonous_decrease_precision=0.04
     
@@ -29,106 +30,121 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_key=None
     
     initializer_dict = {'Z':initialization.Z,'A':initialization.A,'R':initialization.R,'N':initialization.N,'xi_ini':initial_parameters.get_xi(),'ai_ini':initial_parameters.get_ai(),'ai_abs_bounds':initial_parameters.ai_abs_bound}
     
-    measures = construct_measures(datasets_keys,initialization,barrett_moment_key,monotonous_decrease_precision,cross_section_args)
+    test_dict = {**settings_dict,**initializer_dict}
+    visible_keys = ['Z','A','R','N','datasets']
+    tracked_keys = list(test_dict.keys())
     
-    global loss_eval
-    loss_eval = 0 
-    # define loss function
-    def loss_function(xi):
-        global loss_eval
-        loss_eval+=1
-        parameters = parameter_set(initialization.R,initialization.Z,xi=xi,ai_abs_bound=initialization.ai_abs_bound)
-        current_nucleus.update_ai(parameters.get_ai())
-        loss=0
-        for dataset_key in measures:
-            loss += measures[dataset_key].loss(current_nucleus)
-        if loss_eval%10==0:
-            print("Loss (R="+str(current_nucleus.R)+",N="+str(current_nucleus.N_a)+",eval:"+str(loss_eval)+") =",loss)
-        return loss
-
-    off_diagonal_covariance=False
-    for key in measures:
-        off_diagonal_covariance+=measures[key].off_diagonal_covariance
-
-    xi_initial = initial_parameters.get_xi()
-    xi_bounds = len(xi_initial)*[(0,1)]
+    loaded_results_dict = pickle_load_result_dict(test_dict,tracked_keys,visible_keys)
     
-    current_nucleus = copy.deepcopy(initialization.nucleus)
+    if (loaded_results_dict is None) or renew:
     
-    converged=False
-    while not converged:
-        for key in measures:
-            measures[key].set_cov(current_nucleus)    
-        print('Starting current fit step (R='+str(current_nucleus.R)+',N='+str(current_nucleus.N_a)+') with loss =',loss_function(xi_initial))
-        result = minimize(loss_function,xi_initial,bounds=xi_bounds,**minimizer_args)
-        print('Finished current fit step (R='+str(current_nucleus.R)+',N='+str(current_nucleus.N_a)+') with loss =',result.fun)
+        measures = construct_measures(datasets_keys,initialization,barrett_moment_key,monotonous_decrease_precision,cross_section_args)
         
-        if not off_diagonal_covariance:
-            converged=True
-        else:
-            xi_diff = result.x - xi_initial
-            if np.all(np.abs(xi_diff) < xi_diff_convergence_limit):
+        global loss_eval
+        loss_eval = 0 
+        # define loss function
+        def loss_function(xi):
+            global loss_eval
+            loss_eval+=1
+            parameters = parameter_set(initialization.R,initialization.Z,xi=xi,ai_abs_bound=initialization.ai_abs_bound)
+            current_nucleus.update_ai(parameters.get_ai())
+            loss=0
+            for dataset_key in measures:
+                loss += measures[dataset_key].loss(current_nucleus)
+            if loss_eval%10==0:
+                print("Loss (R="+str(current_nucleus.R)+",N="+str(current_nucleus.N_a)+",eval:"+str(loss_eval)+") =",loss)
+            return loss
+
+        off_diagonal_covariance=False
+        for key in measures:
+            off_diagonal_covariance+=measures[key].off_diagonal_covariance
+
+        xi_initial = initial_parameters.get_xi()
+        xi_bounds = len(xi_initial)*[(0,1)]
+        
+        current_nucleus = copy.deepcopy(initialization.nucleus)
+        
+        converged=False
+        while not converged:
+            for key in measures:
+                measures[key].set_cov(current_nucleus)    
+            print('Starting current fit step (R='+str(current_nucleus.R)+',N='+str(current_nucleus.N_a)+') with loss =',loss_function(xi_initial))
+            result = minimize(loss_function,xi_initial,bounds=xi_bounds,**minimizer_args)
+            print('Finished current fit step (R='+str(current_nucleus.R)+',N='+str(current_nucleus.N_a)+') with loss =',result.fun)
+            
+            if not off_diagonal_covariance:
                 converged=True
             else:
-                print('Not converged (R='+str(current_nucleus.R)+',N='+str(current_nucleus.N_a)+'): x_f-x_i =',xi_diff)
-                xi_initial = result.x
-    print('Finished fit (R='+str(current_nucleus.R)+',N='+str(current_nucleus.N_a)+'), Calculating Hessian')
+                xi_diff = result.x - xi_initial
+                if np.all(np.abs(xi_diff) < xi_diff_convergence_limit):
+                    converged=True
+                else:
+                    print('Not converged (R='+str(current_nucleus.R)+',N='+str(current_nucleus.N_a)+'): x_f-x_i =',xi_diff)
+                    xi_initial = result.x
+        print('Finished fit (R='+str(current_nucleus.R)+',N='+str(current_nucleus.N_a)+'), Calculating Hessian')
+        
+        Hessian_function = ndt.Hessian(loss_function,step=numdifftools_step)
+        hessian = Hessian_function(result.x)
+        hessian_inv = inv(hessian)
+        covariance_xi = 2*hessian_inv
+        
+        print('Finished, Constructing results dictionary (R='+str(current_nucleus.R)+',N='+str(current_nucleus.N_a)+')')
+        
+        out_parameters = parameter_set(initialization.R,initialization.Z,xi=result.x,ai_abs_bound=initialization.ai_abs_bound)
+        out_parameters.set_cov_xi(covariance_xi)
+        out_parameters.set_ai_tilde_from_xi()
+        out_parameters.set_ai_from_ai_tilde()
+        
+        parameters_results={'xi':out_parameters.get_xi(),'ai':out_parameters.get_ai(),'dxi_stat':np.sqrt(out_parameters.cov_xi.diagonal()),'dai_stat':np.sqrt(out_parameters.cov_ai.diagonal()),'cov_xi_stat':out_parameters.cov_xi,'cov_ai_stat':out_parameters.cov_ai}
+        
+        # calc statistical measures
+        chisq, resid, sample_size, dof, redchisq, p_val = {}, {}, {}, {}, {}, {}
+        chisq['total'], sample_size['total'] = 0, 0
+        for dataset_key in measures:
+            resid[dataset_key] = measures[dataset_key].residual(current_nucleus)
+            chisq[dataset_key] = measures[dataset_key].loss(current_nucleus)
+            sample_size[dataset_key] = len(resid[dataset_key])
+            if sample_size[dataset_key] > out_parameters.N_x:
+                dof[dataset_key] = sample_size[dataset_key] - out_parameters.N_x
+                redchisq[dataset_key] = chisq[dataset_key]/dof[dataset_key]
+                p_val[dataset_key] = chi2.sf(chisq[dataset_key],dof[dataset_key])
+            chisq['total'] += chisq[dataset_key]
+            sample_size['total'] += sample_size[dataset_key]
+        dof['total'] = sample_size['total'] - out_parameters.N_x
+        redchisq['total'] =  chisq['total']/dof['total']
+        p_val['total'] = chi2.sf(chisq['total'],dof['total'])    
+        statistics_dict = {'chisq':chisq,'redchisq':redchisq,'p_val':p_val,'dof':dof,'sample_size':sample_size,'resid':resid}
+        
+        statistics_results={'chisq':chisq['total'],'redchisq':redchisq['total'],'p_val':p_val['total'],'dof':dof['total'],'sample_size':sample_size['total'],'nfev':loss_eval,'statistics_dict':statistics_dict}
+        
+        values_results={}
+        for dataset_key in measures:
+            values_results['x_'+dataset_key]=measures[dataset_key].x_data
+            values_results['y_'+dataset_key]=measures[dataset_key].test_function_eval(current_nucleus)
+        
+        # calc radius and barrett moment uncertainties
+        r_ch = current_nucleus.charge_radius
+        dr_ch = np.sqrt(np.einsum('i,ij,j->',current_nucleus.charge_radius_jacobian,out_parameters.cov_ai,current_nucleus.charge_radius_jacobian))
+        
+        radius_dict={'r_ch':r_ch,'dr_ch_stat':dr_ch}
+        
+        if barrett_moment_key is not None:
+            barrett = current_nucleus.barrett_moment
+            dbarrett = np.sqrt(np.einsum('i,ij,j->',current_nucleus.barrett_moment_jacobian,out_parameters.cov_ai,current_nucleus.barrett_moment_jacobian))
+            barrett_dict={'k':current_nucleus.k_barrett,'alpha':current_nucleus.alpha_barrett,'barrett':barrett,'dbarrett':dbarrett}
+        else:
+            barrett_dict={}
+        
+        results_dict={**settings_dict,**initializer_dict,**statistics_results,**parameters_results,**values_results,**radius_dict,**barrett_dict}
+        
+        pickle_dump_result_dict(results_dict,tracked_keys,visible_keys,overwrite=renew)
     
-    Hessian_function = ndt.Hessian(loss_function,step=numdifftools_step)
-    hessian = Hessian_function(result.x)
-    hessian_inv = inv(hessian)
-    covariance_xi = 2*hessian_inv
-    
-    print('Finished, Constructing results dictionary (R='+str(current_nucleus.R)+',N='+str(current_nucleus.N_a)+')')
-    
-    out_parameters = parameter_set(initialization.R,initialization.Z,xi=result.x,ai_abs_bound=initialization.ai_abs_bound)
-    out_parameters.set_cov_xi(covariance_xi)
-    out_parameters.set_ai_tilde_from_xi()
-    out_parameters.set_ai_from_ai_tilde()
-    
-    parameters_results={'xi':out_parameters.get_xi(),'ai':out_parameters.get_ai(),'dxi_stat':np.sqrt(out_parameters.cov_xi.diagonal()),'dai_stat':np.sqrt(out_parameters.cov_ai.diagonal()),'cov_xi_stat':out_parameters.cov_xi,'cov_ai_stat':out_parameters.cov_ai}
-    
-    # calc statistical measures
-    chisq, resid, sample_size, dof, redchisq, p_val = {}, {}, {}, {}, {}, {}
-    chisq['total'], sample_size['total'] = 0, 0
-    for dataset_key in measures:
-        resid[dataset_key] = measures[dataset_key].residual(current_nucleus)
-        chisq[dataset_key] = measures[dataset_key].loss(current_nucleus)
-        sample_size[dataset_key] = len(resid[dataset_key])
-        if sample_size[dataset_key] > out_parameters.N_x:
-            dof[dataset_key] = sample_size[dataset_key] - out_parameters.N_x
-            redchisq[dataset_key] = chisq[dataset_key]/dof[dataset_key]
-            p_val[dataset_key] = chi2.sf(chisq[dataset_key],dof[dataset_key])
-        chisq['total'] += chisq[dataset_key]
-        sample_size['total'] += sample_size[dataset_key]
-    dof['total'] = sample_size['total'] - out_parameters.N_x
-    redchisq['total'] =  chisq['total']/dof['total']
-    p_val['total'] = chi2.sf(chisq['total'],dof['total'])    
-    statistics_dict = {'chisq':chisq,'redchisq':redchisq,'p_val':p_val,'dof':dof,'sample_size':sample_size,'resid':resid}
-    
-    statistics_results={'chisq':chisq['total'],'redchisq':redchisq['total'],'p_val':p_val['total'],'dof':dof['total'],'sample_size':sample_size['total'],'nfev':loss_eval,'statistics_dict':statistics_dict}
-    
-    values_results={}
-    for dataset_key in measures:
-        values_results['x_'+dataset_key]=measures[dataset_key].x_data
-        values_results['y_'+dataset_key]=measures[dataset_key].test_function_eval(current_nucleus)
-    
-    # calc radius and barrett moment uncertainties
-    r_ch = current_nucleus.charge_radius
-    dr_ch = np.sqrt(np.einsum('i,ij,j->',current_nucleus.charge_radius_jacobian,out_parameters.cov_ai,current_nucleus.charge_radius_jacobian))
-    
-    radius_dict={'r_ch':r_ch,'dr_ch_stat':dr_ch}
-    
-    if barrett_moment_key is not None:
-        barrett = current_nucleus.barrett_moment
-        dbarrett = np.sqrt(np.einsum('i,ij,j->',current_nucleus.barrett_moment_jacobian,out_parameters.cov_ai,current_nucleus.barrett_moment_jacobian))
-        barrett_dict={'k':current_nucleus.k_barrett,'alpha':current_nucleus.alpha_barrett,'barrett':barrett,'dbarrett':dbarrett}
     else:
-        barrett_dict={}
+        print('Fit with these initial values was already calculated before (R='+str(initialization.R)+',N='+str(initialization.N)+')')
+        
+        results_dict = loaded_results_dict
     
-    results_dict={**settings_dict,**initializer_dict,**statistics_results,**parameters_results,**values_results,**radius_dict,**barrett_dict}
-    
-    return results_dict
+    return results_dict # remove this return? even neccessary? 
 
 def construct_measures(datasets_keys:list,initialization:initializer,barrett_moment_key=None,monotonous_decrease_precision=np.inf,cross_section_args={}):
     
