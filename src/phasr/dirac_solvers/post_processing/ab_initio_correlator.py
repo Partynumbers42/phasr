@@ -15,6 +15,8 @@ from ...nuclei.parameterizations.numerical import highenergycutoff_field
 
 from .overlap_integrals import overlap_integral_scalar, overlap_integral_vector, overlap_integral_dipole
 
+from .left_right_asymmetry import left_right_asymmetry_lepton_nucleus_scattering
+
 def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None): #,r_cut=8
     #
     if name is None:
@@ -88,6 +90,7 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None): #,r_cut=8
         kws = {} if r_cut is None else {'rrange' : [0.,r_cut,0.02]}
         atom_AI = nucleus(name+"_"+AI_model,Z=Z,A=A,mass=mass_nucleus,spin=spin_nucleus,parity=parity_nucleus,form_factor_dict=AI_datasets[AI_model]['form_factor_dict'],**kws) 
         atom_AI.set_density_dict_from_form_factor_dict()
+        #atom_AI.fill_gaps()
         AI_datasets[AI_model]['atom'] = atom_AI 
         
         # identify type
@@ -125,13 +128,15 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None): #,r_cut=8
     
     return AI_datasets
 
-def calculate_correlation_quantities(AI_datasets,reference_nucleus,qexp=None,renew=False,verbose=True,verboseLoad=True):
+def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,theta_exp=None,renew=False,verbose=True,verboseLoad=True):
     #
     for AI_model in AI_datasets:
         
         prekeys = list(AI_datasets[AI_model].keys())
-        path_correlation_quantities=local_paths.correlation_quantities_paths + "correlation_quantities_"+AI_datasets[AI_model]['atom'].name+'_'+reference_nucleus.name+('_q{:.3f}'.format(qexp) if qexp is not None else '')+".txt"
+        path_correlation_quantities=local_paths.correlation_quantities_paths + "correlation_quantities_"+AI_datasets[AI_model]['atom'].name+'_'+reference_nucleus.name+('_q{:.3f}'.format(q_exp) if q_exp is not None else '')+".txt"
         
+        os.makedirs(os.path.dirname(path_correlation_quantities), exist_ok=True)
+
         if os.path.exists(path_correlation_quantities) and renew==False:
             with open( path_correlation_quantities, "rb" ) as file:
                 correlation_quantities_array = np.genfromtxt( file,comments=None,skip_header=0,delimiter=',',names=['par','val'],autostrip=True,dtype=['<U10',float])
@@ -153,16 +158,17 @@ def calculate_correlation_quantities(AI_datasets,reference_nucleus,qexp=None,ren
             AI_datasets[AI_model]['rw']=atom_key.weak_radius
             AI_datasets[AI_model]['rwsq']=atom_key.weak_radius_sq
             #
-            if qexp is not None:
-                AI_datasets[AI_model]['Fch_exp']=atom_key.Fch(qexp,L=0)
-                AI_datasets[AI_model]['Fw_exp']=atom_key.Fw(qexp,L=0)
+            if q_exp is not None:
+                AI_datasets[AI_model]['Fch_exp']=atom_key.Fch(q_exp,L=0)
+                AI_datasets[AI_model]['Fw_exp']=atom_key.Fw(q_exp,L=0)
             #
             for nuc in ['p','n','ch']:
                 key='M0'+nuc
-                S_N = overlap_integral_scalar(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True)
-                V_N = overlap_integral_vector(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True)
-                AI_datasets[AI_model]['S_'+nuc] = S_N*constants.alpha_el**(5/2)
-                AI_datasets[AI_model]['V_'+nuc] = V_N*constants.alpha_el**(5/2)
+                AI_datasets[AI_model]['S_'+nuc] = overlap_integral_scalar(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True)
+                AI_datasets[AI_model]['V_'+nuc] = overlap_integral_vector(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True)
+            #
+            if E_exp is not None and theta_exp is not None:
+                AI_datasets[AI_model]['APV'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus)
             #
             with open( path_correlation_quantities, "w" ) as file:
                 file.write('')

@@ -24,8 +24,11 @@ parameter_steps={
 
 from .crosssection import crosssection_lepton_nucleus_scattering
 
-def crosssection_lepton_nucleus_scattering_chirality(energy,theta,nucleus,chirality,verbose=False,**args):
+def crosssection_lepton_nucleus_scattering_chirality(energy,theta,chirality,weak_nucleus,charge_nucleus=None,verbose=False,**args):
     
+    if charge_nucleus is None:
+        charge_nucleus = weak_nucleus
+
     args['verbose']=verbose
     
     if chirality=='L':
@@ -40,13 +43,16 @@ def crosssection_lepton_nucleus_scattering_chirality(energy,theta,nucleus,chiral
     if verbose:
         print('Calculate '+chirality_name+' crosssection ...')
 
-    def potential_chiral(r): return nucleus.electric_potential(r) + chiral_sign*nucleus.weak_potential(r)
-    nucleus_chiral = copy.deepcopy(nucleus)
+    def potential_chiral(r): return charge_nucleus.electric_potential(r) + chiral_sign*weak_nucleus.weak_potential(r)
+    nucleus_chiral = copy.deepcopy(charge_nucleus)
     nucleus_chiral.electric_potential = potential_chiral
     return crosssection_lepton_nucleus_scattering(energy,theta,nucleus_chiral,**args)
 
-def left_right_asymmetry_lepton_nucleus_scattering(energy,theta,nucleus,verbose=False,parallelize_LR=False,atol=1e-13,rtol=1e-13,**args):
+def left_right_asymmetry_lepton_nucleus_scattering(energy,theta,weak_nucleus,charge_nucleus=None,verbose=False,parallelize_LR=False,atol=1e-13,rtol=1e-13,**args):
     
+    if charge_nucleus is None:
+        charge_nucleus = weak_nucleus
+
     args['verbose']=verbose
     args['atol']=atol
     args['rtol']=rtol
@@ -57,20 +63,20 @@ def left_right_asymmetry_lepton_nucleus_scattering(energy,theta,nucleus,verbose=
         if MPSentinel.Is_master():
             pool = Pool(processes=2)
             for chirality in ['L','R']:
-                results_dict[chirality] = pool.apply_async(crosssection_lepton_nucleus_scattering_chirality, args=(energy,theta,nucleus,chirality), kwds=args)
+                results_dict[chirality] = pool.apply_async(crosssection_lepton_nucleus_scattering_chirality, args=(energy,theta,chirality,weak_nucleus,charge_nucleus), kwds=args)
             pool.close()
             pool.join()
         crosssection_L = results_dict['L'].get()
         crosssection_R = results_dict['R'].get()
     else:
-        crosssection_L = crosssection_lepton_nucleus_scattering_chirality(energy,theta,nucleus,'L',**args)
-        crosssection_R = crosssection_lepton_nucleus_scattering_chirality(energy,theta,nucleus,'R',**args)
+        crosssection_L = crosssection_lepton_nucleus_scattering_chirality(energy,theta,'L',weak_nucleus,charge_nucleus,**args)
+        crosssection_R = crosssection_lepton_nucleus_scattering_chirality(energy,theta,'R',weak_nucleus,charge_nucleus,**args)
 
     return (crosssection_R - crosssection_L)/(crosssection_R + crosssection_L)
 
-def left_right_asymmetry_and_time(energy,theta,nucleus,**args):
+def left_right_asymmetry_and_time(energy,theta,nucleus,*args,**kwds):
         start_time=time.time()
-        LR_asymmetry = left_right_asymmetry_lepton_nucleus_scattering(energy,theta,nucleus,**args)
+        LR_asymmetry = left_right_asymmetry_lepton_nucleus_scattering(energy,theta,nucleus,*args,**kwds)
         end_time=time.time()
         runtime=end_time-start_time
         return LR_asymmetry, runtime
