@@ -168,7 +168,7 @@ def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_
                 AI_datasets[AI_model]['V_'+nuc] = overlap_integral_vector(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True)
             #
             if E_exp is not None and theta_exp is not None:
-                AI_datasets[AI_model]['APV'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,verbose=True,parallelize_LR=True)
+                AI_datasets[AI_model]['APV'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,verbose=True)
             #
             with open( path_correlation_quantities, "w" ) as file:
                 file.write('')
