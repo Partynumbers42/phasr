@@ -100,7 +100,7 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None): #,r_cut=8
             AI_datasets[AI_model]['type'] = 'magic'
         else:
             AI_datasets[AI_model]['type'] = AI_model
-        # 3 groups ?
+        # more than 3 groups ?
         
         # check radii
         Rn2c = AI_datasets[AI_model]['Rn2c']
@@ -191,3 +191,156 @@ def b_cm(Omega,A,mN=938.9):#MeV
 def F_CMS_Gauss(q,Omega,A):
     b=b_cm(Omega,A)
     return np.exp((b*q/2)**2)
+
+
+def linear_model(x,paramdict):
+    
+    m=paramdict['m']
+    b=paramdict['b']
+    
+    return m * x + b
+
+def residual(params, x, data, yerr):
+    model = linear_model(x,params)
+    
+    return (model-data)/yerr
+
+from lmfit import minimize, Parameters, Parameter
+
+def AbInitioCorrelator(AI_datasets,x_str='rchsq',x_offset=0,y_strs=None,scale_yerr=True,corr_skin=False): #,return_all=False
+    #
+    scale_yerr=True    
+    #
+    ov_arr={}
+    #
+    ov_arr[x_str]=np.array([])
+    for AI_model in AI_datasets:
+        rsqi=AI_datasets[AI_model][x_str]
+        ov_arr[x_str]=np.append(ov_arr[x_str],rsqi)
+    
+    
+    results_dict={}
+    
+    if y_strs is None:
+        
+        if not corr_skin:
+        
+            for ov in ['S','V']:
+                for nuc in ['p','n']:
+                    ov_arr[ov+nuc]=np.array([])
+                    key = ov+'_'+nuc
+                    for AI_model in AI_datasets:
+                        ovi=AI_datasets[AI_model][key]
+                        ov_arr[ov+nuc]=np.append(ov_arr[ov+nuc],ovi)
+                    #
+                    x=ov_arr[x_str] + x_offset
+                    data=ov_arr[ov+nuc]
+                    #
+                    params = Parameters()
+                    
+                    params.add('m', value=-np.std(data)/np.std(x))
+                    params.add('b', value=np.mean(data))
+                    #
+                    yerr=0*x+1.0 # important that this is 1 such that the residuals are unnormalised
+                    out = minimize(residual, params, args=(x, data, yerr),scale_covar=scale_yerr)
+                    
+                    m=out.params['m'].value
+                    b=out.params['b'].value
+                    resid=out.residual
+                    redchi=out.redchi
+                    db=np.std(resid)
+                    covar=out.covar
+                    
+                    results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
+                    results_dict[ov+nuc] = results
+            
+            for r2 in ['rpsq','rnsq','rwsq']:
+                key = r2
+                ov_arr[key]=np.array([])
+                for AI_model in AI_datasets:
+                    r2i=AI_datasets[AI_model][key]
+                    ov_arr[key]=np.append(ov_arr[key],r2i)
+                #
+                x=ov_arr[x_str] + x_offset
+                data=ov_arr[key]
+                #
+                params = Parameters()
+                
+                params.add('m', value=-np.std(data)/np.std(x))
+                params.add('b', value=np.mean(data))
+                #
+                yerr=0*x+1.0 # important that this is 1 such that the residuals are unnormalised
+                out = minimize(residual, params, args=(x, data, yerr),scale_covar=scale_yerr)
+                
+                m=out.params['m'].value
+                b=out.params['b'].value
+                resid=out.residual
+                redchi=out.redchi
+                db=np.std(resid)
+                covar=out.covar
+                
+                results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
+                results_dict[key] = results
+        
+        else:
+        
+            for rdiff in ['rn-rp','rw-rch']:
+                key = rdiff
+                key1 = key[:2]
+                key2 = key[3:]
+                ov_arr[key]=np.array([])
+                for AI_model in AI_datasets:
+                    rdiffi=AI_datasets[AI_model][key1]-AI_datasets[AI_model][key2]
+                    ov_arr[key]=np.append(ov_arr[key],rdiffi)
+                #
+                x=ov_arr[x_str] + x_offset
+                data=ov_arr[key]
+                #
+                params = Parameters()
+                
+                params.add('m', value=-np.std(data)/np.std(x))
+                params.add('b', value=np.mean(data))
+                #
+                yerr=0*x+1.0 # important that this is 1 such that the residuals are unnormalised
+                out = minimize(residual, params, args=(x, data, yerr),scale_covar=scale_yerr)
+                
+                m=out.params['m'].value
+                b=out.params['b'].value
+                resid=out.residual
+                redchi=out.redchi
+                db=np.std(resid)
+                covar=out.covar
+                
+                results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
+                results_dict[key] = results
+        
+    else:
+        for y_str in y_strs:
+            key = y_str
+            ov_arr[key]=np.array([])
+            for AI_model in AI_datasets:
+                yi=AI_datasets[AI_model][key]
+                ov_arr[key]=np.append(ov_arr[key],yi)
+            #
+            x=ov_arr[x_str] + x_offset
+            data=ov_arr[key]
+            #
+            params = Parameters()
+            
+            params.add('m', value=-np.std(data)/np.std(x))
+            params.add('b', value=np.mean(data))
+            #
+            yerr=0*x+1.0 # important that this is 1 such that the residuals are unnormalised
+            out = minimize(residual, params, args=(x, data, yerr),scale_covar=scale_yerr)
+            
+            m=out.params['m'].value
+            b=out.params['b'].value
+            resid=out.residual
+            redchi=out.redchi
+            db=np.std(resid)
+            covar=out.covar
+            
+            results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
+            results_dict[key] = results
+    
+    return results_dict, ov_arr
