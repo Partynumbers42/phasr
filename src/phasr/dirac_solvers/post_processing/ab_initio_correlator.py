@@ -169,6 +169,7 @@ def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_
             #
             if E_exp is not None and theta_exp is not None:
                 AI_datasets[AI_model]['APV'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,verbose=True,**left_right_asymmetry_args)
+                #AI_datasets[AI_model]['APV2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,verbose=True,**left_right_asymmetry_args)
             #
             with open( path_correlation_quantities, "w" ) as file:
                 file.write('')
@@ -254,7 +255,7 @@ def AbInitioCorrelator(AI_datasets,x_str='rchsq',x_offset=0,y_strs=None,scale_ye
                     results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
                     results_dict[ov+nuc] = results
             
-            for r2 in ['rpsq','rnsq','rwsq']:
+            for r2 in ['rpsq','rnsq','rwsq','APV']:
                 key = r2
                 ov_arr[key]=np.array([])
                 for AI_model in AI_datasets:
