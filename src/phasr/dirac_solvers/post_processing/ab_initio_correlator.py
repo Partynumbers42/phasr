@@ -87,10 +87,10 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None): #,r_cut=8
     # build atoms & calculate densities 
     for AI_model in AI_datasets:
 
-        kws = {} if r_cut is None else {'rrange' : [0.,r_cut,0.02]}
+        kws = {} if r_cut is None else {'rrange' : [0.,r_cut,0.05]}
         atom_AI = nucleus(name+"_"+AI_model,Z=Z,A=A,mass=mass_nucleus,spin=spin_nucleus,parity=parity_nucleus,form_factor_dict=AI_datasets[AI_model]['form_factor_dict'],**kws) 
         atom_AI.set_density_dict_from_form_factor_dict()
-        #atom_AI.fill_gaps()
+        atom_AI.fill_gaps()
         AI_datasets[AI_model]['atom'] = atom_AI 
         
         # identify type
@@ -169,7 +169,7 @@ def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_
             #
             if E_exp is not None and theta_exp is not None:
                 AI_datasets[AI_model]['APV'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,verbose=True,**left_right_asymmetry_args)
-                #AI_datasets[AI_model]['APV2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,verbose=True,**left_right_asymmetry_args)
+                AI_datasets[AI_model]['APV2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,verbose=True,**left_right_asymmetry_args)
             #
             with open( path_correlation_quantities, "w" ) as file:
                 file.write('')
@@ -255,7 +255,7 @@ def AbInitioCorrelator(AI_datasets,x_str='rchsq',x_offset=0,y_strs=None,scale_ye
                     results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
                     results_dict[ov+nuc] = results
             
-            for r2 in ['rpsq','rnsq','rwsq','APV']:
+            for r2 in ['rpsq','rnsq','rwsq','APV','APV2']:
                 key = r2
                 ov_arr[key]=np.array([])
                 for AI_model in AI_datasets:
