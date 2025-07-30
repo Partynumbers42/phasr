@@ -82,6 +82,8 @@ def promote_best_fit(test_dict,tracked_keys=None,visible_keys=[],overwrite=True,
     
     results_dict = pickle_load_result_dict(test_dict,tracked_keys,visible_keys,verbose)
     
+    # ADD syst uncertainties here <------ ?
+    
     if not results_dict is None:   
         path = local_paths.best_fit_path + 'best_fit_result_Z' + str(results_dict['Z']) + '_A'  + str(results_dict['A'])
 
