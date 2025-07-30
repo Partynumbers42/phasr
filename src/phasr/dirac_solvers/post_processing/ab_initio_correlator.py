@@ -133,7 +133,7 @@ def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_
     for AI_model in AI_datasets:
         
         prekeys = list(AI_datasets[AI_model].keys())
-        path_correlation_quantities=local_paths.correlation_quantities_paths + "correlation_quantities_"+AI_datasets[AI_model]['atom'].name+'_'+reference_nucleus.name+('_q{:.3f}'.format(q_exp) if q_exp is not None else '')+".txt"
+        path_correlation_quantities=local_paths.correlation_quantities_paths + "correlation_quantities_"+AI_datasets[AI_model]['atom'].name+'_'+reference_nucleus.name+('_E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp) if (not (E_exp is None) and (not theta_exp is None)) else '')+('_q{:.3f}'.format(q_exp) if q_exp is not None else '')+".txt"
         
         os.makedirs(os.path.dirname(path_correlation_quantities), exist_ok=True)
 
