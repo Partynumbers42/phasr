@@ -59,8 +59,8 @@ def pickle_load_result_dict(test_dict,tracked_keys=None,visible_keys=[],verbose=
         return results_dict
     else:
         print('File at',path,'not found')
-        
-def pickle_load_all_results_dicts(Z,A,R,N):
+
+def pickle_load_all_results_dicts_R_N(Z,A,R,N):
         
     test_dict={'Z':Z,'A':A,'R':R,'N':N}
     visible_keys = ['Z','A','R','N']
@@ -77,6 +77,45 @@ def pickle_load_all_results_dicts(Z,A,R,N):
         results_dicts[os.path.basename(path)] = results_dict
     
     return results_dicts 
+
+def promote_best_fit(test_dict,tracked_keys=None,visible_keys=[],overwrite=True,verbose=True):
+    
+    results_dict = pickle_load_result_dict(test_dict,tracked_keys,visible_keys,verbose)
+    
+    if not results_dict is None:   
+        path = local_paths.best_fit_path + 'best_fit_result_Z' + str(results_dict['Z']) + '_A'  + str(results_dict['A'])
+
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        
+        if (not os.path.exists(path)) or overwrite:
+            with open( path, "wb" ) as file:
+                pickle.dump(results_dict, file)
+            if verbose:
+                print('Saving results to',path)
+        else:
+            print('File at',path,'already exists')
+        
+    
+def load_best_fit(Z,A,verbose=True):
+    
+    path = local_paths.best_fit_path + 'best_fit_result_Z' + str(Z) + '_A'  + str(A)
+    
+    if os.path.exists(path):
+        with open( path, "rb" ) as file:
+            results_dict = pickle.load(file) 
+        if verbose:
+            print('Loading results from',path)
+        return results_dict
+    else:
+        print('File at',path,'not found')
+    
+
+def add_syst_uncertainties(): #TODO 
+    pass
+
+
+
+
 
 # # OLD remove in future
 

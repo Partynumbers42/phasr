@@ -12,6 +12,9 @@ import glob
 import re
 
 from ..dirac_solvers import crosssection_lepton_nucleus_scattering
+from .fit_pickler import load_best_fit
+from ..nuclei import load_reference_nucleus
+from .. import nucleus
 
 def import_dataset(path:str,save_name:str,Z:int,A:int,correlation_stat_uncertainty=None,correlation_syst_uncertainty=None,**args):
     
@@ -177,9 +180,21 @@ def import_dataset(path:str,save_name:str,Z:int,A:int,correlation_stat_uncertain
         # Collect 
         Z_ref, A_ref = input("Relative to which nucleus was the data measured? (answer with: Z,N)")
         
-        reference_nucleus = SOLUTION_LOADER_TODO(Z_ref,A_ref) #TODO
+        reference_nucleus_fit_results = load_best_fit(Z_ref,A_ref,verbose=True)
         
-        # if it does not exist raise info to first load data for that nucleus
+        if not reference_nucleus_fit_results is None:
+            ai_ref = reference_nucleus['ai']
+            R_ref = reference_nucleus['R']
+            reference_nucleus = nucleus(name="reference_nucleus_Z"+str(Z_ref)+"_A"+str(A_ref),Z=Z_ref,A=A_ref,ai=ai_ref,R=R_ref)
+            covariance_ai = reference_nucleus_fit_results['cov_ai']
+        else:
+            raise LookupError('Fit results for this nucleus not found. Promote a fit for this nucleus to best fit first.')
+            #alternative load reference without uncertainties
+            #reference_nuclei = load_reference_nucleus(Z_ref,A_ref)
+            #number_of_references = len(reference_nuclei) if type(reference_nuclei)==list else 1
+            #if number_of_references>1:    
+            #    reference_nucleus = reference_nuclei[0]
+            #covariance_ai = np.zeros((reference_nucleus.N_a,reference_nucleus.N_a)) 
         
         cross_section_reference_data=np.array([])
         for E in np.unique(E_data):
@@ -189,14 +204,13 @@ def import_dataset(path:str,save_name:str,Z:int,A:int,correlation_stat_uncertain
         
         q_data=2*E_data/constants.hc*np.sin(theta_data/2)
         
-        form_factor_reference = reference_nucleus.form_factor(q_data) #TODO
-        form_factor_uncertainty_reference = FF_UNCERT_TODO(q_data,reference_nucleus) #TODO
-        form_factor_correlation_reference = FF_CORR_TODO(q_data,reference_nucleus) #TODO
-        dcross_section_dform_factor = 2*(cross_section_reference_data/np.abs(form_factor_reference))
+        form_factor_reference = reference_nucleus.form_factor(q_data)
+        form_factor_jacobian = reference_nucleus.form_factor_jacobian(q_data)
+        form_factor_covariance_reference = np.einsum("ij,jk,kl->il",form_factor_jacobian,covariance_ai,form_factor_jacobian)
         
-        cross_section_uncertainty_reference_data = dcross_section_dform_factor * form_factor_uncertainty_reference
-        cross_section_correlation_reference_data = form_factor_correlation_reference
-        cross_section_covariance_reference_data = np.einsum("i,ij,j->ij",cross_section_uncertainty_reference_data,cross_section_correlation_reference_data,cross_section_uncertainty_reference_data)
+        dcross_section_dform_factor = 2*(cross_section_reference_data/np.abs(form_factor_reference))
+        cross_section_covariance_reference_data = np.einsum("i,ij,j->ij",dcross_section_dform_factor,form_factor_covariance_reference,dcross_section_dform_factor)
+        cross_section_uncertainty_reference_data = np.sqrt(cross_section_covariance_reference_data.diagonal())
         
         # Collect relative cross section measurement
         cross_section_rel_col = int(input("What column (starting at 0) contains the central values for the relative cross section?"))

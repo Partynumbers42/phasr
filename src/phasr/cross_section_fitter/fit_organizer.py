@@ -40,8 +40,6 @@ def parallel_fitting(datasets_keys:list,Z:int,A:int,Rs=np.arange(5.00,12.00,0.25
                 if N_offset>1:
                     pairings.append((datasets_keys,Z,A,R,N_offset,args))
         
-        # ADD check if this fit is on file 
-        
         N_tasks = len(pairings)
         print('Queuing',N_tasks,'tasks, which will be performed over',N_processes,'processes.')
         
@@ -52,8 +50,6 @@ def parallel_fitting(datasets_keys:list,Z:int,A:int,Rs=np.arange(5.00,12.00,0.25
 
 def fit_runner(datasets_keys,Z,A,R,N,args):
     print("Start fit with R="+str(R)+", N="+str(N)+" (PID:"+str(os.getpid())+")")
-    
-    # ADD check and load initials from previous fit
     
     initialization = initializer(Z,A,R,N)
     result = fitter(datasets_keys,initialization,**args)
