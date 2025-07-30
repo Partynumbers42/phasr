@@ -54,6 +54,23 @@ def optimise_radius_highenergy_continuation(fct,x_crit,x_step,x_min=0,fct_limit=
         print("Warning: Did not find a suitable x_crit in ["+str(x_min)+","+str(x_crit_initial)+"]")
         return x_crit_initial
 
+def short_uncertainty_notation(a,das,digits=2):
+    
+    da=np.max(das)
+    digs=(digits-1)-int(np.floor(np.log10(np.abs(da))))
+    
+    a_out=np.around(a,digs)
+    
+    das_out_str=[]
+    for dai in das:
+        dai_out=int(np.around(dai,digs)*10**digs)
+        dai_out_str="{da:d}".format(da=dai_out)
+        das_out_str.append(dai_out_str)
+    
+    a_out_str="{a:.{digs}f}".format(a=a_out,digs=digs)
+    
+    return a_out_str, das_out_str
+
 # energy momentum relations
 def energy(momentum,mass):
     return np.sqrt(momentum**2+mass**2)
