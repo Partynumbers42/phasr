@@ -149,30 +149,45 @@ def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_
                 print('Calculating correlation quantities for: ',AI_model)
             #
             atom_key = AI_datasets[AI_model]['atom']
-            AI_datasets[AI_model]['rch']=atom_key.charge_radius
-            AI_datasets[AI_model]['rchsq']=atom_key.charge_radius_sq
-            AI_datasets[AI_model]['rp']=atom_key.proton_radius
-            AI_datasets[AI_model]['rpsq']=atom_key.proton_radius_sq
-            AI_datasets[AI_model]['rn']=atom_key.neutron_radius
-            AI_datasets[AI_model]['rnsq']=atom_key.neutron_radius_sq
-            AI_datasets[AI_model]['rw']=atom_key.weak_radius
-            AI_datasets[AI_model]['rwsq']=atom_key.weak_radius_sq
-            #
+            if not 'rch' in prekeys:
+                AI_datasets[AI_model]['rch']=atom_key.charge_radius
+            if not 'rchsq' in prekeys:
+                AI_datasets[AI_model]['rchsq']=atom_key.charge_radius_sq
+            if not 'rp' in prekeys:
+                AI_datasets[AI_model]['rp']=atom_key.proton_radius
+            if not 'rpsq' in prekeys:
+                AI_datasets[AI_model]['rpsq']=atom_key.proton_radius_sq
+            if not 'rn' in prekeys:
+                AI_datasets[AI_model]['rn']=atom_key.neutron_radius
+            if not 'rnsq' in prekeys:
+                AI_datasets[AI_model]['rnsq']=atom_key.neutron_radius_sq
+            if not 'rw' in prekeys:
+                AI_datasets[AI_model]['rw']=atom_key.weak_radius
+            if not 'rwsq' in prekeys:
+                AI_datasets[AI_model]['rwsq']=atom_key.weak_radius_sq
+                #
             if q_exp is not None:
-                AI_datasets[AI_model]['Fch_exp']=atom_key.Fch(q_exp,L=0)
-                AI_datasets[AI_model]['Fw_exp']=atom_key.Fw(q_exp,L=0)
+                if not 'Fch_exp' in prekeys:
+                    AI_datasets[AI_model]['Fch_exp']=atom_key.Fch(q_exp,L=0)
+                if not 'Fw_exp' in prekeys:
+                    AI_datasets[AI_model]['Fw_exp']=atom_key.Fw(q_exp,L=0)
             #
             for nuc in ['p','n','ch']:
-                key='M0'+nuc
-                AI_datasets[AI_model]['S_'+nuc] = overlap_integral_scalar(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True)
-                AI_datasets[AI_model]['V_'+nuc] = overlap_integral_vector(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True)
+                #key='M0'+nuc
+                if not 'S_'+nuc in prekeys:
+                    AI_datasets[AI_model]['S_'+nuc] = overlap_integral_scalar(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True)
+                if not 'V_'+nuc in prekeys:
+                    AI_datasets[AI_model]['V_'+nuc] = overlap_integral_vector(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True)
             #
             if E_exp is not None and theta_exp is not None:
-                AI_datasets[AI_model]['APV'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,verbose=True,**left_right_asymmetry_args)
-                AI_datasets[AI_model]['APV2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,verbose=True,**left_right_asymmetry_args)
+                if not 'APV' in prekeys:
+                    AI_datasets[AI_model]['APV'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,verbose=True,**left_right_asymmetry_args)
+                if not 'APV2' in prekeys:
+                    AI_datasets[AI_model]['APV2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,verbose=True,**left_right_asymmetry_args)
             #
-            with open( path_correlation_quantities, "w" ) as file:
-                file.write('')
+            if renew:
+                with open( path_correlation_quantities, "w" ) as file:
+                    file.write('')
             for key in AI_datasets[AI_model]:
                 if key not in prekeys:
                     with open( path_correlation_quantities, "a" ) as file:
@@ -228,14 +243,45 @@ def AbInitioCorrelator(AI_datasets,x_str='rchsq',x_offset=0,y_strs=None,scale_ye
         
             for ov in ['S','V']:
                 for nuc in ['p','n']:
-                    ov_arr[ov+nuc]=np.array([])
-                    key = ov+'_'+nuc
+                    
+                    if ov+nuc in ov_arr.keys():
+                        ov_arr[ov+nuc]=np.array([])
+                        key = ov+'_'+nuc
+                        for AI_model in AI_datasets:
+                            ovi=AI_datasets[AI_model][key]
+                            ov_arr[ov+nuc]=np.append(ov_arr[ov+nuc],ovi)
+                        #
+                        x=ov_arr[x_str] + x_offset
+                        data=ov_arr[ov+nuc]
+                        #
+                        params = Parameters()
+                        
+                        params.add('m', value=-np.std(data)/np.std(x))
+                        params.add('b', value=np.mean(data))
+                        #
+                        yerr=0*x+1.0 # important that this is 1 such that the residuals are unnormalised
+                        out = minimize(residual, params, args=(x, data, yerr),scale_covar=scale_yerr)
+                        
+                        m=out.params['m'].value
+                        b=out.params['b'].value
+                        resid=out.residual
+                        redchi=out.redchi
+                        db=np.std(resid)
+                        covar=out.covar
+                        
+                        results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
+                        results_dict[ov+nuc] = results
+                
+            for r2 in ['rpsq','rnsq','rwsq','APV','APV2']:
+                key = r2
+                if key in ov_arr.keys():
+                    ov_arr[key]=np.array([])
                     for AI_model in AI_datasets:
-                        ovi=AI_datasets[AI_model][key]
-                        ov_arr[ov+nuc]=np.append(ov_arr[ov+nuc],ovi)
+                        r2i=AI_datasets[AI_model][key]
+                        ov_arr[key]=np.append(ov_arr[key],r2i)
                     #
                     x=ov_arr[x_str] + x_offset
-                    data=ov_arr[ov+nuc]
+                    data=ov_arr[key]
                     #
                     params = Parameters()
                     
@@ -253,67 +299,40 @@ def AbInitioCorrelator(AI_datasets,x_str='rchsq',x_offset=0,y_strs=None,scale_ye
                     covar=out.covar
                     
                     results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
-                    results_dict[ov+nuc] = results
-            
-            for r2 in ['rpsq','rnsq','rwsq','APV','APV2']:
-                key = r2
-                ov_arr[key]=np.array([])
-                for AI_model in AI_datasets:
-                    r2i=AI_datasets[AI_model][key]
-                    ov_arr[key]=np.append(ov_arr[key],r2i)
-                #
-                x=ov_arr[x_str] + x_offset
-                data=ov_arr[key]
-                #
-                params = Parameters()
-                
-                params.add('m', value=-np.std(data)/np.std(x))
-                params.add('b', value=np.mean(data))
-                #
-                yerr=0*x+1.0 # important that this is 1 such that the residuals are unnormalised
-                out = minimize(residual, params, args=(x, data, yerr),scale_covar=scale_yerr)
-                
-                m=out.params['m'].value
-                b=out.params['b'].value
-                resid=out.residual
-                redchi=out.redchi
-                db=np.std(resid)
-                covar=out.covar
-                
-                results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
-                results_dict[key] = results
+                    results_dict[key] = results
         
         else:
         
             for rdiff in ['rn-rp','rw-rch']:
                 key = rdiff
-                key1 = key[:2]
-                key2 = key[3:]
-                ov_arr[key]=np.array([])
-                for AI_model in AI_datasets:
-                    rdiffi=AI_datasets[AI_model][key1]-AI_datasets[AI_model][key2]
-                    ov_arr[key]=np.append(ov_arr[key],rdiffi)
-                #
-                x=ov_arr[x_str] + x_offset
-                data=ov_arr[key]
-                #
-                params = Parameters()
-                
-                params.add('m', value=-np.std(data)/np.std(x))
-                params.add('b', value=np.mean(data))
-                #
-                yerr=0*x+1.0 # important that this is 1 such that the residuals are unnormalised
-                out = minimize(residual, params, args=(x, data, yerr),scale_covar=scale_yerr)
-                
-                m=out.params['m'].value
-                b=out.params['b'].value
-                resid=out.residual
-                redchi=out.redchi
-                db=np.std(resid)
-                covar=out.covar
-                
-                results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
-                results_dict[key] = results
+                if key in ov_arr.keys():
+                    key1 = key[:2]
+                    key2 = key[3:]
+                    ov_arr[key]=np.array([])
+                    for AI_model in AI_datasets:
+                        rdiffi=AI_datasets[AI_model][key1]-AI_datasets[AI_model][key2]
+                        ov_arr[key]=np.append(ov_arr[key],rdiffi)
+                    #
+                    x=ov_arr[x_str] + x_offset
+                    data=ov_arr[key]
+                    #
+                    params = Parameters()
+                    
+                    params.add('m', value=-np.std(data)/np.std(x))
+                    params.add('b', value=np.mean(data))
+                    #
+                    yerr=0*x+1.0 # important that this is 1 such that the residuals are unnormalised
+                    out = minimize(residual, params, args=(x, data, yerr),scale_covar=scale_yerr)
+                    
+                    m=out.params['m'].value
+                    b=out.params['b'].value
+                    resid=out.residual
+                    redchi=out.redchi
+                    db=np.std(resid)
+                    covar=out.covar
+                    
+                    results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
+                    results_dict[key] = results
         
     else:
         for y_str in y_strs:
