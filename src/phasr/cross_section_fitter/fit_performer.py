@@ -20,11 +20,11 @@ from.fit_pickler import pickle_load_result_dict, pickle_dump_result_dict
 
 from ..dirac_solvers import crosssection_lepton_nucleus_scattering
 
-def fitter(datasets_keys:list,initialization:initializer,barrett_moment_key=None,monotonous_decrease_precision=np.inf,xi_diff_convergence_limit=1e-4,numdifftools_step=1.e-4,verbose=True,renew=False,cross_section_args={},**minimizer_args):
+def fitter(datasets_keys:list,initialization:initializer,barrett_moment_keys=[],monotonous_decrease_precision=np.inf,xi_diff_convergence_limit=1e-4,numdifftools_step=1.e-4,verbose=True,renew=False,cross_section_args={},**minimizer_args):
     ''' **minimzer_args is passed to scipy minimize '''
     # usually: monotonous_decrease_precision=0.04
     
-    settings_dict = {'datasets':datasets_keys,'dataset_barrett_moment':barrett_moment_key,'monotonous_decrease_precision':monotonous_decrease_precision,'xi_diff_convergence_limit':xi_diff_convergence_limit,'numdifftools_step':numdifftools_step,**cross_section_args,**minimizer_args}
+    settings_dict = {'datasets':datasets_keys,'datasets_barrett_moment':barrett_moment_keys,'monotonous_decrease_precision':monotonous_decrease_precision,'xi_diff_convergence_limit':xi_diff_convergence_limit,'numdifftools_step':numdifftools_step,**cross_section_args,**minimizer_args}
     
     initial_parameters = parameter_set(initialization.R,initialization.Z,ai=initialization.ai,ai_abs_bound=initialization.ai_abs_bound)
     
@@ -38,7 +38,7 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_key=None
     
     if (loaded_results_dict is None) or renew:
     
-        measures = construct_measures(datasets_keys,initialization,barrett_moment_key,monotonous_decrease_precision,cross_section_args)
+        measures = construct_measures(datasets_keys,initialization,barrett_moment_keys,monotonous_decrease_precision,cross_section_args)
         
         global loss_eval
         loss_eval = 0 
@@ -128,13 +128,14 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_key=None
         
         radius_dict={'r_ch':r_ch,'dr_ch_stat':dr_ch}
         
-        if barrett_moment_key is not None:
-            barrett = current_nucleus.barrett_moment
-            dbarrett = np.sqrt(np.einsum('i,ij,j->',current_nucleus.barrett_moment_jacobian,out_parameters.cov_ai,current_nucleus.barrett_moment_jacobian))
-            barrett_dict={'k':current_nucleus.k_barrett,'alpha':current_nucleus.alpha_barrett,'barrett':barrett,'dbarrett':dbarrett}
-        else:
-            barrett_dict={}
-        
+        barrett_dict={}
+        for barrett_moment_key in barrett_moment_keys:
+            k, alpha = measures['barrett_moment_'+barrett_moment_key].x_data
+            barrett = current_nucleus.barrett_moment(k,alpha)
+            barrett_jacob = current_nucleus.barrett_moment_jacobian(k,alpha)           
+            dbarrett = np.sqrt(np.einsum('i,ij,j->',barrett_jacob,out_parameters.cov_ai,barrett_jacob))
+            barrett_dict={**barrett_dict,'k_'+barrett_moment_key:k,'alpha_'+barrett_moment_key:alpha,'barrett_'+barrett_moment_key:barrett,'dbarrett_'+barrett_moment_key:dbarrett}
+            
         results_dict={**settings_dict,**initializer_dict,**statistics_results,**parameters_results,**values_results,**radius_dict,**barrett_dict}
         
         pickle_dump_result_dict(results_dict,tracked_keys,visible_keys,overwrite=renew)
@@ -146,10 +147,10 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_key=None
     
     return results_dict # remove this return? even neccessary? 
 
-def construct_measures(datasets_keys:list,initialization:initializer,barrett_moment_key=None,monotonous_decrease_precision=np.inf,cross_section_args={}):
+def construct_measures(datasets_keys:list,initialization:initializer,barrett_moment_keys=[],monotonous_decrease_precision=np.inf,cross_section_args={}):
     
     datasets = {}
-    barrett_moment_constraint = not (barrett_moment_key is None) #(len(barrett_moment_keys)>0)
+    barrett_moment_constraint = (len(barrett_moment_keys)>0) # not (barrett_moment_key is None) #
     monotonous_decrease_constraint = (monotonous_decrease_precision<np.inf)
     
     measures={}
@@ -177,18 +178,18 @@ def construct_measures(datasets_keys:list,initialization:initializer,barrett_mom
     
     if barrett_moment_constraint:
         barrett_moments = {}
-        #for barrett_moment_key in barrett_moment_keys:#current implementation of nucleus does only allow for one value for k, alpha (change?)
-        barrett_moments['barrett_moment']={}
-        barrett_dict = load_barrett_moment(barrett_moment_key,initialization.Z,initialization.A,verbose=False)
-        barrett_moments['barrett_moment']['x_data'] = np.nan
-        barrett_moments['barrett_moment']['y_data'] = barrett_dict["barrett"]
-        barrett_moments['barrett_moment']['cov_stat_data'] = barrett_dict["dbarrett"]**2
-        barrett_moments['barrett_moment']['cov_syst_data'] = 0
-        initialization.nucleus.update_k_and_alpha_barrett(barrett_dict["k"],barrett_dict["alpha"])
-        def barrett_moment(_,nucleus):
-            return np.atleast_1d(nucleus.barrett_moment)
-        measures['barrett_moment']=minimization_measures(barrett_moment,**barrett_moments['barrett_moment'])
-    
+        for barrett_moment_key in barrett_moment_keys:#current implementation of nucleus does only allow for one value for k, alpha (change?)
+            barrett_moments['barrett_moment_'+barrett_moment_key]={}
+            barrett_dict = load_barrett_moment(barrett_moment_key,initialization.Z,initialization.A,verbose=False)
+            barrett_moments['barrett_moment_'+barrett_moment_key]['x_data'] = (barrett_dict["k"],barrett_dict["alpha"])
+            barrett_moments['barrett_moment_'+barrett_moment_key]['y_data'] = barrett_dict["barrett"]
+            barrett_moments['barrett_moment_'+barrett_moment_key]['cov_stat_data'] = barrett_dict["dbarrett"]**2
+            barrett_moments['barrett_moment_'+barrett_moment_key]['cov_syst_data'] = 0
+            #initialization.nucleus. update_k_and_alpha_barrett(barrett_dict["k"],barrett_dict["alpha"])
+            def barrett_moment(k_alpha_tuple,nucleus):
+                return np.atleast_1d(nucleus.barrett_moment(*k_alpha_tuple))
+            measures['barrett_moment_'+barrett_moment_key]=minimization_measures(barrett_moment,**barrett_moments['barrett_moment_'+barrett_moment_key])
+        
     if monotonous_decrease_constraint:
         def positive_slope_component_to_radius_squared(_,nucleus):
             integrand = lambda r: -4*pi*r**5/5*nucleus.dcharge_density_dr(r)/nucleus.Z

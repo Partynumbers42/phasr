@@ -104,15 +104,20 @@ class nucleus_num(nucleus_base):
         if norm is None:
             norm=self.weak_charge
         self.weak_radius_sq, self.weak_radius = calc_radius(self.weak_density,self.rrange,norm)
-
-    def set_barrett_moment(self,norm=None):
-        if norm is None:
-            norm=self.total_charge
-        self.barrett_moment = calc_barrett_moment(self.charge_density,self.rrange,self.k_barrett,self.alpha_barrett,norm)
-
+    
     def set_Vmin(self):
         self.Vmin = np.min(self.electric_potential(np.arange(*self.rrange)))
-        
+    
+    #def set_barrett_moment(self,norm=None):
+    #    if norm is None:
+    #        norm=self.total_charge
+    #    self.barrett_moment = calc_barrett_moment(self.charge_density,self.rrange,self.k_barrett,self.alpha_barrett,norm)
+
+    def barrett_moment(self,k_barrett,alpha_barrett,norm=None):
+        if norm is None:
+            norm=self.total_charge
+        return calc_barrett_moment(self.charge_density,self.rrange,k_barrett,alpha_barrett,norm)
+    
     def set_electric_field_from_charge_density(self):
         #
         def electric_field_0(r,rho=self.charge_density):

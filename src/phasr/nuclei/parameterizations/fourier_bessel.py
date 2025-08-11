@@ -54,9 +54,9 @@ class nucleus_FB(nucleus_base):
         self.Vmin = electric_potential_V0_FB(self.ai,self.R,self.qi,self.total_charge,alpha_el=constants.alpha_el)
         self.Vmin_jacobian = electric_potential_V0_FB_jacob(self.qi,alpha_el=constants.alpha_el)
         #
-        if hasattr(self,'k_barrett') and hasattr(self,'alpha_barrett'):
-            self.barrett_moment = Barrett_moment_FB(self.ai,self.R,self.qi,self.total_charge,self.k_barrett,self.alpha_barrett)
-            self.barrett_moment_jacobian = Barrett_moment_FB_jacob(self.R,self.qi,self.total_charge,self.k_barrett,self.alpha_barrett)
+        #if hasattr(self,'k_barrett') and hasattr(self,'alpha_barrett'):
+        #    self.barrett_moment = Barrett_moment_FB(self.ai,self.R,self.qi,self.total_charge,self.k_barrett,self.alpha_barrett)
+        #    self.barrett_moment_jacobian = Barrett_moment_FB_jacob(self.R,self.qi,self.total_charge,self.k_barrett,self.alpha_barrett)
         
         #
         if hasattr(self,'ai_proton') and hasattr(self,'R_proton'):
@@ -92,7 +92,13 @@ class nucleus_FB(nucleus_base):
         self.R=R
         self.ai=ai
         self.update_dependencies()
-        
+    
+    def barrett_moment(self,k_barrett:float,alpha_barrett:float):
+        return Barrett_moment_FB(self.ai,self.R,self.qi,self.total_charge,k_barrett,alpha_barrett)
+    
+    def barrett_moment_jacobian(self,k_barrett:float,alpha_barrett:float):
+        return Barrett_moment_FB_jacob(self.R,self.qi,self.total_charge,k_barrett,alpha_barrett)    
+    
     def charge_density(self,r):
         return charge_density_FB(r,self.ai,self.R,self.qi)
     
