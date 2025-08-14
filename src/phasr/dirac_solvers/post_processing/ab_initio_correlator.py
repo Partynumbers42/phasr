@@ -80,7 +80,8 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None): #,r_cut=8
         for key in multipoles_keys:
             y_data = formfactors[key]
             y_data_spl = splrep(x_data,y_data,s=0)
-            def form_factor_spl(q,y_data_spl=y_data_spl,Omega=Omega): return splev(q,y_data_spl,ext=0)*F_CMS_Gauss(q,Omega,A)
+            #def form_factor_spl(q,y_data_spl=y_data_spl,Omega=Omega): return splev(q,y_data_spl,ext=0)*F_CMS_Gauss(q,Omega,A)
+            form_factor_spl = partial(CMS_corrected_spline,Omega=Omega,A=A,y_data_spl=y_data_spl)
             form_factor =  partial(field_ultimate_cutoff,R=np.max(x_data),val=0,field_spl=form_factor_spl) # Asymptotic: cutoff to 0
             #form_factor =  highenergycutoff_field(form_factor_spl,R=np.max(x_data),val=0)
             AI_dict[key] = form_factor
@@ -130,6 +131,9 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None): #,r_cut=8
             print('Radii ('+AI_model+') are consistent up to a level of at least: {:.1e}'.format(pres_r2))      
     
     return AI_datasets
+
+def CMS_corrected_spline(q,Omega,A,y_data_spl):
+    return splev(q,y_data_spl,ext=0)*F_CMS_Gauss(q,Omega,A)
 
 def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,theta_exp=None,renew=False,verbose=True,verboseLoad=True,left_right_asymmetry_args={}):
     #
