@@ -30,9 +30,9 @@ class nucleus_base:
         Qw_n=constants.Qw_n
         self.Qw = self.Z*Qw_p + (self.A-self.Z)*Qw_n
         #
-        if ('k_barrett' in args) and ('alpha_barrett' in args):
-            self.k_barrett = args['k_barrett']
-            self.alpha_barrett = args['alpha_barrett']
+        #if ('k_barrett' in args) and ('alpha_barrett' in args):
+        #    self.k_barrett = args['k_barrett']
+        #    self.alpha_barrett = args['alpha_barrett']
         #
         # move to numerical?
         if 'form_factor_dict' in args:
