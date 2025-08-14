@@ -7,6 +7,8 @@ import itertools
 
 import time, copy
 
+from functools import partial
+
 # multiprocessing
 from multiprocessing import Pool, cpu_count
 # module as master
@@ -43,10 +45,14 @@ def crosssection_lepton_nucleus_scattering_chirality(energy,theta,chirality,weak
     if verbose:
         print('Calculate '+chirality_name+' crosssection ...')
 
-    def potential_chiral(r): return charge_nucleus.electric_potential(r) + chiral_sign*weak_nucleus.weak_potential(r)
+    potential_chiral = partial(custom_chiral_potential,Vch=charge_nucleus.electric_potential,Vw=weak_nucleus.weak_potential,sign=chiral_sign)
+    
     nucleus_chiral = copy.deepcopy(charge_nucleus)
     nucleus_chiral.electric_potential = potential_chiral
     return crosssection_lepton_nucleus_scattering(energy,theta,nucleus_chiral,**args)
+
+def custom_chiral_potential(r,Vch,Vw,sign):
+    return Vch(r) + sign*Vw(r)
 
 def left_right_asymmetry_lepton_nucleus_scattering(energy,theta,weak_nucleus,charge_nucleus=None,verbose=False,parallelize_LR=False,atol=1e-13,rtol=1e-13,**args):
     
