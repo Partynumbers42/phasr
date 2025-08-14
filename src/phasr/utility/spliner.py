@@ -8,6 +8,8 @@ from ..config import local_paths
 import glob
 import re
 
+from functools import partial
+
 def calc_and_spline(fct,xrange,name,dtype=float,ext=0,renew=False,save=True,verbose=True):
     # xrange is always real, fct(x) can be complex
     
@@ -47,16 +49,22 @@ def calc_and_spline(fct,xrange,name,dtype=float,ext=0,renew=False,save=True,verb
         y_data_spl_re = splrep(np.real(x_data),np.real(y_data),s=0)
         y_data_spl_im = splrep(np.real(x_data),np.imag(y_data),s=0)
 
-        def fkt_spl(x):
-            if np.imag(x)!=0:
-                raise ValueError("complex spline only valid for real values of x")
-            return splev(np.real(x),y_data_spl_re,ext=ext) + 1j*splev(np.real(x),y_data_spl_im,ext=ext)
-
+        fkt_spl = partial(fkt_spl_complex,y_data_spl_re=y_data_spl_re,y_data_spl_im=y_data_spl_im,ext=ext)
+        
     elif dtype==float:
         y_data_spl = splrep(x_data,y_data,s=0)
-        def fkt_spl(x): return splev(x,y_data_spl,ext=ext)
+        fkt_spl = partial(fkt_spl_real,y_data_spl=y_data_spl,ext=ext)
 
     return fkt_spl
+
+def fkt_spl_complex(x,y_data_spl_re,y_data_spl_im,ext):
+    if np.imag(x)!=0:
+        raise ValueError("complex spline only valid for real values of x")
+    return splev(np.real(x),y_data_spl_re,ext=ext) + 1j*splev(np.real(x),y_data_spl_im,ext=ext)
+
+def fkt_spl_real(x,y_data_spl,ext):
+    return splev(x,y_data_spl,ext=ext)
+
 
 def save_and_load(path,renew=False,save=True,verbose=True,fmt='%.18e',fct=None,tracked_params={},**params):
     
