@@ -327,7 +327,6 @@ def spline_field(field,fieldtype,name,rrange,renew):
     field_spl=calc_and_spline(field, rrange, fieldtype+"_"+name,dtype=float,renew=renew)
     return field_spl
 
-
 def field_ultimate_poly(r,R,n,field_spl): #highenergycont_field
     E_crit=field_spl(R)
     r_arr = np.atleast_1d(r)
@@ -336,7 +335,7 @@ def field_ultimate_poly(r,R,n,field_spl): #highenergycont_field
     if np.any(mask_r):
         field[mask_r] = field_spl(r_arr[mask_r])
     if np.any(~mask_r):
-        field[~mask_r] = highenergy_continuation_poly(r_arr[~mask_r],R1,E_crit,0,n=n)
+        field[~mask_r] = highenergy_continuation_poly(r_arr[~mask_r],R,E_crit,0,n=n)
     if np.isscalar(r):
         field=field[0]
     return field
