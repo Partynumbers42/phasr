@@ -11,11 +11,13 @@ from scipy.interpolate import splev, splrep
 
 from ...physical_constants.iaea_nds import massofnucleusZN, JPofnucleusZN
 from ...nuclei import nucleus
-from ...nuclei.parameterizations.numerical import highenergycutoff_field
+from ...nuclei.parameterizations.numerical import field_ultimate_cutoff#, highenergycutoff_field
 
 from .overlap_integrals import overlap_integral_scalar, overlap_integral_vector, overlap_integral_dipole
 
 from .left_right_asymmetry import left_right_asymmetry_lepton_nucleus_scattering
+
+from functools import partial
 
 def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None): #,r_cut=8
     #
@@ -79,7 +81,8 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None): #,r_cut=8
             y_data = formfactors[key]
             y_data_spl = splrep(x_data,y_data,s=0)
             def form_factor_spl(q,y_data_spl=y_data_spl,Omega=Omega): return splev(q,y_data_spl,ext=0)*F_CMS_Gauss(q,Omega,A)
-            form_factor =  highenergycutoff_field(form_factor_spl,R=np.max(x_data),val=0)
+            form_factor =  partial(field_ultimate_cutoff,R=np.max(x_data),val=0,field_spl=form_factor_spl) # Asymptotic: cutoff to 0
+            #form_factor =  highenergycutoff_field(form_factor_spl,R=np.max(x_data),val=0)
             AI_dict[key] = form_factor
         
         AI_datasets[AI_model]['form_factor_dict']=AI_dict

@@ -12,6 +12,8 @@ from ...utility.continuer import highenergy_continuation_exp, highenergy_continu
 from ...utility.math import optimise_radius_highenergy_continuation
 from ...utility.math import derivative as deriv
 
+from functools import partial
+
 class nucleus_num(nucleus_base):
     def __init__(self,name,Z,A,rrange=[0.,20.,0.02], qrange=[0.,1000.,1.], renew=False,**args): #,R_cut=None,rho_cut=None
         nucleus_base.__init__(self,name,Z,A,**args)
@@ -128,8 +130,8 @@ class nucleus_num(nucleus_base):
         # spline
         electric_field_spl = spline_field(electric_field_vec,"electric_field",self.name,rrange=self.rrange,renew=self.renew)
         # highenery continue
-        self.electric_field = highenergycont_field(electric_field_spl,R=self.rrange[1]*0.95,n=2) # Asymptotic: 1/r^2
-
+        self.electric_field = partial(field_ultimate_poly,R=self.rrange[1]*0.95,n=2,field_spl=electric_field_spl) # Asymptotic: 1/r^2
+        
     def set_electric_potential_from_electric_field(self):
         #
         Rs0 = range_seperator(self.rrange,self.electric_field)
@@ -142,8 +144,8 @@ class nucleus_num(nucleus_base):
         # spline
         electric_potential_spl = spline_field(electric_potential_vec,"electric_potential",self.name,rrange=self.rrange,renew=self.renew)
         # highenery continue
-        self.electric_potential = highenergycont_field(electric_potential_spl,R=self.rrange[1]*0.95*0.95,n=1) # Asymptotic: 1/r
-
+        self.electric_potential = partial(field_ultimate_poly,R=self.rrange[1]*0.95*0.95,n=1,field_spl=electric_potential_spl) # Asymptotic: 1/r
+        
     def set_charge_density_from_electric_field(self):
         
         El = self.electric_field
@@ -166,7 +168,7 @@ class nucleus_num(nucleus_base):
         # TODO test:
         r_crit = optimise_radius_highenergy_continuation(charge_density_spl,self.rrange[1],1e-3)
         #
-        self.charge_density = highenergycont_rho(charge_density_spl,R=r_crit,val=0,t=0)
+        self.charge_density = partial(field_ultimate_exp,R=r_crit,val=0,t=0,field_spl=charge_density_spl) # Asymptotic: exp(-r)
         
     def set_electric_field_from_electric_potential(self):
         
@@ -177,8 +179,8 @@ class nucleus_num(nucleus_base):
         
         electric_field_spl = spline_field(electric_field_vec,"electric_field",self.name,rrange=self.rrange,renew=self.renew)
         # highenery continue
-        self.electric_field = highenergycont_field(electric_field_spl,R=self.rrange[1]*0.95,n=2) # Asymptotic: 1/r^2
-
+        self.electric_field = partial(field_ultimate_poly,R=self.rrange[1]*0.95,n=2,field_spl=electric_field_spl) # Asymptotic: 1/r^2
+        
     def set_form_factor_from_charge_density(self):
         if not hasattr(self,'total_charge'):
             self.set_total_charge()
@@ -276,7 +278,7 @@ def fourier_transform_pos_to_mom(fct_r,name,rrange,qrange,L=0,norm=1,renew=False
     # spline
     fct_q_spl = spline_field(fct_q_vec,"form_factor",name,qrange,renew=renew)
     # highenery cut off at qmax
-    fct_q = highenergycutoff_field(fct_q_spl,qrange[1],val=0) # Asymptotic: cutoff to 0
+    fct_q = partial(field_ultimate_cutoff,R=qrange[1],val=0,field_spl=fct_q_spl) # Asymptotic: cutoff to 0
     #
     return fct_q
 
@@ -296,8 +298,8 @@ def fourier_transform_mom_to_pos(fct_q,name,qrange,rrange,L=0,norm=1,renew=False
     # TODO test:
     r_crit = optimise_radius_highenergy_continuation(fct_r_spl,rrange[1],1e-3) # set xmin to radius
     # highenergy exponential decay for rho
-    fct_r = highenergycont_rho(fct_r_spl,r_crit,val=0,t=0)  # Asymptotic: exp(-r)
-    #fct_r = highenergycutoff_field(fct_r_spl,rrange[1],val=0) # alternative
+    fct_r = partial(field_ultimate_exp,R=r_crit,val=0,t=0,field_spl=fct_r_spl) # Asymptotic: exp(-r)
+    #fct_r = partial(field_ultimate_exp,R=rrange[1],val=0,t=0,field_spl=fct_r_spl) # alternative    
     #
     return fct_r
 
@@ -325,73 +327,43 @@ def spline_field(field,fieldtype,name,rrange,renew):
     field_spl=calc_and_spline(field, rrange, fieldtype+"_"+name,dtype=float,renew=renew)
     return field_spl
 
-def highenergycont_field(field_spl,R,n):
-    def field_ultimate(r,R1=R):
-        E_crit=field_spl(R1)
-        r_arr = np.atleast_1d(r)
-        field=np.zeros(len(r_arr))
-        mask_r = r_arr<=R1
-        if np.any(mask_r):
-            field[mask_r] = field_spl(r_arr[mask_r])
-        if np.any(~mask_r):
-            field[~mask_r] = highenergy_continuation_poly(r_arr[~mask_r],R1,E_crit,0,n=n)
-        if np.isscalar(r):
-           field=field[0]
-        return field
-    return field_ultimate
 
-def highenergycont_rho(field_spl,R,val,t): # often val=0, t=0
-    def field_ultimate(r,R1=R):
-        E_crit=field_spl(R1)
-        dE=deriv(field_spl,1e-6)
-        dE_crit=dE(R1)
-        r_arr = np.atleast_1d(r)
-        field=np.zeros(len(r_arr))
-        mask_r = r_arr<=R1
-        if np.any(mask_r):
-            field[mask_r] = field_spl(r_arr[mask_r])
-        if np.any(~mask_r):
-            field[~mask_r] = highenergy_continuation_exp(r_arr[~mask_r],R1,E_crit,dE_crit,val,t=t)
-        if np.isscalar(r):
-           field=field[0]
-        return field
-    return field_ultimate
+def field_ultimate_poly(r,R,n,field_spl): #highenergycont_field
+    E_crit=field_spl(R)
+    r_arr = np.atleast_1d(r)
+    field=np.zeros(len(r_arr))
+    mask_r = r_arr<=R
+    if np.any(mask_r):
+        field[mask_r] = field_spl(r_arr[mask_r])
+    if np.any(~mask_r):
+        field[~mask_r] = highenergy_continuation_poly(r_arr[~mask_r],R1,E_crit,0,n=n)
+    if np.isscalar(r):
+        field=field[0]
+    return field
 
-# def highenergycont_rho(field_spl,R,val,t): # often val=0, t=0
-#     def field_ultimate(r,R1=R):
-#         E_crit=field_spl(R1)
-#         dE=deriv(field_spl,1e-6)
-#         dE_crit=dE(R1)
-#         field=highenergy_continuation_exp(r,R1,E_crit,dE_crit,val,t=t)
-#         if np.any(r<=R1):
-#             field = field_spl(r)
-#         if np.size(field)>1:
-#             field[np.where(r>R1)]=highenergy_continuation_exp(r[np.where(r>R1)],R1,E_crit,dE_crit,val,t=t)
-#         return field
-#     return field_ultimate
+def field_ultimate_exp(r,R,val,t,field_spl): # highenergycont_rho, often val=0, t=0
+    E_crit=field_spl(R)
+    dE=deriv(field_spl,1e-6)
+    dE_crit=dE(R)
+    r_arr = np.atleast_1d(r)
+    field=np.zeros(len(r_arr))
+    mask_r = r_arr<=R
+    if np.any(mask_r):
+        field[mask_r] = field_spl(r_arr[mask_r])
+    if np.any(~mask_r):
+        field[~mask_r] = highenergy_continuation_exp(r_arr[~mask_r],R,E_crit,dE_crit,val,t=t)
+    if np.isscalar(r):
+        field=field[0]
+    return field
 
-def highenergycutoff_field(field_spl,R,val=np.nan):
-    # For r>R return val (default:nan, common choice: 0)
-    def field_ultimate(r,R1=R):
-        r_arr = np.atleast_1d(r)
-        field=np.zeros(len(r_arr))
-        mask_r = r_arr<=R1
-        if np.any(mask_r):
-            field[mask_r] = field_spl(r_arr[mask_r])
-        if np.any(~mask_r):
-            field[~mask_r] = val
-        if np.isscalar(r):
-           field=field[0]
-        return field
-    return field_ultimate
-
-# def highenergycutoff_field(field_spl,R,val=np.nan):
-#     # For r>R return val (default:nan, common choice: 0)
-#     def field_ultimate(r,R1=R):
-#         field=np.full(len(np.atleast_1d(r)), val)
-#         if np.any(r<=R1):
-#             field = field_spl(r)
-#         if np.size(field)>1:
-#             field[np.where(r>R1)]=r[np.where(r>R1)]*val
-#         return field
-#     return field_ultimate
+def field_ultimate_cutoff(r,R,val,field_spl):#  often val=0, also val=np.nan possible
+    r_arr = np.atleast_1d(r)
+    field=np.zeros(len(r_arr))
+    mask_r = r_arr<=R
+    if np.any(mask_r):
+        field[mask_r] = field_spl(r_arr[mask_r])
+    if np.any(~mask_r):
+        field[~mask_r] = val
+    if np.isscalar(r):
+        field=field[0]
+    return field
