@@ -8,7 +8,7 @@ pi = np.pi
 from functools import partial
 
 class nucleus_base:
-    def __init__(self,name,Z, A, mass=None, abundance=None, spin=None, parity=None,# weak_charge=None,#spline_hyp1f1=None, fp=False, ap_dps=15, 
+    def __init__(self,name,Z, A, mass=None, abundance=None, spin=None, parity=None, #spline_hyp1f1=None, fp=False, ap_dps=15, 
                  **args):
         #
         self.nucleus_type = "base"
@@ -29,10 +29,6 @@ class nucleus_base:
         Qw_p=constants.Qw_p
         Qw_n=constants.Qw_n
         self.Qw = self.Z*Qw_p + (self.A-self.Z)*Qw_n
-        #
-        #if ('k_barrett' in args) and ('alpha_barrett' in args):
-        #    self.k_barrett = args['k_barrett']
-        #    self.alpha_barrett = args['alpha_barrett']
         #
         # move to numerical?
         if 'form_factor_dict' in args:
@@ -147,19 +143,6 @@ class nucleus_base:
     def update_parity(self,parity):
         self.parity=parity
         self.update_dependencies()
-
-    #def update_k_barrett(self,k_barrett):
-    #    self.k_barrett=k_barrett
-    #    self.update_dependencies()
-    #
-    #def update_alpha_barrett(self,alpha_barrett):
-    #    self.alpha_barrett=alpha_barrett
-    #    self.update_dependencies()
-    #
-    #def update_k_and_alpha_barrett(self,k_barrett,alpha_barrett):
-    #    self.k_barrett=k_barrett
-    #    self.alpha_barrett=alpha_barrett
-    #    self.update_dependencies()
 
     def update_abundance(self,abundance):
         self.abundance=abundance

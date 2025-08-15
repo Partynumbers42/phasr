@@ -14,6 +14,10 @@ import itertools
 
 import time, copy
 
+from ...utility.spliner import save_and_load
+
+from ...config import local_paths
+
 # multiprocessing
 from multiprocessing import Pool, cpu_count
 # module as master
@@ -239,13 +243,17 @@ def recoil_quantities(energy_lab,theta_lab,mass):
     return energy_CMS, theta_CMS, scalefactor_crosssection_CMS
 
 def phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args):
-    
-    # add save and load option here ???
-    
     partial_wave_kappa = continuumstates(nucleus,kappa,energy,lepton_mass,**args)
     partial_wave_kappa.extract_phase_shift()
     return partial_wave_kappa.phase_shift, partial_wave_kappa.phase_difference
 
+def phase_shift_from_partial_wave_wrapper(nucleus,kappa,energy,lepton_mass,save_and_load_phase_shifts=False,verbose=False,**args):
+    args = {'kappa':kappa,'energy':energy,'lepton_mass':lepton_mass,**args}    
+    path = local_paths.phase_shift_path + 'phase_shift_'+nucleus.name+'_E'+str(energy)+'_kappa'+str(kappa)+'_m'+str(lepton_mass)+'.txt'
+    save = save_and_load_phase_shifts
+    renew =  not save_and_load_phase_shifts
+    return save_and_load(path,renew=renew,save=save,verbose=verbose,fmt='%.50e',fct=phase_shift_from_partial_wave,tracked_params=args,nucleus=nucleus,**args)
+    
 def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,N_partial_waves=250,verbose=False,phase_difference_limit=0,N_processes=1,**args):
     if N_processes>1:
         return crosssection_lepton_nucleus_scattering_multithreaded(energy,theta,nucleus,lepton_mass=lepton_mass,recoil=recoil,subtractions=subtractions,N_partial_waves=N_partial_waves,verbose=verbose,phase_difference_limit=phase_difference_limit,N_max_cpu=N_processes,**args)
@@ -276,16 +284,16 @@ def crosssection_lepton_nucleus_scattering_multithreaded(energy,theta,nucleus,le
     
         # calculate beginning and critical radius only once, since independent on kappa
         if (not ('beginning_radius' in args)) or (not ('critical_radius' in args)):
-            initialiser = continuumstates(nucleus,-1,energy,lepton_mass,**args)
+            initializer = continuumstates(nucleus,-1,energy,lepton_mass,**args)
         if not 'beginning_radius' in args:
-            args['beginning_radius']=initialiser.solver_setting.beginning_radius
+            args['beginning_radius']=initializer.solver_setting.beginning_radius
         if not 'critical_radius' in args:
-            args['critical_radius']=initialiser.solver_setting.critical_radius
+            args['critical_radius']=initializer.solver_setting.critical_radius
 
         pool_counter=0
         kappa_counter=0
         kappa=-1
-    
+        
         while np.abs(kappa) <= N_partial_waves+1:
         #for kappa in np.arange(-1,-(N_partial_waves+1+1),-1,dtype=int):
             
@@ -295,7 +303,7 @@ def crosssection_lepton_nucleus_scattering_multithreaded(energy,theta,nucleus,le
             
             if phase_difference_gr0:
                 
-                results_dict[kappa] = pool.apply_async(phase_shift_from_partial_wave, args=(nucleus,kappa,energy,lepton_mass), kwds=args)
+                results_dict[kappa] = pool.apply_async(phase_shift_from_partial_wave_wrapper, args=(nucleus,kappa,energy,lepton_mass), kwds=args)
                 #print('Queued: kappa=',kappa,' , (',pool_counter+1,'/',N_pools,')')
                 pool_counter+=1
                 #phase_shifts[kappa], phase_differences[kappa] = phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args) #phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args)
@@ -304,7 +312,7 @@ def crosssection_lepton_nucleus_scattering_multithreaded(energy,theta,nucleus,le
                     if lepton_mass==0:
                         results_dict[-kappa] = results_dict[kappa]
                     else:
-                        results_dict[-kappa] = pool.apply_async(phase_shift_from_partial_wave, args=(nucleus,-kappa,energy,lepton_mass), kwds=args)
+                        results_dict[-kappa] = pool.apply_async(phase_shift_from_partial_wave_wrapper, args=(nucleus,-kappa,energy,lepton_mass), kwds=args)
                         #print('Queued: kappa=',kappa,' , ()',pool_counter+1,'/',N_pools,')')
                         pool_counter+=1
                         #phase_shifts[-kappa], phase_differences[-kappa] = phase_shift_from_partial_wave(nucleus,-kappa,energy,lepton_mass,**args) #phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args
@@ -384,7 +392,7 @@ def crosssection_lepton_nucleus_scattering_singlethreaded(energy,theta,nucleus,l
             if verbose:
                 print('Calculate phaseshift for kappa=',kappa,', ',end="")
 
-            phase_shifts[kappa], phase_differences[kappa] = phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,verbose=False,**args) #phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args)
+            phase_shifts[kappa], phase_differences[kappa] = phase_shift_from_partial_wave_wrapper(nucleus,kappa,energy,lepton_mass,verbose=False,**args) #phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args)
             
             if verbose:
                 print('delta_diff= ',phase_differences[kappa])
@@ -396,7 +404,7 @@ def crosssection_lepton_nucleus_scattering_singlethreaded(energy,theta,nucleus,l
                 else:
                     if verbose:
                         print('Calculate phaseshift for kappa=',-kappa,', delta_diff= ',end="")
-                    phase_shifts[-kappa], phase_differences[-kappa] = phase_shift_from_partial_wave(nucleus,-kappa,energy,lepton_mass,verbose=False,**args) #phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args
+                    phase_shifts[-kappa], phase_differences[-kappa] = phase_shift_from_partial_wave_wrapper(nucleus,-kappa,energy,lepton_mass,verbose=False,**args) #phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args
                     if verbose:
                         print(phase_differences[-kappa])
                 if np.abs(phase_differences[kappa])<=phase_difference_limit:
