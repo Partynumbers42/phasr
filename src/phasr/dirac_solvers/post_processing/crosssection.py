@@ -253,7 +253,9 @@ def phase_shift_from_partial_wave_wrapper(nucleus,kappa,energy,lepton_mass,save_
     save = save_and_load_phase_shifts
     renew =  not save_and_load_phase_shifts
     return save_and_load(path,renew=renew,save=save,verbose=verbose,fmt='%.50e',fct=phase_shift_from_partial_wave,tracked_params=args,nucleus=nucleus,**args)
-    
+
+# once all are calculated -> delete the files and make one file with all of them 
+
 def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,N_partial_waves=250,verbose=False,phase_difference_limit=0,N_processes=1,**args):
     if N_processes>1:
         return crosssection_lepton_nucleus_scattering_multithreaded(energy,theta,nucleus,lepton_mass=lepton_mass,recoil=recoil,subtractions=subtractions,N_partial_waves=N_partial_waves,verbose=verbose,phase_difference_limit=phase_difference_limit,N_max_cpu=N_processes,**args)
