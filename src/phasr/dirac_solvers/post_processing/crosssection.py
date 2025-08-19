@@ -266,9 +266,9 @@ def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,re
         scale_crosssection = 1
     
     if N_processes>1:
-        phase_shifts = collect_phase_shifts_multithreaded(energy,nucleus,lepton_mass,N_partial_waves,verbose,phase_difference_limit,N_max_cpu=N_processes,**args)
+        phase_shifts, _ = collect_phase_shifts_multithreaded(energy,nucleus,lepton_mass,N_partial_waves,verbose,phase_difference_limit,N_max_cpu=N_processes,**args)
     else:
-        phase_shifts = collect_phase_shifts_singlethreaded(energy,nucleus,lepton_mass,N_partial_waves,verbose,phase_difference_limit,**args)
+        phase_shifts, _ = collect_phase_shifts_singlethreaded(energy,nucleus,lepton_mass,N_partial_waves,verbose,phase_difference_limit,**args)
         
     nonspinflip = nonspinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts)
     
@@ -366,7 +366,6 @@ def collect_phase_shifts_multithreaded(energy,nucleus,lepton_mass,N_partial_wave
     
     return phase_shifts
 
-
 def collect_phase_shifts_singlethreaded(energy,nucleus,lepton_mass,N_partial_waves,verbose,phase_difference_limit,**args):
     
     charge = nucleus.total_charge
@@ -418,7 +417,7 @@ def collect_phase_shifts_singlethreaded(energy,nucleus,lepton_mass,N_partial_wav
                 else:
                     phase_shifts[-kappa] = delta_coulomb(-kappa,charge,energy,lepton_mass,reg=+1,pass_eta=eta_regular) + 0
     
-    return phase_shifts
+    return phase_shifts, phase_differences
 
 def nonspinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts):
     k=momentum(energy,lepton_mass)
