@@ -56,7 +56,7 @@
 
                 <a class="section" href="#ana">Crosssection (analytic \(\rho_\text{ch}\))</a>
                 <a class="section" href="#num">Crosssection (numeric \(\rho_\text{ch}\))</a>
-                <a class="section" href="#PV">Parity Violation (TBD)</a>
+                <a class="section" href="#PV">Left-right Asymmetry (PVES)</a>
                 
                 <div class="divider left"></div>
 
@@ -567,6 +567,56 @@
                     </ul>
 
                 </p>
+                
+                <u><b> The <code>left_right_asymmetry_lepton_nucleus_scattering</code> function: </b></u><br>
+
+                    Used to calculate the left-right asymmetry based on the difference in the elastic lepton nucleus scattering crosssection between left and right handed electrons.
+                    Most of the parameters are the same as for <code>crosssection_lepton_nucleus_scattering</code>. 
+                    Requires a nucleus with a weak_potential, usually derived based on a weak_density. The nucleus for the charge interaction and the weak interaction may be choosen independenly. 
+
+                    <pre><code class="python"> left_right_asymmetry_lepton_nucleus_scattering(energy,theta,weak_nucleus,charge_nucleus=None,**args) </code></pre> 
+                    <ul>
+                        <li>
+                        <b>energy</b> (<i>float</i>): energy of the (initial) lepton in MeV. 
+                        <br>
+                        <li>
+                        <b>theta</b> (<i>float / 1d-array</i>): elastic scattering angle in rad (\(\theta=0\) forward direction, \(\theta=2\pi\) backward direction). 
+                        <br>
+                        <li>
+                        <b>weak_nucleus</b> (<i>nucleus object</i>): nucleus whose weak_potential should be used for the scattering. 
+                        <br>
+                        <li>
+                        <b>charge_nucleus</b> (<i>nucleus object</i>): nucleus whose electric_potential should be used for the scattering (default: weak_nucleus). 
+                        <br>
+                        <li>
+                        <b>**args</b> (<i>dict,optional</i>): passed to <code>crosssection_lepton_nucleus_scattering</code>. <code>atol</code> and <code>rtol</code> are defaulted to 1e-13 / maximum precision 
+                        The time-optimal parameters for a given dataset can be accessed by calling <code>optimise_left_right_asymmetry_precision()</code> (see below). 
+                        <br> 
+                        <br> 
+                        <li>
+                        <b>return</b>: Normalized left-right asymmetry for elastic lepton nucleus scattering of the given nucleus at the given energy and angles 
+                        <br>
+                    </ul>
+
+                    <br>
+                    The optimiser for <code>left_right_asymmetry_lepton_nucleus_scattering</code> works analogously to the <code>optimise_crosssection_precision</code>, with usually even longer runtimes.                     
+
+                    <pre><code class="python"> phr.optimise_left_right_asymmetry_precision(energy,theta,nucleus,left_right_asymmetry_precision=1e-3,jump_forward_dist=1,N_processes=1) </code></pre> 
+                    <ul>
+                        <li>
+                        <b>energy</b> (<i>float</i>): energy of the (initial) lepton in MeV. 
+                        <br>
+                        <li>
+                        <b>theta</b> (<i>float / 1d-array</i>): elastic scattering angle in rad (\(\theta=0\) forward direction, \(\theta=2\pi\) backward direction). 
+                        <br>
+                        <li>
+                        <b>nucleus</b> (<i>nucleus object</i>): nucleus used for weak_nucleus and charge_nucleus for the scattering crosssection 
+                        <br> 
+                        <br> 
+                        <li>
+                        <b>return</b>: args with the quickest runtime for <code>left_right_asymmetry_lepton_nucleus_scattering</code> which are still consistent with left-right asymmetry calculations with the maximum precision up to a relative precision of the value of left_right_asymmetry_precision. 
+                        <br> 
+                    </ul>
 
                 <div class="divider" style="width:24%; margin:30px 0;"></div>
                 
@@ -665,7 +715,38 @@ plt.show()</code></pre>
 
                 <h2 id="PV">Calculate the left-right asymmetry for parity violating electron scattering</h2>
                   
-                <p>TBD</p>
+                <p>We consider a toy example for \({}^{208}\)Pb from a paper from <a href="https://journals.aps.org/prc/abstract/10.1103/PhysRevC.57.3430"> [Horrowitz - 1998] </a>. 
+                Here the weak density is considered to simply be the rescaled charge distribution with one additonal parameter to adjust the radius, according to
+                \[ \rho^\lambda_\operatorname{w}(r) = \frac{Q_\operatorname{w}}{Z} \lambda^3 \rho_\operatorname{ch}(\lambda r)  \] 
+                As the charge distribution he uses a 3pF parameterisation with \(c=6.4\), \(z=0.54\), \(w=0.32\) and for the rescaling \(\lambda=0.9502\). 
+                We may define a nucleus with these properties via 
+                <pre><code class="python">nucleus_Pb208 = phr.nucleus('Pb208_Hor98_095',Z=82,A=208,c=6.4,z=0.54,w=0.32)
+def weak_density_model(r,lam,nucleus): return (nucleus.Qw/nucleus.Z)*lam**3*nucleus.charge_density(lam*r)
+nucleus_Pb208.weak_density = partial(weak_density_model,lam=0.9502,nucleus=Pb208_test)
+nucleus_Pb208.update_dependencies()
+nucleus_Pb208.fill_gaps()</code></pre>  
+                This code will construct the nucleus with a 3pF parameterization for the charge density and then add a weak density as described. 
+                The function <code>update_dependencies()</code> is run such that intermediate derivatives of <code>weak_density</code> like <code>weak_potential</code> are constructed. 
+                Then <code>fill_gaps()</code> is run to calculate quantities than require explizit calculations like <code>weak_radius</code>. For the Fermi parameterizations this is also necessary to calculate related quantities to the <code>charge_density</code> like <code>electric_potential</code>. <br>
+                <br>
+                Now we can calculate the left-right asymmetry at \(E=850 \operatorname{MeV}\) and \(\theta=[1^\circ,50^\circ] \) for this nucleus by running
+                <pre><code class="python">theta_deg=np.arange(1,50,1e-1)
+E_MeV=850
+A_PV_208Pb = phr.left_right_asymmetry_lepton_nucleus_scattering(E_MeV,theta_deg*pi/180,nucleus_Pb208,verbose=True)</code></pre> 
+                </p>
+                We may plot the results 
+                <pre><code class="python">import matplotlib.pyplot as plt
+plt.title(r'PVES $^{208}$Pb') #Horowitz 1998
+plt.plot(theta_deg,A_PV_208Pb,label=r'$\lambda=0.9502$')
+plt.ylim(0,4e-6)
+plt.xlim(0,15)
+plt.xlabel(r"$\theta$ in deg")
+plt.ylabel(r"left-right asymmetry")
+plt.legend()
+plt.show()</code></pre>
+                resulting in the following graphic: <br>
+                <img src="./images/208Pb.png"> <br>
+                which is consistent with the results from the original reference. Good parameters to improve the runtime can be found analogously to the crosssection case with <code>optimise_left_right_asymmetry_precision</code>
 
                 <h1>More Info</h1>
 

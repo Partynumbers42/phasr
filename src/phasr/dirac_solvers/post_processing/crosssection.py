@@ -364,7 +364,7 @@ def collect_phase_shifts_multithreaded(energy,nucleus,lepton_mass,N_partial_wave
             
             kappa-=1
     
-    return phase_shifts
+    return phase_shifts, phase_differences
 
 def collect_phase_shifts_singlethreaded(energy,nucleus,lepton_mass,N_partial_waves,verbose,phase_difference_limit,**args):
     
