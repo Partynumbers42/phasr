@@ -254,29 +254,43 @@ def phase_shift_from_partial_wave_wrapper(nucleus,kappa,energy,lepton_mass,save_
     renew =  not save_and_load_phase_shifts
     return save_and_load(path,renew=renew,save=save,verbose=verbose,fmt='%.50e',fct=phase_shift_from_partial_wave,tracked_params=args,nucleus=nucleus,**args)
 
-# once all are calculated -> delete the files and make one file with all of them 
-
 def crosssection_lepton_nucleus_scattering(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,N_partial_waves=250,verbose=False,phase_difference_limit=0,N_processes=1,**args):
-    if N_processes>1:
-        return crosssection_lepton_nucleus_scattering_multithreaded(energy,theta,nucleus,lepton_mass=lepton_mass,recoil=recoil,subtractions=subtractions,N_partial_waves=N_partial_waves,verbose=verbose,phase_difference_limit=phase_difference_limit,N_max_cpu=N_processes,**args)
-    else:
-        return crosssection_lepton_nucleus_scattering_singlethreaded(energy,theta,nucleus,lepton_mass=lepton_mass,recoil=recoil,subtractions=subtractions,N_partial_waves=N_partial_waves,verbose=verbose,phase_difference_limit=phase_difference_limit,**args)
-
-def crosssection_lepton_nucleus_scattering_multithreaded(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,N_partial_waves=250,verbose=False,phase_difference_limit=0,N_max_cpu=cpu_count()-1,**args):
     
-    args['verbose']=verbose
-
-    N_pools = int(np.min([N_max_cpu,N_partial_waves]))
-
     nucleus_mass=nucleus.mass
-    charge = nucleus.total_charge
-
+    
     if recoil:
         energy, theta, scale_crosssection = recoil_quantities(energy,theta,nucleus_mass)
         if verbose:
             print('E=',energy,'MeV')
     else:
         scale_crosssection = 1
+    
+    if N_processes>1:
+        phase_shifts = collect_phase_shifts_multithreaded(energy,nucleus,lepton_mass,N_partial_waves,verbose,phase_difference_limit,N_max_cpu=N_processes,**args)
+    else:
+        phase_shifts = collect_phase_shifts_singlethreaded(energy,nucleus,lepton_mass,N_partial_waves,verbose,phase_difference_limit,**args)
+        
+    nonspinflip = nonspinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts)
+    
+    if lepton_mass==0:
+        crosssection = (1+np.tan(theta/2)**2)*np.abs(nonspinflip)**2
+    else:
+        print('Warning: m!=0 does not converge properly, to be revised')
+        #mass_correction = mass_correction_amplitude(energy,theta,lepton_mass,N_partial_waves,phase_shifts)
+        #spinflip = np.tan(theta/2)*nonspinflip + mass_correction
+        spinflip = spinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts)
+        crosssection = np.abs(nonspinflip)**2 + np.abs(spinflip)**2
+        
+    return scale_crosssection * crosssection
+
+def collect_phase_shifts_multithreaded(energy,nucleus,lepton_mass,N_partial_waves,verbose,phase_difference_limit,N_max_cpu=cpu_count()-1,**args):
+    
+    # needs to be improved, does not work most of the time due to local objects
+    
+    args['verbose']=verbose
+    N_pools = int(np.min([N_max_cpu,N_partial_waves]))
+    
+    charge = nucleus.total_charge
     
     phase_shifts = {}
     phase_differences = {}
@@ -349,32 +363,13 @@ def crosssection_lepton_nucleus_scattering_multithreaded(energy,theta,nucleus,le
                         phase_shifts[-kappa] = delta_coulomb(-kappa,charge,energy,lepton_mass,reg=+1,pass_eta=eta_regular) + 0
             
             kappa-=1
-                        
-
-    nonspinflip = nonspinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts)
     
-    if lepton_mass==0:
-        crosssection = (1+np.tan(theta/2)**2)*np.abs(nonspinflip)**2
-    else:
-        print('Warning: m!=0 does not converge properly, to be revised')
-        #mass_correction = mass_correction_amplitude(energy,theta,lepton_mass,N_partial_waves,phase_shifts)
-        #spinflip = np.tan(theta/2)*nonspinflip + mass_correction
-        spinflip = spinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts)
-        crosssection = np.abs(nonspinflip)**2 + np.abs(spinflip)**2
-        
-    return scale_crosssection * crosssection
+    return phase_shifts
 
-def crosssection_lepton_nucleus_scattering_singlethreaded(energy,theta,nucleus,lepton_mass=0,recoil=True,subtractions=3,N_partial_waves=250,verbose=False,phase_difference_limit=0,**args):
+
+def collect_phase_shifts_singlethreaded(energy,nucleus,lepton_mass,N_partial_waves,verbose,phase_difference_limit,**args):
     
-    nucleus_mass=nucleus.mass
     charge = nucleus.total_charge
-
-    if recoil:
-        energy, theta, scale_crosssection = recoil_quantities(energy,theta,nucleus_mass)
-        if verbose:
-            print('E=',energy,'MeV')
-    else:
-        scale_crosssection = 1
     
     phase_shifts = {}
     phase_differences = {}
@@ -422,19 +417,8 @@ def crosssection_lepton_nucleus_scattering_singlethreaded(energy,theta,nucleus,l
                     phase_shifts[-kappa] = phase_shifts[kappa]
                 else:
                     phase_shifts[-kappa] = delta_coulomb(-kappa,charge,energy,lepton_mass,reg=+1,pass_eta=eta_regular) + 0
-
-    nonspinflip = nonspinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts)
     
-    if lepton_mass==0:
-        crosssection = (1+np.tan(theta/2)**2)*np.abs(nonspinflip)**2
-    else:
-        print('Warning: m!=0 does not converge properly, to be revised')
-        #mass_correction = mass_correction_amplitude(energy,theta,lepton_mass,N_partial_waves,phase_shifts)
-        #spinflip = np.tan(theta/2)*nonspinflip + mass_correction
-        spinflip = spinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts)
-        crosssection = np.abs(nonspinflip)**2 + np.abs(spinflip)**2
-        
-    return scale_crosssection * crosssection
+    return phase_shifts
 
 def nonspinflip_amplitude(energy,theta,lepton_mass,N_partial_waves,subtractions,phase_shifts):
     k=momentum(energy,lepton_mass)
