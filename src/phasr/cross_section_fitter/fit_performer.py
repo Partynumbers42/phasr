@@ -185,7 +185,6 @@ def construct_measures(datasets_keys:list,initialization:initializer,barrett_mom
             barrett_moments['barrett_moment_'+barrett_moment_key]['y_data'] = barrett_dict["barrett"]
             barrett_moments['barrett_moment_'+barrett_moment_key]['cov_stat_data'] = barrett_dict["dbarrett"]**2
             barrett_moments['barrett_moment_'+barrett_moment_key]['cov_syst_data'] = 0
-            #initialization.nucleus. update_k_and_alpha_barrett(barrett_dict["k"],barrett_dict["alpha"])
             def barrett_moment(k_alpha_tuple,nucleus):
                 return np.atleast_1d(nucleus.barrett_moment(*k_alpha_tuple))
             measures['barrett_moment_'+barrett_moment_key]=minimization_measures(barrett_moment,**barrett_moments['barrett_moment_'+barrett_moment_key])
