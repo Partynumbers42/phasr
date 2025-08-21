@@ -37,7 +37,7 @@ def parallel_fitting(datasets_keys:list,Z:int,A:int,Rs=np.arange(5.00,12.00,0.25
             R=Rs[i]
             N=Ns[i]
             for N_offset in np.arange(N-N_base_span,N+N_base_span+1,1,dtype=int):
-                if N_offset>1:
+                if N_offset>2:
                     pairings.append((datasets_keys,Z,A,R,N_offset,args))
         
         N_tasks = len(pairings)
