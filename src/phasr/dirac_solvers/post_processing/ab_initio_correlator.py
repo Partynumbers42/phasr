@@ -238,9 +238,13 @@ def AbInitioCorrelator(AI_datasets,x_str='rchsq',x_offset=0,y_strs=None,scale_ye
     #
     ov_arr[x_str]=np.array([])
     for AI_model in AI_datasets:
-        rsqi=AI_datasets[AI_model][x_str]
-        ov_arr[x_str]=np.append(ov_arr[x_str],rsqi)
-    
+        
+        if x_str in ['rn-rp','rw-rch']:
+            rsqi=AI_datasets[AI_model][x_str[:2]]-AI_datasets[AI_model][x_str[3:]]
+            ov_arr[x_str]=np.append(ov_arr[x_str],rsqi)
+        else:
+            rsqi=AI_datasets[AI_model][x_str]
+            ov_arr[x_str]=np.append(ov_arr[x_str],rsqi)
     
     results_dict={}
     
