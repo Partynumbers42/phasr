@@ -56,7 +56,7 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None): #,r_cut=8
                 L = int(key[-2])
                 if key[1:6] in ['Sigma','Delta']:
                     formfactors[key]*=np.sqrt(4*pi/(2*spin_nucleus+1))
-                if L>0: # L=0 are already normalised
+                if L>0: # L=0 are already normalized
                     if key[1:2] in ['M']:
                         formfactors[key]*=1/np.sqrt(2*spin_nucleus+1)
                     if key[1:6] in ['Phipp']:
@@ -80,10 +80,8 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None): #,r_cut=8
         for key in multipoles_keys:
             y_data = formfactors[key]
             y_data_spl = splrep(x_data,y_data,s=0)
-            #def form_factor_spl(q,y_data_spl=y_data_spl,Omega=Omega): return splev(q,y_data_spl,ext=0)*F_CMS_Gauss(q,Omega,A)
             form_factor_spl = partial(CMS_corrected_spline,Omega=Omega,A=A,y_data_spl=y_data_spl)
             form_factor =  partial(field_ultimate_cutoff,R=np.max(x_data),val=0,field_spl=form_factor_spl) # Asymptotic: cutoff to 0
-            #form_factor =  highenergycutoff_field(form_factor_spl,R=np.max(x_data),val=0)
             AI_dict[key] = form_factor
         
         AI_datasets[AI_model]['form_factor_dict']=AI_dict
@@ -135,12 +133,16 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None): #,r_cut=8
 def CMS_corrected_spline(q,Omega,A,y_data_spl):
     return splev(q,y_data_spl,ext=0)*F_CMS_Gauss(q,Omega,A)
 
-def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,theta_exp=None,renew=False,verbose=True,verboseLoad=True,left_right_asymmetry_args={}):
+def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,theta_exp=None,acceptance_exp=None,renew=False,verbose=True,verboseLoad=True,left_right_asymmetry_args={}):
     #
     for AI_model in AI_datasets:
         
         prekeys = list(AI_datasets[AI_model].keys())
-        path_correlation_quantities=local_paths.correlation_quantities_paths + "correlation_quantities_"+AI_datasets[AI_model]['atom'].name+'_'+reference_nucleus.name+('_E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp) if (not (E_exp is None) and (not theta_exp is None)) else '')+('_q{:.3f}'.format(q_exp) if q_exp is not None else '')+".txt"
+        
+        if acceptance_exp is None:
+            path_correlation_quantities=local_paths.correlation_quantities_paths + "correlation_quantities_"+AI_datasets[AI_model]['atom'].name+'_'+reference_nucleus.name+('_E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp) if (not (E_exp is None) and (not theta_exp is None)) else '')+('_q{:.3f}'.format(q_exp) if q_exp is not None else '')+".txt"
+        else:
+            path_correlation_quantities=local_paths.correlation_quantities_paths + "correlation_quantities_"+AI_datasets[AI_model]['atom'].name+'_'+reference_nucleus.name+('_E{:.2f}_weighted_mean'.format(E_exp) if (not (E_exp is None)) else '')+('_q{:.3f}'.format(q_exp) if q_exp is not None else '')+".txt"
         
         os.makedirs(os.path.dirname(path_correlation_quantities), exist_ok=True)
 
@@ -187,10 +189,15 @@ def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_
                     AI_datasets[AI_model]['V_'+nuc] = overlap_integral_vector(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True)
             #
             if E_exp is not None and theta_exp is not None:
-                if not 'APV' in prekeys:
-                    AI_datasets[AI_model]['APV'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,verbose=True,**left_right_asymmetry_args)
-                if not 'APV2' in prekeys:
-                    AI_datasets[AI_model]['APV2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,verbose=True,**left_right_asymmetry_args)
+                
+                if acceptance_exp is None:
+                    if not 'APV' in prekeys:
+                        AI_datasets[AI_model]['APV'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,verbose=True,**left_right_asymmetry_args)
+                    if not 'APV2' in prekeys:
+                        AI_datasets[AI_model]['APV2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,verbose=True,**left_right_asymmetry_args)
+                else:
+                    if not 'APV_mean' in prekeys:
+                        AI_datasets[AI_model]['theta_mean'], AI_datasets[AI_model]['Qsq_mean'], AI_datasets[AI_model]['APV_mean'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,acceptance=acceptance_exp,verbose=True,**left_right_asymmetry_args)
             #
             if renew:
                 with open( path_correlation_quantities, "w" ) as file:
@@ -215,17 +222,13 @@ def F_CMS_Gauss(q,Omega,A):
     b=b_cm(Omega,A)
     return np.exp((b*q/2)**2)
 
-
 def linear_model(x,paramdict):
-    
     m=paramdict['m']
     b=paramdict['b']
-    
     return m * x + b
 
 def residual(params, x, data, yerr):
     model = linear_model(x,params)
-    
     return (model-data)/yerr
 
 from lmfit import minimize, Parameters

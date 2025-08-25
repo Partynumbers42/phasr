@@ -76,3 +76,7 @@ def energy(momentum,mass):
     return np.sqrt(momentum**2+mass**2)
 def momentum(energy,mass):
     return np.sqrt(energy**2-mass**2) if energy > mass else np.sqrt(energy**2-mass**2+0j)
+
+def momentum_transfer(incoming_energy,scattering_angle,mass=np.inf):
+    outgoing_energy=incoming_energy*(1-2*incoming_energy*(np.sin(scattering_angle/2)**2)/mass)
+    return 2*np.sqrt(incoming_energy*outgoing_energy)*np.sin(scattering_angle/2)

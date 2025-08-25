@@ -41,7 +41,7 @@ class nucleus_num(nucleus_base):
     def update_dependencies(self):
         nucleus_base.update_dependencies(self)
         #
-        self.set_scalars_from_rho()
+        self.set_scalars_from_rho() # maybe remove this b/c it does numerical integrals every time <----------------------------- TODO
         if hasattr(self,'total_charge'):
             if np.abs(self.total_charge - self.Z)/self.Z>1e-3:
                 print('Warning total charge for '+self.name+' deviates more than 1e-3: Z='+str(self.Z)+', Q(num)='+str(self.total_charge))

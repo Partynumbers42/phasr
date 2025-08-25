@@ -15,6 +15,10 @@ from multiprocessing import Pool, cpu_count
 from ...utility.mpsentinel import MPSentinel
 MPSentinel.As_master()
 
+from .crosssection import crosssection_lepton_nucleus_scattering
+
+from ...utility.math import momentum_transfer
+
 parameter_steps={
     'method' : np.array(['DOP853']), #,'LSODA' 
     'N_partial_waves' : np.append([250,200,150],np.append(np.arange(120,50-10,-10),np.arange(50,20-5,-5))),
@@ -23,8 +27,6 @@ parameter_steps={
     'energy_norm': constants.hc*10**np.arange(0,-6-1,-1,dtype=float),
     'phase_difference_limit' : np.append([0],10**np.arange(-15,-6+1,1,dtype=float)),
 }
-
-from .crosssection import crosssection_lepton_nucleus_scattering
 
 def crosssection_lepton_nucleus_scattering_chirality(energy,theta,chirality,weak_nucleus,charge_nucleus=None,verbose=False,**args):
     
@@ -55,7 +57,7 @@ def crosssection_lepton_nucleus_scattering_chirality(energy,theta,chirality,weak
 def custom_chiral_potential(r,Vch,Vw,sign):
     return Vch(r) + sign*Vw(r)
 
-def left_right_asymmetry_lepton_nucleus_scattering(energy,theta,weak_nucleus,charge_nucleus=None,verbose=False,parallelize_LR=False,atol=1e-13,rtol=1e-13,**args):
+def left_right_asymmetry_lepton_nucleus_scattering(energy,theta,weak_nucleus,charge_nucleus=None,verbose=False,parallelize_LR=False,acceptance=None,atol=1e-13,rtol=1e-13,**args):
     
     if charge_nucleus is None:
         charge_nucleus = weak_nucleus
@@ -78,8 +80,31 @@ def left_right_asymmetry_lepton_nucleus_scattering(energy,theta,weak_nucleus,cha
     else:
         crosssection_L = crosssection_lepton_nucleus_scattering_chirality(energy,theta,'L',weak_nucleus,charge_nucleus,**args)
         crosssection_R = crosssection_lepton_nucleus_scattering_chirality(energy,theta,'R',weak_nucleus,charge_nucleus,**args)
+    
+    left_right_asymmetry = (crosssection_R - crosssection_L)/(crosssection_R + crosssection_L)
+    
+    if acceptance is None:
+    
+        return left_right_asymmetry
+    
+    else:
+        
+        left_right_asymmetry_weighted_mean_L = acceptance_weight(left_right_asymmetry,theta,acceptance,crosssection_L)
+        theta_weighted_mean_L = acceptance_weight(theta,theta,acceptance,crosssection_L)
+        Qsq_weighted_mean_L = acceptance_weight(momentum_transfer(energy,theta,charge_nucleus.mass)**2,theta,acceptance,crosssection_L)
+        
+        left_right_asymmetry_weighted_mean_R = acceptance_weight(left_right_asymmetry,theta,acceptance,crosssection_R)
+        theta_weighted_mean_R = acceptance_weight(theta,theta,acceptance,crosssection_R)
+        Qsq_weighted_mean_R = acceptance_weight(momentum_transfer(energy,theta,charge_nucleus.mass)**2,theta,acceptance,crosssection_R)
+        
+        left_right_asymmetry_weighted_mean = np.mean([left_right_asymmetry_weighted_mean_L,left_right_asymmetry_weighted_mean_R])
+        theta_weighted_mean = np.mean([theta_weighted_mean_L,theta_weighted_mean_R])
+        Qsq_weighted_mean = np.mean([Qsq_weighted_mean_L,Qsq_weighted_mean_R])
+        
+        return theta_weighted_mean, Qsq_weighted_mean, left_right_asymmetry_weighted_mean
 
-    return (crosssection_R - crosssection_L)/(crosssection_R + crosssection_L)
+def acceptance_weight(quantity,theta,acceptance,crosssection):
+    return np.sum(acceptance*np.sin(theta)*crosssection*quantity) / np.sum(acceptance*np.sin(theta)*crosssection)    
 
 def left_right_asymmetry_and_time(energy,theta,nucleus,*args,**kwds):
         start_time=time.time()
