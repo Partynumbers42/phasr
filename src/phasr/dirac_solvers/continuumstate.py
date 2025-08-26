@@ -1,5 +1,4 @@
 from .. import constants
-from ..config import local_paths
 from .base import radial_dirac_eq_norm, initial_values_fm_norm, solver_settings, default_continuumstate_settings
 
 import numpy as np
