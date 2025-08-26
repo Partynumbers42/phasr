@@ -35,13 +35,14 @@ class nucleus_num(nucleus_base):
              self.weak_density =  args['weak_density']
         if 'weak_potential' in args:
             self.weak_potential =  args['weak_potential']
-
+        
+        self.update_dependencies()
+        self.set_scalars_from_rho()
         self.update_dependencies()
         
     def update_dependencies(self):
         nucleus_base.update_dependencies(self)
         #
-        self.set_scalars_from_rho() # maybe remove this b/c it does numerical integrals every time <----------------------------- TODO
         if hasattr(self,'total_charge'):
             if np.abs(self.total_charge - self.Z)/self.Z>1e-3:
                 print('Warning total charge for '+self.name+' deviates more than 1e-3: Z='+str(self.Z)+', Q(num)='+str(self.total_charge))
@@ -232,6 +233,8 @@ class nucleus_num(nucleus_base):
         if not hasattr(self,"form_factor"):
             self.set_form_factor_from_charge_density()
         
+        self.update_dependencies()
+        self.set_scalars_from_rho()
         self.update_dependencies()
 
 def calc_charge(density,rrange):
