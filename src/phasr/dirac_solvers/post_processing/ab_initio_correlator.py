@@ -44,7 +44,6 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None,print_radius_
         with open( path_FF, "rb" ) as file:
             FF0 = np.genfromtxt( file,comments=None,delimiter=',',names=True,autostrip=True,dtype=float)
         AI_datasets[AI_model]={**params,'FF0':FF0}
-
     #
     #
     print('Loaded datasets:',list(AI_datasets.keys()))
@@ -91,6 +90,7 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None,print_radius_
     for AI_model in AI_datasets:
 
         kws = {} if r_cut is None else {'rrange' : [0.,r_cut,0.05]}
+        #kws = {**kws} if q_cut is None else {**kws,'qrange' : [0.,q_cut,1]}
         atom_AI = nucleus(name+"_"+AI_model,Z=Z,A=A,mass=mass_nucleus,spin=spin_nucleus,parity=parity_nucleus,form_factor_dict=AI_datasets[AI_model]['form_factor_dict'],**kws) 
         atom_AI.set_density_dict_from_form_factor_dict()
         if hasattr(atom_AI,'form_factor') or hasattr(atom_AI,'charge_denstiy'):
