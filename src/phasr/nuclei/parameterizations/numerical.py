@@ -67,6 +67,9 @@ class nucleus_num(nucleus_base):
         #self.update_dependencies()
     
     def set_scalars_from_rho(self):
+
+        # TODO add save and load option
+
         if hasattr(self,'charge_density'):
             #if not hasattr(self,"total_charge"):
             self.set_total_charge()
