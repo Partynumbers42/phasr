@@ -93,6 +93,7 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None,print_radius_
         #kws = {**kws} if q_cut is None else {**kws,'qrange' : [0.,q_cut,1]}
         atom_AI = nucleus(name+"_"+AI_model,Z=Z,A=A,mass=mass_nucleus,spin=spin_nucleus,parity=parity_nucleus,form_factor_dict=AI_datasets[AI_model]['form_factor_dict'],**kws) 
         atom_AI.set_density_dict_from_form_factor_dict()
+        atom_AI.set_scalars_from_rho()
         if hasattr(atom_AI,'form_factor') or hasattr(atom_AI,'charge_denstiy'):
             atom_AI.fill_gaps()
         AI_datasets[AI_model]['atom'] = atom_AI 
@@ -296,7 +297,7 @@ def AbInitioCorrelator(AI_datasets,x_str='rchsq',x_offset=0,y_strs=None,scale_ye
                     results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
                     results_dict[ov+nuc] = results
             
-            for r2 in ['rpsq','rnsq','rwsq','APV','APV2']:
+            for r2 in ['rpsq','rnsq','rwsq']: #,'APV','APV2'
                 key = r2
                 ov_arr[key]=np.array([])
                 for AI_model in AI_datasets:

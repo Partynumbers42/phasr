@@ -235,10 +235,6 @@ class nucleus_num(nucleus_base):
         
         if not hasattr(self,"form_factor"):
             self.set_form_factor_from_charge_density()
-        
-        self.update_dependencies()
-        self.set_scalars_from_rho()
-        self.update_dependencies()
 
 def calc_charge(density,rrange):
     Rs = range_seperator(rrange,density)
