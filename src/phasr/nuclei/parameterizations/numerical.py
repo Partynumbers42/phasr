@@ -38,7 +38,6 @@ class nucleus_num(nucleus_base):
         
         self.update_dependencies()
         self.set_scalars_from_rho()
-        self.update_dependencies()
         
     def update_dependencies(self):
         nucleus_base.update_dependencies(self)
@@ -84,6 +83,8 @@ class nucleus_num(nucleus_base):
         if hasattr(self,'weak_density'):# and ((not hasattr(self,'weak_radius')) or (not hasattr(self,'weak_radius_sq'))):
             self.set_weak_charge()
             self.set_weak_radius()
+        
+        self.update_dependencies()
 
     def set_total_charge(self):
         self.total_charge=calc_charge(self.charge_density,self.rrange)
