@@ -26,6 +26,7 @@ class initializer():
         if ai is None:
             if check_other_fits:
                 results_dicts = pickle_load_all_results_dicts_R_N(Z,A,R,N)
+                print(results_dicts.keys())
                 if len(results_dicts)>0:
                     best_p_val = 0
                     best_key = None
@@ -35,8 +36,10 @@ class initializer():
                             best_key= results_dict_key
                             best_p_val = current_p_val
                     ai_best_fit = results_dicts[best_key]['ai']
+                    print(ai_best_fit)
                     self.ai = np.zeros(self.N)
-                    self.ai[:min(self.N,len(ai_best_fit))] = ai[:min(self.N,len(ai_best_fit))]
+                    print(self.ai)
+                    self.ai[:min(self.N,len(ai_best_fit))] = ai_best_fit[:min(self.N,len(ai_best_fit))]
                 else:
                     self.ref_index=0
                     self.set_ai_from_reference()

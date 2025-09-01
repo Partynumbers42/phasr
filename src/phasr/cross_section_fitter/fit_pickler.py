@@ -34,7 +34,7 @@ def tracking_str_generator(results_dict,tracked_keys=None,visible_keys=[]):
 def pickle_dump_result_dict(results_dict,tracked_keys=None,visible_keys=[],overwrite=True,verbose=True):
     
     tracking_str = tracking_str_generator(results_dict,tracked_keys,visible_keys)
-    path = local_paths.fit_path + 'fit_result' + tracking_str
+    path = local_paths.fit_path + 'fit_result' + tracking_str + '.pkl'
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
     
@@ -49,7 +49,7 @@ def pickle_dump_result_dict(results_dict,tracked_keys=None,visible_keys=[],overw
 def pickle_load_result_dict(test_dict,tracked_keys=None,visible_keys=[],verbose=True):
     
     tracking_str = tracking_str_generator(test_dict,tracked_keys,visible_keys)
-    path = local_paths.fit_path + 'fit_result' + tracking_str
+    path = local_paths.fit_path + 'fit_result' + tracking_str + '.pkl'
     
     if os.path.exists(path):
         with open( path, "rb" ) as file:
@@ -66,24 +66,26 @@ def pickle_load_all_results_dicts_R_N(Z,A,R,N):
     visible_keys = ['Z','A','R','N']
     
     tracking_str = tracking_str_generator(test_dict,tracked_keys=[],visible_keys=visible_keys)
-    path_pattern = local_paths.fit_path + 'fit_result' + tracking_str+'*.pkl'
+    path_pattern = local_paths.fit_path + 'fit_result' + tracking_str + '*.pkl'
+    print(path_pattern)
     paths = glob.glob(path_pattern)
+    print(paths)
     
     results_dicts = {}
     
     for path in paths:
         with open( path, "rb" ) as file:
             results_dict = pickle.load(file) 
-        results_dicts[os.path.basename(path)] = results_dict
+        results_dicts[os.path.basename(path[:-4])] = results_dict
     
     return results_dicts 
 
 def promote_best_fit(results_dict,overwrite=True,verbose=True):
     
-    # ADD syst uncertainties here <------ ?
+    # ADD syst uncertainties here at some point <------ ?
     
     if not results_dict is None:   
-        path = local_paths.best_fit_path + 'best_fit_result_Z' + str(results_dict['Z']) + '_A'  + str(results_dict['A'])
+        path = local_paths.best_fit_path + 'best_fit_result_Z' + str(results_dict['Z']) + '_A'  + str(results_dict['A']) + '.pkl'
 
         os.makedirs(os.path.dirname(path), exist_ok=True)
         
@@ -98,7 +100,7 @@ def promote_best_fit(results_dict,overwrite=True,verbose=True):
     
 def load_best_fit(Z,A,verbose=True):
     
-    path = local_paths.best_fit_path + 'best_fit_result_Z' + str(Z) + '_A'  + str(A)
+    path = local_paths.best_fit_path + 'best_fit_result_Z' + str(Z) + '_A'  + str(A) + '.pkl'
     
     if os.path.exists(path):
         with open( path, "rb" ) as file:

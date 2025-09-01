@@ -8,7 +8,7 @@ pi = np.pi
 import os
 
 from .fit_performer import fitter
-from .initializer import initializer
+from .fit_initializer import initializer
 from .data_prepper import load_dataset
 
 from multiprocessing import Pool, cpu_count
