@@ -27,20 +27,20 @@ def select_density(nucleus_response,response):
     else:
         raise ValueError("Unphysical response choosen")
 
-def calculate_states(nucleus_potential,kappa_e=-1,recoil=True,nonzero_electron_mass=True,**args):
+def calculate_states(nucleus_potential,kappa_e=-1,recoil=True,nonzero_electron_mass=True,args_boundstate={},args_continuumstate={}):
 
     mass_muon = masses.mmu
     mass_electron = masses.me if nonzero_electron_mass else 0
     mass_nucleus = nucleus_potential.mass if recoil else np.inf
     
     # muon
-    boundstate = boundstates(nucleus_potential,kappa=-1,lepton_mass=masses.mmu,**args)
+    boundstate = boundstates(nucleus_potential,kappa=-1,lepton_mass=masses.mmu,**args_boundstate)
     binding_energy = boundstate.energy_levels[0]
     
     energy = ejection_energy(mass_muon,mass_electron,binding_energy,mass_nucleus)
     
     # electron (me=0)
-    continuumstate = continuumstates(nucleus_potential,kappa=kappa_e,energy=energy,lepton_mass=mass_electron,**args)
+    continuumstate = continuumstates(nucleus_potential,kappa=kappa_e,energy=energy,lepton_mass=mass_electron,**args_continuumstate)
     continuumstate.solve_IVP()
 
     return boundstate, continuumstate

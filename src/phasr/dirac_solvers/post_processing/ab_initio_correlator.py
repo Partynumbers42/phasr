@@ -145,7 +145,7 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None,print_radius_
 def CMS_corrected_spline(q,Omega,A,y_data_spl):
     return splev(q,y_data_spl,ext=0)*F_CMS_Gauss(q,Omega,A)
 
-def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,theta_exp=None,acceptance_exp=None,renew=False,verbose=True,verboseLoad=True,left_right_asymmetry_args={}):
+def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,theta_exp=None,acceptance_exp=None,renew=False,verbose=True,verboseLoad=True,overlap_integral_args={},left_right_asymmetry_args={}):
     #
     for AI_model in AI_datasets:
         
@@ -196,9 +196,9 @@ def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_
             for nuc in ['p','n','ch']:
                 #key='M0'+nuc
                 if not 'S_'+nuc in prekeys:
-                    AI_datasets[AI_model]['S_'+nuc] = overlap_integral_scalar(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True)
+                    AI_datasets[AI_model]['S_'+nuc] = overlap_integral_scalar(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True,**overlap_integral_args)
                 if not 'V_'+nuc in prekeys:
-                    AI_datasets[AI_model]['V_'+nuc] = overlap_integral_vector(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True)
+                    AI_datasets[AI_model]['V_'+nuc] = overlap_integral_vector(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True,**overlap_integral_args)
             #
             if E_exp is not None and theta_exp is not None:
                 
