@@ -5,7 +5,6 @@ pi = np.pi
 
 import copy
 
-
 import numdifftools as ndt
 from scipy.linalg import inv
 from scipy.optimize import minimize#, OptimizeResult
@@ -65,7 +64,8 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_keys=[],
         current_nucleus = copy.deepcopy(initialization.nucleus)
         
         converged=False
-        while not converged:
+        rand = 1
+        while not converged and rand > 0:
             for key in measures:
                 measures[key].set_cov(current_nucleus)    
             print('Starting current fit step (R='+str(current_nucleus.R)+',N='+str(current_nucleus.N_a)+') with loss =',loss_function(xi_initial))
@@ -80,7 +80,8 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_keys=[],
                     converged=True
                 else:
                     print('Not converged (R='+str(current_nucleus.R)+',N='+str(current_nucleus.N_a)+'): x_f-x_i =',xi_diff)
-                    xi_initial = result.x
+                    xi_initial = result.x 
+            rand = 1.0 + np.random.rand()
         print('Finished fit (R='+str(current_nucleus.R)+',N='+str(current_nucleus.N_a)+'), Calculating Hessian')
         
         Hessian_function = ndt.Hessian(loss_function,step=numdifftools_step)
@@ -178,7 +179,7 @@ def construct_measures(datasets_keys:list,initialization:initializer,barrett_mom
     
     if barrett_moment_constraint:
         barrett_moments = {}
-        for barrett_moment_key in barrett_moment_keys:#current implementation of nucleus does only allow for one value for k, alpha (change?)
+        for barrett_moment_key in barrett_moment_keys:
             barrett_moments['barrett_moment_'+barrett_moment_key]={}
             barrett_dict = load_barrett_moment(barrett_moment_key,initialization.Z,initialization.A,verbose=False)
             barrett_moments['barrett_moment_'+barrett_moment_key]['x_data'] = (barrett_dict["k"],barrett_dict["alpha"])
