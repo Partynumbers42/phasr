@@ -46,7 +46,7 @@ def parallel_fitting(datasets_keys:list,Z:int,A:int,Rs=np.arange(5.00,12.00,0.25
         with Pool(processes=np.min([N_processes,N_tasks])) as pool:  # maxtasksperchild=1
             results = pool.starmap(fit_runner,pairings)
         
-    return { 'R_'+str(pairings[i][3]) + 'N_'+str(pairings[i][4]) : results[i] for i in range(len(results))}
+    return { 'R'+str(pairings[i][3]) + '_N'+str(pairings[i][4]) : results[i] for i in range(len(results))}
 
 def fit_runner(datasets_keys,Z,A,R,N,args):
     print("Start fit with R="+str(R)+", N="+str(N)+" (PID:"+str(os.getpid())+")")
