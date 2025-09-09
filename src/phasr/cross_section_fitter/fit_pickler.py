@@ -67,9 +67,29 @@ def pickle_load_all_results_dicts_R_N(Z,A,R,N):
     
     tracking_str = tracking_str_generator(test_dict,tracked_keys=[],visible_keys=visible_keys)
     path_pattern = local_paths.fit_path + 'fit_result' + tracking_str + '*.pkl'
-    print(path_pattern)
+    #print(path_pattern)
     paths = glob.glob(path_pattern)
-    print(paths)
+    #print(paths)
+    
+    results_dicts = {}
+    
+    for path in paths:
+        with open( path, "rb" ) as file:
+            results_dict = pickle.load(file) 
+        results_dicts[os.path.basename(path[:-4])] = results_dict
+    
+    return results_dicts 
+
+def pickle_load_all_results_dicts_R(Z,A,R):
+        
+    test_dict={'Z':Z,'A':A,'R':R}
+    visible_keys = ['Z','A','R']
+    
+    tracking_str = tracking_str_generator(test_dict,tracked_keys=[],visible_keys=visible_keys)
+    path_pattern = local_paths.fit_path + 'fit_result' + tracking_str + '*.pkl'
+    #print(path_pattern)
+    paths = glob.glob(path_pattern)
+    #print(paths)
     
     results_dicts = {}
     

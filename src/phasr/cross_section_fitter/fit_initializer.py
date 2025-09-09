@@ -6,7 +6,7 @@ from scipy.special import sici
 from ..nuclei import load_reference_nucleus, nucleus
 
 from .parameters import ai_abs_bounds_default
-from .fit_pickler import pickle_load_all_results_dicts_R_N
+from .fit_pickler import pickle_load_all_results_dicts_R
 
 class initializer():
     
@@ -25,14 +25,19 @@ class initializer():
         
         if ai is None:
             if check_other_fits:
-                results_dicts = pickle_load_all_results_dicts_R_N(Z,A,R,N)
+                results_dicts = pickle_load_all_results_dicts_R(self.Z,self.A,self.R)
                 print(results_dicts.keys())
                 if len(results_dicts)>0:
                     best_p_val = 0
+                    best_N_diff = np.inf
                     best_key = None
                     for results_dict_key in results_dicts:
+                        current_N_diff = np.abs(results_dicts[results_dict_key]['N']-self.N)
+                        if current_N_diff<best_N_diff:
+                            best_N_diff = current_N_diff
+                            best_p_val = 0
                         current_p_val = results_dicts[results_dict_key]['p_val']
-                        if current_p_val>best_p_val:
+                        if (current_N_diff==best_N_diff) and (current_p_val>best_p_val):
                             best_key= results_dict_key
                             best_p_val = current_p_val
                     ai_best_fit = results_dicts[best_key]['ai']
