@@ -51,7 +51,7 @@ def parallel_fitting(datasets_keys:list,Z:int,A:int,Rs=np.arange(5.00,12.00,0.25
 def fit_runner(datasets_keys,Z,A,R,N,args):
     print("Start fit with R="+str(R)+", N="+str(N)+" (PID:"+str(os.getpid())+")")
     
-    initialization = initializer(Z,A,R,N)
+    initialization = initializer(Z,A,R,N,check_other_fits=True)
     result = fitter(datasets_keys,initialization,**args)
     print("Finished fit with R="+str(R)+", N="+str(N)+" (PID:"+str(os.getpid())+")")
     return result
