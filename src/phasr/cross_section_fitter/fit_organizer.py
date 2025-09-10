@@ -51,7 +51,21 @@ def parallel_fitting(datasets_keys:list,Z:int,A:int,Rs=np.arange(5.00,12.00,0.25
 def fit_runner(datasets_keys,Z,A,R,N,args):
     print("Start fit with R="+str(R)+", N="+str(N)+" (PID:"+str(os.getpid())+")")
     
-    initialization = initializer(Z,A,R,N,check_other_fits=True)
+    if 'barrett_moment_keys' in args:
+        barrett_moment_keys = args['barrett_moment_keys']
+    else:
+        barrett_moment_keys = []
+    
+    if 'monotonous_decrease_precision' in args:
+        monotonous_decrease_precision = args['monotonous_decrease_precision']
+    else:
+        monotonous_decrease_precision = np.inf
+    
+    base_settings = {'datasets':datasets_keys,'datasets_barrett_moment':barrett_moment_keys,'monotonous_decrease_precision':monotonous_decrease_precision}
+    
+    initialization = initializer(Z,A,R,N,check_other_fits=True,settings=base_settings)
     result = fitter(datasets_keys,initialization,**args)
     print("Finished fit with R="+str(R)+", N="+str(N)+" (PID:"+str(os.getpid())+")")
     return result
+
+    

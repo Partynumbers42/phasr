@@ -10,7 +10,7 @@ from .fit_pickler import pickle_load_all_results_dicts_R
 
 class initializer():
     
-    def __init__(self,Z:int,A:int,R:float,N:int,ai=None,ai_abs_bound=None,check_other_fits=False):
+    def __init__(self,Z:int,A:int,R:float,N:int,ai=None,ai_abs_bound=None,check_other_fits=False,settings={}):
         
         self.Z = Z
         self.A = A
@@ -25,7 +25,7 @@ class initializer():
         
         if ai is None:
             if check_other_fits:
-                results_dicts = pickle_load_all_results_dicts_R(self.Z,self.A,self.R) # add type detection same data, barrett, usw used etc. 
+                results_dicts = pickle_load_all_results_dicts_R(self.Z,self.A,self.R,settings)
                 if len(results_dicts)>0:
                     print('Found other fits with this R:\n',results_dicts.keys())
                     best_p_val = 0

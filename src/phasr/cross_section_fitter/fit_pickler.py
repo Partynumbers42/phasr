@@ -80,8 +80,9 @@ def pickle_load_all_results_dicts_R_N(Z,A,R,N):
     
     return results_dicts 
 
-def pickle_load_all_results_dicts_R(Z,A,R):
-        
+def pickle_load_all_results_dicts_R(Z,A,R,settings):
+    # settings = {'datasets':datasets_keys,'datasets_barrett_moment':barrett_moment_keys,'monotonous_decrease_precision':monotonous_decrease_precision,'xi_diff_convergence_limit':xi_diff_convergence_limit,'numdifftools_step':numdifftools_step,**cross_section_args,**minimizer_args}
+    
     test_dict={'Z':Z,'A':A,'R':R}
     visible_keys = ['Z','A','R']
     
@@ -96,7 +97,14 @@ def pickle_load_all_results_dicts_R(Z,A,R):
     for path in paths:
         with open( path, "rb" ) as file:
             results_dict = pickle.load(file) 
-        results_dicts[os.path.basename(path[:-4])] = results_dict
+        
+        same_kwds = True
+        for key in settings:
+            if results_dict[key] != settings[key]:
+                same_kwds=False
+        
+        if same_kwds:
+            results_dicts[os.path.basename(path[:-4])] = results_dict
     
     return results_dicts 
 
