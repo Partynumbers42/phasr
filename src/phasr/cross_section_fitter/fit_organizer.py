@@ -76,6 +76,8 @@ def fit_runner(datasets_keys,Z,A,R,N,args):
     if 'initialize_from' in args:
         initialize_from = args['initialize_from']
         args.pop('initialize_from')
+    else:
+        initialize_from = 'reference'
     
     initialization = initializer(Z,A,R,N,initialize_from=initialize_from)
     result = fitter(datasets_keys,initialization,**args)

@@ -20,7 +20,7 @@ from .fit_pickler import pickle_load_all_results_dicts_R
 
 class initializer():
     
-    def __init__(self,Z:int,A:int,R:float,N:int,ai=None,ai_abs_bound=None,initialize_from=None): #check_other_fits=False,settings={}
+    def __init__(self,Z:int,A:int,R:float,N:int,ai=None,ai_abs_bound=None,initialize_from='reference'): #check_other_fits=False,settings={}
         
         self.Z = Z
         self.A = A
@@ -34,7 +34,7 @@ class initializer():
             self.ai_abs_bound = ai_abs_bound
         
         if ai is None:
-            if initialize_from is None:            
+            if initialize_from=='reference':            
                 self.ref_index=0
                 self.set_ai_from_reference()
             else:
@@ -53,13 +53,13 @@ class initializer():
                         if (current_N_diff==best_N_diff) and (current_p_val>=best_p_val):
                             best_key= results_dict_key
                             best_p_val = current_p_val
-                    if best_N_diff>0:
-                        print('Using the dataset closest in N and with the smallest p-val. p=',best_p_val)
-                        ai_best_fit = results_dicts[best_key]['ai']
-                        self.ai = np.zeros(self.N)
-                        self.ai[:min(self.N,len(ai_best_fit))] = ai_best_fit[:min(self.N,len(ai_best_fit))]
-                    else:
-                        self.ai = results_dicts[best_key]['ai_ini']
+                    #if best_N_diff>0:
+                    print('Using the dataset closest in N and with the smallest p-val. p=',best_p_val)
+                    ai_best_fit = results_dicts[best_key]['ai']
+                    self.ai = np.zeros(self.N)
+                    self.ai[:min(self.N,len(ai_best_fit))] = ai_best_fit[:min(self.N,len(ai_best_fit))]
+                    #else:
+                    #self.ai = results_dicts[best_key]['ai_ini']
                 else:
                     self.ref_index=0
                     self.set_ai_from_reference()
