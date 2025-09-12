@@ -16,7 +16,32 @@ from multiprocessing import Pool, cpu_count
 from ..utility.mpsentinel import MPSentinel
 MPSentinel.As_master()
 
-def parallel_fitting(datasets_keys:list,Z:int,A:int,Rs=np.arange(5.00,12.00,0.25),N_base_offset=0,N_base_span=2,N_processes=cpu_count()-2,**args):
+def parallel_fitting_manual(datasets_keys:list,Z:int,A:int,RN_tuples=[],N_processes=cpu_count()-2,**args):
+    results={}
+    
+    if MPSentinel.Is_master():    
+        
+        pairings = []
+        
+        for i in range(len(RN_tuples)):
+            R,N=RN_tuples[i]
+            R = np.float64(R)
+            N = np.int64(N)
+            pairings.append((datasets_keys,Z,A,R,N,args))
+        
+        N_tasks = len(pairings)
+        N_processes = np.min([N_processes,N_tasks])
+        
+        print('Queuing',N_tasks,'tasks, which will be performed over',N_processes,'processes.')
+        
+        #print(pairings)
+        
+        with Pool(processes=N_processes) as pool:  # maxtasksperchild=1
+            results = pool.starmap(fit_runner,pairings)
+    
+    return { 'R'+str(pairings[i][3]) + '_N'+str(pairings[i][4]) : results[i] for i in range(len(results))}
+
+def parallel_fitting_automatic(datasets_keys:list,Z:int,A:int,Rs=np.arange(5.00,12.00,0.25),N_base_offset=0,N_base_span=2,N_processes=cpu_count()-2,**args):
     
     results={}
     
@@ -34,8 +59,8 @@ def parallel_fitting(datasets_keys:list,Z:int,A:int,Rs=np.arange(5.00,12.00,0.25
         pairings = []
         
         for i in range(len(Rs)):
-            R=Rs[i]
-            N=Ns[i]
+            R=np.float64(Rs[i])
+            N=np.int64(Ns[i])
             for N_offset in np.arange(N-N_base_span,N+N_base_span+1,1,dtype=int):
                 if N_offset>2:
                     pairings.append((datasets_keys,Z,A,R,N_offset,args))
@@ -43,21 +68,22 @@ def parallel_fitting(datasets_keys:list,Z:int,A:int,Rs=np.arange(5.00,12.00,0.25
         N_tasks = len(pairings)
         print('Queuing',N_tasks,'tasks, which will be performed over',N_processes,'processes.')
         
+        #print(pairings)
+        
         with Pool(processes=np.min([N_processes,N_tasks])) as pool:  # maxtasksperchild=1
             results = pool.starmap(fit_runner,pairings)
+    
         
     return { 'R'+str(pairings[i][3]) + '_N'+str(pairings[i][4]) : results[i] for i in range(len(results))}
 
-def select_based_on_property(results_dict,property,limit,sign=+1):
+def select_RN_based_on_property(results_dict,property,limit,sign=+1):
     
-    keys=[]
-    
+    RN_tuples=[]
     for key in results_dict:
         if sign*results_dict[key][property] > sign*limit:
-            keys.append(key)
+            RN_tuples.append((results_dict[key]['R'],results_dict[key]['N']))
     
-    return keys
-
+    return RN_tuples
 
 def fit_runner(datasets_keys,Z,A,R,N,args):
     print("Start fit with R="+str(R)+", N="+str(N)+" (PID:"+str(os.getpid())+")")
