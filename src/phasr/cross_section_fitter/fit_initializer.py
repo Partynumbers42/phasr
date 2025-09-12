@@ -36,6 +36,7 @@ class initializer():
         if ai is None:
             if initialize_from=='reference':            
                 self.ref_index=0
+                print('Setting ai from dVries reference')
                 self.set_ai_from_reference()
             else:
                 results_dicts = pickle_load_all_results_dicts_R(self.Z,self.A,self.R,initialize_from)
@@ -62,6 +63,7 @@ class initializer():
                     #self.ai = results_dicts[best_key]['ai_ini']
                 else:
                     self.ref_index=0
+                    print('Setting ai from dVries reference')
                     self.set_ai_from_reference()
         else:
             self.ai = np.zeros(self.N)
