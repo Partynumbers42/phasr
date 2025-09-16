@@ -41,7 +41,7 @@ class initializer():
             else:
                 results_dicts = pickle_load_all_results_dicts_R(self.Z,self.A,self.R,initialize_from)
                 if len(results_dicts)>0:
-                    print('Found other fits with this R:',results_dicts.keys())
+                    print('Looking through other fits with this R:',results_dicts.keys())
                     best_p_val = 0
                     best_N_diff = np.inf
                     best_key = None
@@ -55,15 +55,14 @@ class initializer():
                             best_key= results_dict_key
                             best_p_val = current_p_val
                     #if best_N_diff>0:
-                    print('Using the dataset closest in N and with the smallest p-val. p=',best_p_val)
+                    print('Using the dataset closest in N and with the smallest p-val. R=',results_dicts[best_key]['R'],', N=',results_dicts[best_key]['N'])
                     ai_best_fit = results_dicts[best_key]['ai']
                     self.ai = np.zeros(self.N)
                     self.ai[:min(self.N,len(ai_best_fit))] = ai_best_fit[:min(self.N,len(ai_best_fit))]
-                    #else:
-                    #self.ai = results_dicts[best_key]['ai_ini']
+                    
                 else:
                     self.ref_index=0
-                    print('Setting ai from dVries reference')
+                    print('Setting ai from dVries reference (because no matching fits found)')
                     self.set_ai_from_reference()
         else:
             self.ai = np.zeros(self.N)
