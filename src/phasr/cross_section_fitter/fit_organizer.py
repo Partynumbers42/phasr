@@ -6,6 +6,7 @@ import numpy as np
 pi = np.pi
 
 import os
+import copy
 
 from .fit_performer import fitter
 from .fit_initializer import initializer
@@ -33,8 +34,6 @@ def parallel_fitting_manual(datasets_keys:list,Z:int,A:int,RN_tuples=[],N_proces
         N_processes = np.min([N_processes,N_tasks])
         
         print('Queuing',N_tasks,'tasks, which will be performed over',N_processes,'processes.')
-        
-        #print(pairings)
         
         with Pool(processes=N_processes) as pool:  # maxtasksperchild=1
             results = pool.starmap(fit_runner,pairings)
@@ -98,6 +97,8 @@ def fit_runner(datasets_keys,Z,A,R,N,args):
     #else:
     #    monotonous_decrease_precision = np.inf
     #base_settings = {'datasets':datasets_keys,'datasets_barrett_moment':barrett_moment_keys,'monotonous_decrease_precision':monotonous_decrease_precision}
+    
+    args = copy.deepcopy(args) # prevents that 'initialize_from' is poped from the source
     
     if 'initialize_from' in args:
         initialize_from = args['initialize_from']

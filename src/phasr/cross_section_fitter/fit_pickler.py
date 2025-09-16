@@ -86,16 +86,12 @@ def pickle_load_all_results_dicts_R(Z,A,R,settings):
     test_dict={'Z':Z,'A':A,'R':R}
     visible_keys = ['Z','A','R']
     
-    print('settings:',settings)
-    
     tracking_str = tracking_str_generator(test_dict,tracked_keys=[],visible_keys=visible_keys)
     
-    print('tracking str:',tracking_str)
-    
     path_pattern = local_paths.fit_path + 'fit_result' + tracking_str + '*.pkl'
-    print('path pattern:',path_pattern)
+    #print('path pattern:',path_pattern)
     paths = glob.glob(path_pattern)
-    print('paths:',paths)
+    #print('paths:',paths)
     
     results_dicts = {}
     
@@ -107,8 +103,6 @@ def pickle_load_all_results_dicts_R(Z,A,R,settings):
         for key in settings:
             if results_dict[key] != settings[key]:
                 same_kwds=False
-        
-        print('Has same kwds',same_kwds,',path',path)
         
         if same_kwds:
             results_dicts[os.path.basename(path[:-4])] = results_dict

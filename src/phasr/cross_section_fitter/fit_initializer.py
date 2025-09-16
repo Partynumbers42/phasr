@@ -36,7 +36,7 @@ class initializer():
         if ai is None:
             if initialize_from=='reference':            
                 self.ref_index=0
-                print('Setting ai from dVries reference')
+                print('Setting ai from dVries reference (because you asked for it)')
                 self.set_ai_from_reference()
             else:
                 results_dicts = pickle_load_all_results_dicts_R(self.Z,self.A,self.R,initialize_from)
@@ -55,7 +55,7 @@ class initializer():
                             best_key= results_dict_key
                             best_p_val = current_p_val
                     #if best_N_diff>0:
-                    print('Using the dataset closest in N and with the smallest p-val. R=',results_dicts[best_key]['R'],', N=',results_dicts[best_key]['N'])
+                    print('Using the dataset closest in N and with the smallest p-val: For R=',R,'N=',N,'use R=',results_dicts[best_key]['R'],', N=',results_dicts[best_key]['N'])
                     ai_best_fit = results_dicts[best_key]['ai']
                     self.ai = np.zeros(self.N)
                     self.ai[:min(self.N,len(ai_best_fit))] = ai_best_fit[:min(self.N,len(ai_best_fit))]
