@@ -11,6 +11,7 @@ import copy
 from .fit_performer import fitter
 from .fit_initializer import initializer
 from .data_prepper import load_dataset
+from .. import nucleus
 
 from multiprocessing import Pool, cpu_count
 
@@ -75,28 +76,8 @@ def parallel_fitting_automatic(datasets_keys:list,Z:int,A:int,Rs=np.arange(5.00,
         
     return { 'R'+str(pairings[i][3]) + '_N'+str(pairings[i][4]) : results[i] for i in range(len(results))}
 
-def select_RN_based_on_property(results_dict,property,limit,sign=+1):
-    
-    RN_tuples=[]
-    for key in results_dict:
-        if sign*results_dict[key][property] > sign*limit:
-            RN_tuples.append((results_dict[key]['R'],results_dict[key]['N']))
-    
-    return RN_tuples
-
 def fit_runner(datasets_keys,Z,A,R,N,args):
     print("Start fit with R="+str(R)+", N="+str(N)+" (PID:"+str(os.getpid())+")")
-    
-    #if 'barrett_moment_keys' in args:
-    #    barrett_moment_keys = args['barrett_moment_keys']
-    #else:
-    #    barrett_moment_keys = []
-    #
-    #if 'monotonous_decrease_precision' in args:
-    #    monotonous_decrease_precision = args['monotonous_decrease_precision']
-    #else:
-    #    monotonous_decrease_precision = np.inf
-    #base_settings = {'datasets':datasets_keys,'datasets_barrett_moment':barrett_moment_keys,'monotonous_decrease_precision':monotonous_decrease_precision}
     
     args = copy.deepcopy(args) # prevents that 'initialize_from' is poped from the source
     
@@ -111,4 +92,88 @@ def fit_runner(datasets_keys,Z,A,R,N,args):
     print("Finished fit with R="+str(R)+", N="+str(N)+" (PID:"+str(os.getpid())+")")
     return result
 
+def select_RN_based_on_property(results_dict,property,limit,sign=+1):
     
+    RN_tuples=[]
+    for key in results_dict:
+        if sign*results_dict[key][property] > sign*limit:
+            RN_tuples.append((results_dict[key]['R'],results_dict[key]['N']))
+    
+    return RN_tuples
+
+def split_based_on_asymptotic_and_p_val(results_dict,qs=[400,580,680,1000],dq=1.,m=None,p_val_lim=0):
+    
+    if m is None:
+        q0=np.arange(qs[0],qs[1],dq)
+        q1=np.arange(qs[1],qs[2],dq)
+        q2=np.arange(qs[2],qs[3],dq)
+        As=[]
+        ms=[]
+        for key in results_dict:
+            #
+            result = results_dict[key]
+            nuc_result = nucleus('temp_nuc_'+key,Z=result['Z'],A=result['A'],ai=result['ai'],R=result['R'])
+            #
+            F0=np.abs(nuc_result.form_factor(q0))
+            F1=np.abs(nuc_result.form_factor(q1))
+            F0_max=np.max(F0)
+            q0_max=q0[np.argmax(F0)]
+            F1_max=np.max(F1)
+            q1_max=q1[np.argmax(F1)]
+            #
+            m_key=-np.log(F1_max/F0_max)/np.log(q1_max/q0_max)
+            #
+            A=F0_max*q0_max**m_key
+            As.append(A)
+            ms.append(m_key)
+        m_min=np.min(ms)
+        A=As[np.argmin(ms)]
+    else:
+        m_min=0
+        
+    if m_min<4:# or (m is not None):
+        if m is None:
+            m_min= 4
+            q0=np.arange(qs[1],qs[2],dq)
+            q2=np.arange(qs[2],qs[3],dq)
+        else:
+            m_min= m
+            q0=np.arange(qs[0],qs[1],dq)
+            q2=np.arange(qs[1],qs[2],dq)
+            
+        As=[]
+        for key in results_dict:
+            #
+            result = results_dict[key]
+            nuc_result = nucleus('temp_nuc_'+key,Z=result['Z'],A=result['A'],ai=result['ai'],R=result['R'])
+            #
+            F0=np.abs(nuc_result.form_factor(q0))
+            F0_max=np.max(F0)
+            q0_max=q0[np.argmax(F0)]
+            #
+            A=F0_max*q0_max**m_min
+            As.append(A)
+        A=np.max(As)
+    
+    print('Asymptotic Parameter: m='+str(m_min))
+    
+    F2_lim = A/q2**m_min
+    
+    def limit_asymptotic(q):
+        return A/q**m_min
+    
+    results_dict_survive, results_dict_veto = {}, {}
+    
+    for key in results_dict:
+        
+        result = results_dict[key]
+        nuc_result = nucleus('temp_nuc_'+key,Z=result['Z'],A=result['A'],ai=result['ai'],R=result['R'])
+            
+        F2=np.abs(nuc_result.form_factor(q2))
+        
+        if np.all(F2_lim>F2) and result['p_val']>=p_val_lim:
+            results_dict_survive[key]=result
+        else:
+            results_dict_veto[key]=result
+        
+    return results_dict_survive, results_dict_veto, limit_asymptotic
