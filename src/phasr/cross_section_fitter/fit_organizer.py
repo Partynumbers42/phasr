@@ -41,7 +41,7 @@ def parallel_fitting_manual(datasets_keys:list,Z:int,A:int,RN_tuples=[],N_proces
     
     return { 'R'+str(pairings[i][3]) + '_N'+str(pairings[i][4]) : results[i] for i in range(len(results))}
 
-def parallel_fitting_automatic(datasets_keys:list,Z:int,A:int,Rs=np.arange(5.00,12.00,0.25),N_base_offset=0,N_base_span=2,N_processes=cpu_count()-2,**args):
+def parallel_fitting_automatic(datasets_keys:list,Z:int,A:int,Rs=np.arange(5.00,12.00,0.25),N_base_offset=0,N_base_span=2,redo_N=False,N_processes=cpu_count()-2,**args):
     
     results={}
     
@@ -66,20 +66,62 @@ def parallel_fitting_automatic(datasets_keys:list,Z:int,A:int,Rs=np.arange(5.00,
                     pairings.append((datasets_keys,Z,A,R,N_offset,args))
         
         N_tasks = len(pairings)
+        N_processes = np.min([N_processes,N_tasks])
         print('Queuing',N_tasks,'tasks, which will be performed over',N_processes,'processes.')
         
-        #print(pairings)
-        
-        with Pool(processes=np.min([N_processes,N_tasks])) as pool:  # maxtasksperchild=1
+        with Pool(processes=N_processes) as pool:  # maxtasksperchild=1
             results = pool.starmap(fit_runner,pairings)
-    
         
-    return { 'R'+str(pairings[i][3]) + '_N'+str(pairings[i][4]) : results[i] for i in range(len(results))}
+        print('Finished all tasks.')
+
+        results_dict = { 'R'+str(pairings[i][3]) + '_N'+str(pairings[i][4]) : results[i] for i in range(len(results))}
+
+        if redo_N:
+
+            print('Check if any fits need to be redone.')
+
+            #redo fits with bad convergence
+            redo_pairings = []
+            eps_N=1e-3
+
+            for j in range(len(pairings)):
+                
+                pairing = pairings[j]
+                key_RN = 'R'+str(pairing[3]) + '_N'+str(pairing[4]) 
+                key_RNm1 = 'R'+str(pairing[3]) + '_N'+str(pairing[4]-1) 
+                
+                if key_RNm1 in results_dict:
+                    
+                    chisq_RN = results_dict[key_RN]['chisq']
+                    chisq_RNm1 = results_dict[key_RNm1]['chisq']
+                    if eps_N<(chisq_RN-chisq_RNm1)/chisq_RNm1:
+                        print('For '+ key_RN +' chi^2 with one less parameter is more than 1 permil better:',chisq_RN,'vs',chisq_RNm1)
+                        #print('Use ai:',results_dict[key_RNm1]['ai'])
+                        pairing[5]['ai_ini'] = results_dict[key_RNm1]['ai']
+                        redo_pairings.append(copy.deepcopy(pairing))
+
+            N_tasks = len(redo_pairings)
+            N_processes = np.min([N_processes,N_tasks])
+            print('Queuing',N_tasks,'tasks that need to be redone, which will be performed over',N_processes,'processes.')
+            
+            with Pool(processes=N_processes) as pool:  # maxtasksperchild=1
+                redo_results = pool.starmap(fit_runner,redo_pairings)
+            
+            redo_results_dict = { 'R'+str(redo_pairings[i][3]) + '_N'+str(redo_pairings[i][4]) : redo_results[i] for i in range(len(redo_results))}
+
+            for pairing in redo_pairings:
+                key_RN = 'R'+str(pairing[3]) + '_N'+str(pairing[4]) 
+                chisq_RN_old = results_dict[key_RN]['chisq']
+                chisq_RN_new = redo_results_dict[key_RN]['chisq']
+                if chisq_RN_new < chisq_RN_old:
+                    results_dict[key_RN] = redo_results_dict[key_RN]
+        
+    return results_dict
 
 def fit_runner(datasets_keys,Z,A,R,N,args):
     print("Start fit with R="+str(R)+", N="+str(N)+" (PID:"+str(os.getpid())+")")
     
-    args = copy.deepcopy(args) # prevents that 'initialize_from' is poped from the source
+    args = copy.deepcopy(args) # prevents that args are poped from the source
     
     if 'initialize_from' in args:
         initialize_from = args['initialize_from']
@@ -87,7 +129,14 @@ def fit_runner(datasets_keys,Z,A,R,N,args):
     else:
         initialize_from = 'reference'
     
-    initialization = initializer(Z,A,R,N,initialize_from=initialize_from)
+    if 'ai_ini' in args:
+        ai_ini = args['ai_ini']
+        args.pop('ai_ini')
+        print(ai_ini)
+    else:
+        ai_ini = None
+
+    initialization = initializer(Z,A,R,N,ai=ai_ini,initialize_from=initialize_from)
     result = fitter(datasets_keys,initialization,**args)
     print("Finished fit with R="+str(R)+", N="+str(N)+" (PID:"+str(os.getpid())+")")
     return result
