@@ -6,7 +6,7 @@ from scipy.special import sici
 from ..nuclei import load_reference_nucleus, nucleus
 
 from .parameters import ai_abs_bounds_default
-from .fit_pickler import pickle_load_all_results_dicts_R
+from .pickler import pickle_load_all_results_dicts_R
 
 # check for old fits needs to change, should be able to start from fit without barrett moment
 # should not rerun just because a better initial fit becomes available

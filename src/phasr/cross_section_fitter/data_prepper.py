@@ -12,7 +12,7 @@ import glob
 import re
 
 from ..dirac_solvers import crosssection_lepton_nucleus_scattering
-from .fit_pickler import load_best_fit
+from .pickler import load_best_fit
 from ..nuclei import load_reference_nucleus
 from .. import nucleus
 

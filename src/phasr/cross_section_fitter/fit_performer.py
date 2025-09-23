@@ -15,7 +15,7 @@ from .statistical_measures import minimization_measures
 from .fit_initializer import initializer
 from .parameters import parameter_set
 from .data_prepper import load_dataset, load_barrett_moment
-from .fit_pickler import pickle_load_result_dict, pickle_dump_result_dict
+from .pickler import pickle_load_result_dict, pickle_dump_result_dict
 
 from ..dirac_solvers import crosssection_lepton_nucleus_scattering
 
