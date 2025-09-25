@@ -175,7 +175,7 @@ def import_dataset(path:str,save_name:str,Z:int,A:int,correlation_stat_uncertain
         
     elif cross_section_or_fraction=="relative":
 
-        # TODO once everything is set up
+        # TODO Check that this works in principle 
         
         # Collect 
         Z_ref, A_ref = input("Relative to which nucleus was the data measured? (answer with: Z,N)")
@@ -186,7 +186,7 @@ def import_dataset(path:str,save_name:str,Z:int,A:int,correlation_stat_uncertain
             ai_ref = reference_nucleus['ai']
             R_ref = reference_nucleus['R']
             reference_nucleus = nucleus(name="reference_nucleus_Z"+str(Z_ref)+"_A"+str(A_ref),Z=Z_ref,A=A_ref,ai=ai_ref,R=R_ref)
-            covariance_ai = reference_nucleus_fit_results['cov_ai']
+            covariance_ai = reference_nucleus_fit_results['cov_ai_model']
         else:
             raise LookupError('Fit results for this nucleus not found. Promote a fit for this nucleus to best fit first.')
             #alternative load reference without uncertainties

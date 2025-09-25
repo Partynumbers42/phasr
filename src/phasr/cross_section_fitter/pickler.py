@@ -143,6 +143,3 @@ def load_best_fit(Z,A,verbose=True):
     else:
         print('File at',path,'not found')
     
-
-def add_syst_uncertainties(): #TODO 
-    pass
