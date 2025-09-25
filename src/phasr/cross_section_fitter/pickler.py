@@ -7,6 +7,8 @@ import pickle
 import glob
 import hashlib
 
+from .uncertainties import add_systematic_uncertanties
+
 def tracking_str_generator(results_dict,tracked_keys=None,visible_keys=[]):
     
     if tracked_keys is None:
@@ -109,18 +111,19 @@ def pickle_load_all_results_dicts_R(Z,A,R,settings):
     
     return results_dicts 
 
-def promote_best_fit(results_dict,overwrite=True,verbose=True):
+def promote_best_fit(best_key:str,best_results:dict,overwrite=True,verbose=True):
     
-    # ADD syst uncertainties here at some point <------ ?
+    # calc systematic uncertainties 
+    best_result = add_systematic_uncertanties(best_key,best_results)
     
-    if not results_dict is None:   
-        path = local_paths.best_fit_path + 'best_fit_result_Z' + str(results_dict['Z']) + '_A'  + str(results_dict['A']) + '.pkl'
+    if not best_result is None:   
+        path = local_paths.best_fit_path + 'best_fit_result_Z' + str(best_result['Z']) + '_A'  + str(best_result['A']) + '.pkl'
 
         os.makedirs(os.path.dirname(path), exist_ok=True)
         
         if (not os.path.exists(path)) or overwrite:
             with open( path, "wb" ) as file:
-                pickle.dump(results_dict, file)
+                pickle.dump(best_result, file)
             if verbose:
                 print('Saving results to',path)
         else:

@@ -243,6 +243,8 @@ def residual(params, x, data, yerr):
     model = linear_model(x,params)
     return (model-data)/yerr
 
+# TODO replace lmfit here with scipy minimize
+
 from lmfit import minimize, Parameters
 
 def AbInitioCorrelator(AI_datasets,x_str='rchsq',x_offset=0,y_strs=None,scale_yerr=True,corr_skin=False): #,return_all=False

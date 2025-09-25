@@ -1,113 +1,224 @@
 import numpy as np
 pi = np.pi
 
-def add_syst_uncert(best_key,best_fits):
-    
-    best_fit=best_fits[best_key]
+from .statistical_measures import minimization_measures
+from .parameters import parameter_set
+from .. import nucleus
 
-    _, _, pars_u, pars_l = da_syst_gen(best_key,best_fits,omega=10,rrange=[0,10,1e-1],verbose=False)
+import numdifftools as ndt
+from scipy.linalg import inv
+
+from scipy.optimize import minimize#, OptimizeResult
+
+
+def generate_systematic_errorband_exact(best_key:str,best_results:dict,rrange=[0,15,1e-1],select='all'):
     
-    _,dxi_syst_u,_ = params_to_array(pars_u,key0='R',name='dx',name_lim='a')
-    _,dxi_syst_l,_ = params_to_array(pars_l,key0='R',name='dx',name_lim='a')
+    best_result = best_results[best_key]
+    nuc_best_result = nucleus('temp_nuc_best',Z=best_result['Z'],A=best_result['A'],ai=best_result['ai'],R=best_result['R'])
     
-    dxi_syst = np.max([dxi_syst_u,dxi_syst_l],axis=0)
+    r = np.arange(*rrange)
+    rho_best = nuc_best_result.charge_density(r)
+
+    band_syst_max=-np.inf*np.ones(len(r))
+    band_syst_min=np.inf*np.ones(len(r))
+
+    for key in best_results:
+        
+        result = best_results[key]
+        nuc_result = nucleus('temp_nuc_'+key,Z=result['Z'],A=result['A'],ai=result['ai'],R=result['R'])
+        rho=nuc_result.charge_density(r)
+        band_syst_max=np.maximum(band_syst_max,rho)
+        band_syst_min=np.minimum(band_syst_min,rho)
+
+    drho_best_syst_upper=(band_syst_max-rho_best)
+    drho_best_syst_lower=(rho_best-band_syst_min)
+    drho_best_syst=np.max([drho_best_syst_upper,drho_best_syst_lower],axis=0)
     
-    dxi=best_fit['dx']
-    xi=best_fit['x']
-    alim=best_fit['alim']
-    R = best_fit['R']
-    Z = best_fit['Z']
-    ai = best_fit['a']
-    N = best_fit['N_x']
-    nu=np.arange(1,N+1+1)
-    qi = nu*pi/R
-    k, alpha = best_fit['k'], best_fit['alpha']
-    #
-    redchisq_fit = best_fit['redchisq']
-    dxi_model = np.sqrt(redchisq_fit*dxi**2+dxi_syst**2) #dxi_model is already rescaled with chi^2 (the statistical part)
-    dxi_model_u = np.sqrt(redchisq_fit*dxi**2+dxi_syst_u**2)
-    dxi_model_l = np.sqrt(redchisq_fit*dxi**2+dxi_syst_l**2)
-    #
-    cov_xi=best_fit['cov_x']
-    corr_xi=np.einsum('i,ij,j->ij',1./dxi,cov_xi,1./dxi)
-    #
-    cov_xi_syst=np.einsum('i,ij,j->ij',dxi_syst,corr_xi,dxi_syst)
-    cov_xi_syst_u=np.einsum('i,ij,j->ij',dxi_syst_u,corr_xi,dxi_syst_u)
-    cov_xi_syst_l=np.einsum('i,ij,j->ij',dxi_syst_l,corr_xi,dxi_syst_l)
-    cov_xi_model=np.einsum('i,ij,j->ij',dxi_model,corr_xi,dxi_model)
-    cov_xi_model_u=np.einsum('i,ij,j->ij',dxi_model_u,corr_xi,dxi_model_u)
-    cov_xi_model_l=np.einsum('i,ij,j->ij',dxi_model_l,corr_xi,dxi_model_l)
-    #
-    _,cov_ai_syst=ai_xi(xi,alim,Z,R,Cov=cov_xi_syst)
-    _,cov_ai_syst_u=ai_xi(xi,alim,Z,R,Cov=cov_xi_syst_u)
-    _,cov_ai_syst_l=ai_xi(xi,alim,Z,R,Cov=cov_xi_syst_l)
-    _,cov_ai_model=ai_xi(xi,alim,Z,R,Cov=cov_xi_model)
-    _,cov_ai_model_u=ai_xi(xi,alim,Z,R,Cov=cov_xi_model_u)
-    _,cov_ai_model_l=ai_xi(xi,alim,Z,R,Cov=cov_xi_model_l)
-    #
-    dai_syst=np.sqrt(np.diagonal(cov_ai_syst))
-    dai_syst_u=np.sqrt(np.diagonal(cov_ai_syst_u))
-    dai_syst_l=np.sqrt(np.diagonal(cov_ai_syst_l))
-    dai_model=np.sqrt(np.diagonal(cov_ai_model))
-    dai_model_u=np.sqrt(np.diagonal(cov_ai_model_u))
-    dai_model_l=np.sqrt(np.diagonal(cov_ai_model_l))
-    #
-    syst_param_uncert_dict={'dx_syst':dxi_syst,'dx_syst_upper':dxi_syst_u,'dx_syst_lower':dxi_syst_l,'dx_model':dxi_model,'dx_model_upper':dxi_model_u,'dx_model_lower':dxi_model_l,'cov_x_syst':cov_xi_syst,'cov_x_syst_upper':cov_xi_syst_u,'cov_x_syst_lower':cov_xi_syst_l,'cov_x_model':cov_xi_model,'cov_x_model_upper':cov_xi_model_u,'cov_x_model_lower':cov_xi_model_l,'da_syst':dai_syst,'da_syst_upper':dai_syst_u,'da_syst_lower':dai_syst_l,'da_model':dai_model,'da_model_upper':dai_model_u,'da_model_lower':dai_model_l,'cov_a_syst':cov_ai_syst,'cov_a_syst_upper':cov_ai_syst_u,'cov_a_syst_lower':cov_ai_syst_l,'cov_a_model':cov_ai_model,'cov_a_model_upper':cov_ai_model_u,'cov_a_model_lower':cov_ai_model_l}
-    #
-    dr_syst=atom.charge_radius_FB_uncertainty(ai,Z,qi,N+1,R,cov_ai_syst)
-    dr_syst_u=atom.charge_radius_FB_uncertainty(ai,Z,qi,N+1,R,cov_ai_syst_u)
-    dr_syst_l=atom.charge_radius_FB_uncertainty(ai,Z,qi,N+1,R,cov_ai_syst_l)
-    dr_model=atom.charge_radius_FB_uncertainty(ai,Z,qi,N+1,R,cov_ai_model)
-    #dr_model_u=atom.charge_radius_FB_uncertainty(ai,Z,qi,N+1,R,cov_ai_model_u)
-    #dr_model_l=atom.charge_radius_FB_uncertainty(ai,Z,qi,N+1,R,cov_ai_model_l)
-    #
-    db_syst=atom.Barrett_moment_FB_uncertainty(ai,Z,qi,R,k,alpha,cov_ai_syst)
-    db_syst_u=atom.Barrett_moment_FB_uncertainty(ai,Z,qi,R,k,alpha,cov_ai_syst_u)
-    db_syst_l=atom.Barrett_moment_FB_uncertainty(ai,Z,qi,R,k,alpha,cov_ai_syst_l)
-    db_model=atom.Barrett_moment_FB_uncertainty(ai,Z,qi,R,k,alpha,cov_ai_model)
-    #db_model_u=atom.Barrett_moment_FB_uncertainty(ai,Z,qi,R,k,alpha,cov_ai_model_u)
-    #db_model_l=atom.Barrett_moment_FB_uncertainty(ai,Z,qi,R,k,alpha,cov_ai_model_l)
-    #
-    syst_value_uncert_dict={'dr_ch_syst':dr_syst,'dr_ch_syst_upper':dr_syst_u,'dr_ch_syst_lower':dr_syst_l,'dr_ch_model':dr_model,'dbarrett_syst':db_syst,'dbarrett_syst_upper':db_syst_u,'dbarrett_syst_lower':db_syst_l,'dbarrett_model':db_model}
-    #
-    best_fit={**best_fit,**syst_value_uncert_dict}
-    #
-    # naive systematic from distance
-    #
-    r=best_fit['r_ch']
-    b=best_fit['barrett']
-    #
-    rmax=r
-    rmin=r
-    #
-    bmin=b
-    bmax=b
-    #
-    for key in best_fits:
-        ri = best_fits[key]['r_ch']
-        if ri>rmax:
-            rmax=ri
-        elif ri<rmin:
-            rmin=ri
-        #
-        bi = best_fits[key]['barrett']
-        if bi>bmax:
-            bmax=bi
-        elif bi<bmin:
-            bmin=bi
-    #
-    dr_dist_u = rmax-r
-    dr_dist_l = r-rmin
-    dr_dist = np.max([dr_dist_u,dr_dist_l],axis=0)
-    #
-    db_dist_u = bmax-b
-    db_dist_l = b-bmin
-    db_dist = np.max([db_dist_u,db_dist_l],axis=0)
-    #
-    dist_value_uncert_dict={'dr_ch_dist':dr_dist,'dr_ch_dist_upper':dr_dist_u,'dr_ch_dist_lower':dr_dist_l,'dbarrett_dist':db_dist,'dbarrett_dist_upper':db_dist_u,'dbarrett_dist_lower':db_dist_l}
-    #
-    best_fit={**best_fit,**dist_value_uncert_dict}
-    #
-    best_fit={**best_fit,**syst_param_uncert_dict}
-    #
-    return best_fit
+    if select == 'all':
+        return drho_best_syst_upper, drho_best_syst_lower, drho_best_syst
+    elif select == 'upper':
+        return drho_best_syst_upper
+    elif select == 'lower':
+        return drho_best_syst_lower
+    elif select == 'max':
+        return drho_best_syst
+    else:
+        raise ValueError('Unknown keyword')
+
+def uncertainty_band(r,cov_ai,nucleus):
+    jacobian = nucleus.charge_density_jacobian(r)
+    drho =  np.sqrt(np.einsum('ij,ik,kj->j',jacobian,cov_ai,jacobian))
+    return np.where(drho==drho, drho, 0)
+
+def fit_systematic_errorband(best_key:str,best_results:dict,Omega=10,rrange=[0,15,1e-1],numdifftools_step=1.e-4):
+
+    r=np.arange(*rrange)
+    
+    drho_syst_exact={}
+    drho_syst_exact['upper'], drho_syst_exact['lower'], drho_syst_exact[''] = generate_systematic_errorband_exact(best_key,best_results,rrange)
+
+    syst_measures = {}
+    exact_uncertainty_band = {}
+    for syst_key in ['upper','lower','']:
+        exact_uncertainty_band[syst_key] = {}
+        exact_uncertainty_band[syst_key]['x_data'] = r
+        exact_uncertainty_band[syst_key]['y_data'] = drho_syst_exact[syst_key]
+        exact_uncertainty_band[syst_key]['cov_stat_data'] = 0
+        exact_uncertainty_band[syst_key]['cov_syst_data'] = 0
+        syst_measures[syst_key]=minimization_measures(uncertainty_band,**exact_uncertainty_band[syst_key])
+    
+    best_result = best_results[best_key]
+    nuc_best_result = nucleus('temp_nuc',Z=best_result['Z'],A=best_result['A'],ai=best_result['ai'],R=best_result['R'])
+
+    cov_xi_best = best_result['cov_xi_stat']
+    dxi_best = best_result['dxi_stat']
+    corr_xi = np.einsum('i,ij,j->ij',1/dxi_best,cov_xi_best,1/dxi_best)
+
+    parameters = parameter_set(best_result['R'],best_result['Z'],xi=best_result['xi'],ai_abs_bound=best_result['ai_abs_bound'])        
+
+    dxi_initial = dxi_best
+    dxi_bounds = len(dxi_initial)*[(0,None)]
+    
+    out_dict = {}
+
+    for syst_key in ['upper','lower','']:
+        def loss_function(dxi):
+            cov_xi =  np.einsum('i,ij,j->ij',dxi,corr_xi,dxi)
+            parameters.update_cov_xi_then_cov_ai(cov_xi)
+            residual = syst_measures[syst_key].residual(parameters.get_cov_ai(),nuc_best_result,weighted=False)
+            return np.sum(residual**2 * (1 + np.where(residual < 0,Omega**2,0) ) )
+        
+        result = minimize(loss_function,dxi_initial,bounds=dxi_bounds)
+
+        Hessian_function = ndt.Hessian(loss_function,step=numdifftools_step)
+        hessian = Hessian_function(result.x)
+        hessian_inv = inv(hessian)
+        cov_dxi = 2*hessian_inv
+        ddxi = np.sqrt(cov_dxi.diagonal()) 
+        dxi_fit = round_positive_by_error(result.x,ddxi,1)
+        cov_xi_fit =  np.einsum('i,ij,j->ij',dxi_fit,corr_xi,dxi_fit)
+        
+        parameters.update_cov_xi_then_cov_ai(cov_xi_fit)    
+        cov_ai_fit = parameters.get_cov_ai()
+        dai_fit = np.sqrt(cov_ai_fit.diagonal()) 
+        
+        out_dict['dxi_syst'+('_' if len(syst_key)>0 else '')+syst_key] = dxi_fit
+        out_dict['dai_syst'+('_' if len(syst_key)>0 else '')+syst_key] = dai_fit
+        out_dict['cov_xi_syst'+('_' if len(syst_key)>0 else '')+syst_key] = cov_xi_fit
+        out_dict['cov_ai_syst'+('_' if len(syst_key)>0 else '')+syst_key] = cov_ai_fit
+
+    return out_dict
+
+def round_positive_by_error(val,err,offset=1):
+    decimals=-np.log10(err)+offset
+    return np.true_divide(np.rint(val * 10**decimals.astype(int)), 10**decimals.astype(int))
+
+
+def add_systematic_uncertanties(best_key:str,best_results:dict,rbin=1e-1,**args):
+
+    best_result = best_results[best_key]
+    
+    cov_xi_stat = best_result['cov_xi_stat']
+    dxi_stat = best_result['dxi_stat']
+    corr_xi = np.einsum('i,ij,j->ij',1/dxi_stat,cov_xi_stat,1/dxi_stat)
+    redchisq_fit = best_result['redchisq']
+
+    parameters = parameter_set(best_result['R'],best_result['Z'],xi=best_result['xi'],ai_abs_bound=best_result['ai_abs_bound'])        
+    
+    rrange = [0,best_result['R'],rbin] 
+    syst_dict = fit_systematic_errorband(best_key,best_results,rrange=rrange,**args)
+    best_result = {**best_result, **syst_dict}
+
+    # combine uncertainties to model uncertainties
+    for syst_key in ['','_upper','_lower']:
+        dxi_syst = best_result['dxi_syst'+syst_key]
+        dxi_model = np.sqrt(redchisq_fit*dxi_stat**2+dxi_syst**2)
+        cov_xi_model=np.einsum('i,ij,j->ij',dxi_model,corr_xi,dxi_model)
+        
+        parameters.update_cov_xi_then_cov_ai(cov_xi_model)    
+        cov_ai_model = parameters.get_cov_ai()
+        dai_model = np.sqrt(cov_ai_model.diagonal()) 
+        
+        best_result['dxi_model'+syst_key] = dxi_model
+        best_result['dai_model'+syst_key] = dai_model
+        best_result['cov_xi_model'+syst_key] = cov_xi_model
+        best_result['cov_ai_model'+syst_key] = cov_ai_model
+    
+    nuc_best_result = nucleus('temp_nuc_best',Z=best_result['Z'],A=best_result['A'],ai=best_result['ai'],R=best_result['R'])
+    
+    # propagate uncertainties to charge radius
+    r_ch_jacobian = nuc_best_result.charge_radius_jacobian
+
+    for syst_key in ['','_upper','_lower']:
+        
+        cov_ai_syst = best_result['cov_ai_syst'+syst_key]
+        dr_ch_syst =  np.sqrt(np.einsum('i,ik,k->',r_ch_jacobian,cov_ai_syst,r_ch_jacobian))
+        best_result['dr_ch_syst'+syst_key] = dr_ch_syst
+        
+        cov_ai_model = best_result['cov_ai_model'+syst_key]
+        dr_ch_model =  np.sqrt(np.einsum('i,ik,k->',r_ch_jacobian,cov_ai_model,r_ch_jacobian))
+        best_result['dr_ch_model'+syst_key] = dr_ch_model
+    
+    # propagate uncertainties to barrett moment
+    barrett_tuples = [(k_key[2:],best_result[k_key],best_result[alpha_key]) for k_key in best_result.keys() if k_key.startswith('k_') for alpha_key in best_result.keys() if alpha_key.startswith('alpha_') and alpha_key.endswith(k_key[2:])]
+
+    for (barrett_moment_key,k_barrett,alpha_barrett) in barrett_tuples:
+        
+        barrett_jacobian = nuc_best_result.barrett_moment_jacobian(k_barrett,alpha_barrett)
+        
+        for syst_key in ['','_upper','_lower']:
+        
+            cov_ai_syst = best_result['cov_ai_syst'+syst_key]
+            dbarrett_syst =  np.sqrt(np.einsum('i,ik,k->',barrett_jacobian,cov_ai_syst,barrett_jacobian))
+            best_result['dbarrett_'+barrett_moment_key+'_syst'+syst_key] = dbarrett_syst
+            
+            cov_ai_model = best_result['cov_ai_model'+syst_key]
+            dbarrett_model =  np.sqrt(np.einsum('i,ik,k->',barrett_jacobian,cov_ai_model,barrett_jacobian))
+            best_result['dbarrett_'+barrett_moment_key+'_model'+syst_key] = dbarrett_model
+            
+    # add systematics from the extremes of all fits and their distance to the best fit 
+    
+    # for charge radius
+    r_ch_best = best_result['r_ch']
+    r_ch_min = r_ch_best
+    r_ch_max = r_ch_best
+
+    for key in best_results:
+        r_ch_i = best_results[key]['r_ch']
+        if r_ch_i>r_ch_max:
+            r_ch_max=r_ch_i
+        elif r_ch_i<r_ch_min:
+            r_ch_min=r_ch_i
+    
+    dr_ch_dist_upper = r_ch_max-r_ch_best
+    dr_ch_dist_lower = r_ch_best-r_ch_min
+    dr_ch_dist = np.max([dr_ch_dist_upper,dr_ch_dist_lower],axis=0)
+
+    best_result['dr_ch_dist']=dr_ch_dist
+    best_result['dr_ch_dist_upper']=dr_ch_dist_upper
+    best_result['dr_ch_dist_lower']=dr_ch_dist_lower
+
+    # for barrett moments
+    barrett_keys = [k_key[2:] for k_key in best_result.keys() if k_key.startswith('k_') for alpha_key in best_result.keys() if alpha_key.startswith('alpha_') and alpha_key.endswith(k_key[2:])]
+    for barrett_moment_key in barrett_keys:
+        barrett_moment_best = best_result['barrett_'+barrett_moment_key]
+        barrett_moment_min = barrett_moment_best
+        barrett_moment_max = barrett_moment_best
+
+        for key in best_results:
+            barrett_moment_i = best_results[key]['barrett_'+barrett_moment_key]
+            if barrett_moment_i>barrett_moment_max:
+                barrett_moment_max=barrett_moment_i
+            elif barrett_moment_i<barrett_moment_min:
+                barrett_moment_min=barrett_moment_i
+
+        dbarrett_moment_dist_upper = barrett_moment_max-barrett_moment_best
+        dbarrett_moment_dist_lower = barrett_moment_best-barrett_moment_min
+        dbarrett_moment_dist = np.max([dbarrett_moment_dist_upper,dbarrett_moment_dist_lower],axis=0)
+
+        best_result['dbarrett_'+barrett_moment_key+'_dist']=dbarrett_moment_dist
+        best_result['dbarrett_'+barrett_moment_key+'_dist_upper']=dbarrett_moment_dist_upper
+        best_result['dbarrett_'+barrett_moment_key+'_dist_lower']=dbarrett_moment_dist_lower
+
+    return best_result
+

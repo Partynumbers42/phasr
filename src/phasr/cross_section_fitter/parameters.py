@@ -43,7 +43,17 @@ class parameter_set():
         self.xi=xi
         self.set_ai_tilde_from_xi()
         self.set_ai_from_ai_tilde()
-        
+    
+    #def update_cov_ai_then_cov_xi(self,cov_ai):
+    #    self.cov_ai=cov_ai
+    #    self.set_ai_tilde_from_ai()
+    #    self.set_xi_from_ai_tilde()
+
+    def update_cov_xi_then_cov_ai(self,cov_xi):
+        self.cov_xi = cov_xi
+        self.set_ai_tilde_from_xi()
+        self.set_ai_from_ai_tilde()
+
     def set_xi_from_ai_tilde(self):
         xi_dummy = np.zeros(self.N_x)
         for j in range(1,self.N_x+1):
@@ -83,7 +93,6 @@ class parameter_set():
             dai_tilde_dai = (-1)**(self.ni+1)
             self.cov_ai_tilde = np.einsum('i,ij,j->ij',dai_tilde_dai,self.cov_ai,dai_tilde_dai)
     
-    
     def set_ai_from_ai_tilde(self):
         self.ai = self.ai_tilde*(-1)**(self.ni+1)
         
@@ -97,11 +106,12 @@ class parameter_set():
     def get_xi(self):
         return self.xi
     
-    def set_cov_xi(self,cov_xi):
-        self.cov_xi = cov_xi
+    def get_cov_xi(self):
+        return self.cov_xi
     
-    def set_cov_ai(self,cov_ai):
-        self.cov_ai = cov_ai
+    def get_cov_ai(self):
+        return self.cov_ai
+    
 
 def ai_tilde_implied_bounds(j,ai_tilde,ai_abs_bound,qi,N_a,R,total_charge):
     
