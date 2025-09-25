@@ -10,7 +10,6 @@ from scipy.linalg import inv
 
 from scipy.optimize import minimize#, OptimizeResult
 
-
 def generate_systematic_errorband_exact(best_key:str,best_results:dict,rrange=[0,15,1e-1],select='all'):
     
     best_result = best_results[best_key]
@@ -74,7 +73,7 @@ def fit_systematic_errorband(best_key:str,best_results:dict,Omega=10,rrange=[0,1
     dxi_best = best_result['dxi_stat']
     corr_xi = np.einsum('i,ij,j->ij',1/dxi_best,cov_xi_best,1/dxi_best)
 
-    parameters = parameter_set(best_result['R'],best_result['Z'],xi=best_result['xi'],ai_abs_bound=best_result['ai_abs_bound'])        
+    parameters = parameter_set(best_result['R'],best_result['Z'],xi=best_result['xi'],ai_abs_bound=best_result['ai_abs_bounds'])        
 
     dxi_initial = dxi_best
     dxi_bounds = len(dxi_initial)*[(0,None)]
@@ -90,12 +89,15 @@ def fit_systematic_errorband(best_key:str,best_results:dict,Omega=10,rrange=[0,1
         
         result = minimize(loss_function,dxi_initial,bounds=dxi_bounds)
 
-        Hessian_function = ndt.Hessian(loss_function,step=numdifftools_step)
-        hessian = Hessian_function(result.x)
-        hessian_inv = inv(hessian)
-        cov_dxi = 2*hessian_inv
-        ddxi = np.sqrt(cov_dxi.diagonal()) 
-        dxi_fit = round_positive_by_error(result.x,ddxi,1)
+        # currently not done b/c uncertanty estimation does not work properly
+        #Hessian_function = ndt.Hessian(loss_function,step=numdifftools_step)
+        #hessian = Hessian_function(result.x)
+        #hessian_inv = inv(hessian)
+        #cov_dxi = 2*hessian_inv
+        #ddxi = np.sqrt(cov_dxi.diagonal()) 
+        #dxi_fit = round_positive_by_error(result.x,ddxi,1)
+        
+        dxi_fit = result.x
         cov_xi_fit =  np.einsum('i,ij,j->ij',dxi_fit,corr_xi,dxi_fit)
         
         parameters.update_cov_xi_then_cov_ai(cov_xi_fit)    
@@ -109,10 +111,10 @@ def fit_systematic_errorband(best_key:str,best_results:dict,Omega=10,rrange=[0,1
 
     return out_dict
 
+# currently unused
 def round_positive_by_error(val,err,offset=1):
     decimals=-np.log10(err)+offset
-    return np.true_divide(np.rint(val * 10**decimals.astype(int)), 10**decimals.astype(int))
-
+    return np.true_divide(np.rint(val * 10.**decimals.astype(int)), 10.**decimals.astype(int))
 
 def add_systematic_uncertanties(best_key:str,best_results:dict,rbin=1e-1,**args):
 
@@ -123,7 +125,7 @@ def add_systematic_uncertanties(best_key:str,best_results:dict,rbin=1e-1,**args)
     corr_xi = np.einsum('i,ij,j->ij',1/dxi_stat,cov_xi_stat,1/dxi_stat)
     redchisq_fit = best_result['redchisq']
 
-    parameters = parameter_set(best_result['R'],best_result['Z'],xi=best_result['xi'],ai_abs_bound=best_result['ai_abs_bound'])        
+    parameters = parameter_set(best_result['R'],best_result['Z'],xi=best_result['xi'],ai_abs_bound=best_result['ai_abs_bounds'])        
     
     rrange = [0,best_result['R'],rbin] 
     syst_dict = fit_systematic_errorband(best_key,best_results,rrange=rrange,**args)
