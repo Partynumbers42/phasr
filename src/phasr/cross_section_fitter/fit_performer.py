@@ -91,7 +91,6 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_keys=[],
         
         print('Finished, Constructing results dictionary (R='+str(current_nucleus.R)+',N='+str(current_nucleus.N_a)+')')
         
-        print('1')
         out_parameters = parameter_set(initialization.R,initialization.Z,xi=result.x,ai_abs_bound=initialization.ai_abs_bound)
         out_parameters.update_cov_xi_then_cov_ai(covariance_xi)
         out_parameters.set_ai_tilde_from_xi()
@@ -99,7 +98,6 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_keys=[],
         
         parameters_results={'xi':out_parameters.get_xi(),'ai':out_parameters.get_ai(),'dxi_stat':np.sqrt(out_parameters.cov_xi.diagonal()),'dai_stat':np.sqrt(out_parameters.cov_ai.diagonal()),'cov_xi_stat':out_parameters.cov_xi,'cov_ai_stat':out_parameters.cov_ai}
         
-        print('2')
         # calc statistical measures
         chisq, resid, sample_size, dof, redchisq, p_val = {}, {}, {}, {}, {}, {}
         chisq['total'], sample_size['total'] = 0, 0
@@ -120,7 +118,6 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_keys=[],
         
         statistics_results={'chisq':chisq['total'],'redchisq':redchisq['total'],'p_val':p_val['total'],'dof':dof['total'],'sample_size':sample_size['total'],'nfev':loss_eval,'statistics_dict':statistics_dict}
         
-        print('3')
         values_results={}
         for dataset_key in measures:
             values_results['x_'+dataset_key]=measures[dataset_key].x_data
