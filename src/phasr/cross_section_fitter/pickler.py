@@ -37,6 +37,8 @@ def pickle_dump_result_dict(results_dict,tracked_keys=None,visible_keys=[],overw
     
     tracking_str = tracking_str_generator(results_dict,tracked_keys,visible_keys)
     path = local_paths.fit_path + 'fit_result' + tracking_str + '.pkl'
+    
+    print('Trying to dump to',path)
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
     

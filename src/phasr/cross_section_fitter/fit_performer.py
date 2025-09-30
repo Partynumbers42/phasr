@@ -139,6 +139,8 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_keys=[],
             
         results_dict={**settings_dict,**initializer_dict,**statistics_results,**parameters_results,**values_results,**radius_dict,**barrett_dict}
         
+        print('Dumping results (R='+str(current_nucleus.R)+',N='+str(current_nucleus.N_a)+')')
+        
         pickle_dump_result_dict(results_dict,tracked_keys,visible_keys,overwrite=renew)
     
     else:
