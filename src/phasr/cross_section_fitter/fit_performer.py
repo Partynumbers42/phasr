@@ -150,7 +150,7 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_keys=[],
         
         results_dict = loaded_results_dict
     
-    return results_dict # remove this return? even neccessary? 
+    return results_dict 
 
 def construct_measures(Z,A,datasets_keys:list,barrett_moment_keys=[],monotonous_decrease_precision=np.inf,cross_section_args={}):
     
@@ -205,6 +205,8 @@ def construct_measures(Z,A,datasets_keys:list,barrett_moment_keys=[],monotonous_
     return measures
 
 
+
+
 def recalc_covariance(fit_result:dict,numdifftools_step=1.e-4,cross_section_args={}):
 
     datasets_keys, barrett_moment_keys, monotonous_decrease_precision = fit_result['datasets'] , fit_result['datasets_barrett_moment'], fit_result['monotonous_decrease_precision']
@@ -234,3 +236,36 @@ def recalc_covariance(fit_result:dict,numdifftools_step=1.e-4,cross_section_args
     covariance_xi = 2*hessian_inv
 
     return covariance_xi
+
+def overwrite_statistical_uncertainties(fit_result, covariance_xi, barrett_moment_keys=[]):
+
+    Z, A, R, ai_abs_bounds = fit_result['Z'], fit_result['A'], fit_result['R'], fit_result['ai_abs_bounds']
+    ai_fit = fit_result['ai']
+    xi_fit = fit_result['xi']
+    
+    current_nucleus = nucleus('FB_stat_calc',Z,A,ai=ai_fit,R=R)
+    
+    out_parameters = parameter_set(R,Z,xi=xi_fit,ai_abs_bound=ai_abs_bounds)
+    out_parameters.update_cov_xi_then_cov_ai(covariance_xi)
+    out_parameters.set_ai_tilde_from_xi()
+    out_parameters.set_ai_from_ai_tilde()
+    
+    parameters_results={'xi':out_parameters.get_xi(),'ai':out_parameters.get_ai(),'dxi_stat':np.sqrt(out_parameters.cov_xi.diagonal()),'dai_stat':np.sqrt(out_parameters.cov_ai.diagonal()),'cov_xi_stat':out_parameters.cov_xi,'cov_ai_stat':out_parameters.cov_ai}
+    
+    # calc radius and barrett moment uncertainties
+    r_ch = current_nucleus.charge_radius
+    dr_ch = np.sqrt(np.einsum('i,ij,j->',current_nucleus.charge_radius_jacobian,out_parameters.cov_ai,current_nucleus.charge_radius_jacobian))
+    
+    radius_dict={'r_ch':r_ch,'dr_ch_stat':dr_ch}
+    
+    barrett_dict={}
+    for barrett_moment_key in barrett_moment_keys:
+        k, alpha = measures['barrett_moment_'+barrett_moment_key].x_data
+        barrett = current_nucleus.barrett_moment(k,alpha)
+        barrett_jacob = current_nucleus.barrett_moment_jacobian(k,alpha)           
+        dbarrett = np.sqrt(np.einsum('i,ij,j->',barrett_jacob,out_parameters.cov_ai,barrett_jacob))
+        barrett_dict={**barrett_dict,'k_'+barrett_moment_key:k,'alpha_'+barrett_moment_key:alpha,'barrett_'+barrett_moment_key:barrett,'dbarrett_'+barrett_moment_key:dbarrett}
+    
+    fit_result={**fit_result,**parameters_results,**radius_dict,**barrett_dict}
+    
+    return fit_result    
