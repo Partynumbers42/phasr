@@ -238,7 +238,7 @@ def recalc_covariance(fit_result:dict,numdifftools_step=1.e-4,cross_section_args
     return covariance_xi
 
 def overwrite_statistical_uncertainties(fit_result, covariance_xi, barrett_moment_keys=[]):
-
+    
     Z, A, R, ai_abs_bounds = fit_result['Z'], fit_result['A'], fit_result['R'], fit_result['ai_abs_bounds']
     ai_fit = fit_result['ai']
     xi_fit = fit_result['xi']
@@ -260,7 +260,7 @@ def overwrite_statistical_uncertainties(fit_result, covariance_xi, barrett_momen
     
     barrett_dict={}
     for barrett_moment_key in barrett_moment_keys:
-        k, alpha = measures['barrett_moment_'+barrett_moment_key].x_data
+        k, alpha = fit_result['k_'+barrett_moment_key], fit_result['alpha_'+barrett_moment_key]
         barrett = current_nucleus.barrett_moment(k,alpha)
         barrett_jacob = current_nucleus.barrett_moment_jacobian(k,alpha)           
         dbarrett = np.sqrt(np.einsum('i,ij,j->',barrett_jacob,out_parameters.cov_ai,barrett_jacob))
