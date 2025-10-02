@@ -10,6 +10,7 @@ from scipy.linalg import inv
 
 from scipy.optimize import minimize#, OptimizeResult
 
+
 def generate_systematic_errorband_exact(best_key:str,best_results:dict,rrange=[0,15,1e-1],select='all'):
     
     best_result = best_results[best_key]
@@ -223,4 +224,6 @@ def add_systematic_uncertanties(best_key:str,best_results:dict,rbin=1e-1,**args)
         best_result['dbarrett_'+barrett_moment_key+'_dist_lower']=dbarrett_moment_dist_lower
 
     return best_result
+    
 
+    

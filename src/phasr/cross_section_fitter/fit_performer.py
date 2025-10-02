@@ -19,6 +19,8 @@ from .pickler import pickle_load_result_dict, pickle_dump_result_dict
 
 from ..dirac_solvers import crosssection_lepton_nucleus_scattering
 
+from .. import nucleus
+
 def fitter(datasets_keys:list,initialization:initializer,barrett_moment_keys=[],monotonous_decrease_precision=np.inf,xi_diff_convergence_limit=1e-4,numdifftools_step=1.e-4,verbose=True,renew=False,cross_section_args={},**minimizer_args):
     ''' **minimzer_args is passed to scipy minimize '''
     # usually: monotonous_decrease_precision=0.04
@@ -37,7 +39,7 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_keys=[],
     
     if (loaded_results_dict is None) or renew:
     
-        measures = construct_measures(datasets_keys,initialization,barrett_moment_keys,monotonous_decrease_precision,cross_section_args)
+        measures = construct_measures(initialization.Z,initialization.A,datasets_keys,barrett_moment_keys,monotonous_decrease_precision,cross_section_args)
         
         global loss_eval
         loss_eval = 0 
@@ -150,7 +152,7 @@ def fitter(datasets_keys:list,initialization:initializer,barrett_moment_keys=[],
     
     return results_dict # remove this return? even neccessary? 
 
-def construct_measures(datasets_keys:list,initialization:initializer,barrett_moment_keys=[],monotonous_decrease_precision=np.inf,cross_section_args={}):
+def construct_measures(Z,A,datasets_keys:list,barrett_moment_keys=[],monotonous_decrease_precision=np.inf,cross_section_args={}):
     
     datasets = {}
     barrett_moment_constraint = (len(barrett_moment_keys)>0) # not (barrett_moment_key is None) #
@@ -160,7 +162,7 @@ def construct_measures(datasets_keys:list,initialization:initializer,barrett_mom
     
     for dataset_key in datasets_keys:
         datasets[dataset_key] = {}
-        dataset, corr_stat, corr_syst = load_dataset(dataset_key,initialization.Z,initialization.A,verbose=False)    
+        dataset, corr_stat, corr_syst = load_dataset(dataset_key,Z,A,verbose=False)    
         dy_stat, dy_syst = dataset[:,3], dataset[:,4]
         datasets[dataset_key]['x_data'] = dataset[:,(0,1)]
         datasets[dataset_key]['y_data'] = dataset[:,2]
@@ -183,7 +185,7 @@ def construct_measures(datasets_keys:list,initialization:initializer,barrett_mom
         barrett_moments = {}
         for barrett_moment_key in barrett_moment_keys:
             barrett_moments['barrett_moment_'+barrett_moment_key]={}
-            barrett_dict = load_barrett_moment(barrett_moment_key,initialization.Z,initialization.A,verbose=False)
+            barrett_dict = load_barrett_moment(barrett_moment_key,Z,A,verbose=False)
             barrett_moments['barrett_moment_'+barrett_moment_key]['x_data'] = (barrett_dict["k"],barrett_dict["alpha"])
             barrett_moments['barrett_moment_'+barrett_moment_key]['y_data'] = barrett_dict["barrett"]
             barrett_moments['barrett_moment_'+barrett_moment_key]['cov_stat_data'] = barrett_dict["dbarrett"]**2
@@ -201,3 +203,34 @@ def construct_measures(datasets_keys:list,initialization:initializer,barrett_mom
         measures['monotonous_decrease']=minimization_measures(positive_slope_component_to_radius_squared,x_data=np.nan,y_data=0,cov_stat_data=monotonous_decrease_precision**2,cov_syst_data=0)    
     
     return measures
+
+
+def recalc_covariance(fit_result:dict,numdifftools_step=1.e-4,cross_section_args={}):
+
+    datasets_keys, barrett_moment_keys, monotonous_decrease_precision = fit_result['datasets'] , fit_result['datasets_barrett_moment'], fit_result['monotonous_decrease_precision']
+
+    Z, A, R, ai_abs_bounds = fit_result['Z'], fit_result['A'], fit_result['R'], fit_result['ai_abs_bounds']
+    ai_bestfit = fit_result['ai']
+    xi_bestfit = fit_result['xi']
+
+    measures = construct_measures(Z,A,datasets_keys,barrett_moment_keys,monotonous_decrease_precision,cross_section_args)
+    
+    def loss_function(xi):
+        parameters = parameter_set(R,Z,xi=xi,ai_abs_bound=ai_abs_bounds)
+        current_nucleus.update_ai(parameters.get_ai())
+        loss=0
+        for dataset_key in measures:
+            loss += measures[dataset_key].loss(current_nucleus)
+        return loss
+
+    current_nucleus = nucleus('FB_stat_calc',Z,A,ai=ai_bestfit,R=R)
+
+    for key in measures:
+        measures[key].set_cov(current_nucleus)
+
+    Hessian_function = ndt.Hessian(loss_function,step=numdifftools_step)
+    hessian = Hessian_function(xi_bestfit)
+    hessian_inv = inv(hessian)
+    covariance_xi = 2*hessian_inv
+
+    return covariance_xi
