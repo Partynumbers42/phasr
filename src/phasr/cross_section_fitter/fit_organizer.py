@@ -56,19 +56,25 @@ def parallel_fitting_manual(datasets_keys:list,Z:int,A:int,RN_tuples=[],redo_N=F
             for j in range(len(pairings)):
                 
                 pairing = pairings[j]
-                key_RN = 'R'+str(pairing[3]) + '_N'+str(pairing[4]) 
+                key_RN = 'R'+str(pairing[3]) + '_N'+str(pairing[4])
+                best_key_RN = key_RN
+                chisq_RN = results_dict[key_RN]['chisq']
+                best_chisq_RN = chisq_RN
                 for N_off in np.arange(pairing[4]-3 if redo_aggressive else 1,0,-1):
-                    key_RNm1 = 'R'+str(pairing[3]) + '_N'+str(pairing[4]-N_off)     
+                    key_RNm1 = 'R'+str(pairing[3]) + '_N'+str(pairing[4]-N_off) 
                     if key_RNm1 in results_dict:
-                        chisq_RN = results_dict[key_RN]['chisq']
                         chisq_RNm1 = results_dict[key_RNm1]['chisq']
-                        if eps_N<(chisq_RN-chisq_RNm1)/chisq_RNm1:
-                            print('For '+ key_RN +' chi^2 with '+str(N_off)+' less parameter is more than 1 permil better:',chisq_RN,'vs',chisq_RNm1)
-                            #print('Use ai:',results_dict[key_RNm1]['ai'])
-                            pairing[5]['ai_ini'] = results_dict[key_RNm1]['ai']
-                            redo_pairings.append(copy.deepcopy(pairing))
-                            break
-
+                        if eps_N<(best_chisq_RN-chisq_RNm1)/chisq_RNm1:
+                            best_key_RN = key_RNm1
+                            best_chisq_RN = chisq_RNm1
+                            best_N_off = N_off
+                
+                if best_key_RN != key_RN:
+                    print('For '+ key_RN +' chi^2 with '+str(best_N_off)+' less parameter is more than 1 permil better:',chisq_RN,'vs',best_chisq_RN)
+                    #print('Use ai:',results_dict[key_RNm1]['ai'])
+                    pairing[5]['ai_ini'] = results_dict[best_key_RN]['ai']
+                    redo_pairings.append(copy.deepcopy(pairing))
+                    
             N_tasks = len(redo_pairings)
             N_processes = np.min([N_processes,N_tasks])
             print('Queuing',N_tasks,'tasks that need to be redone, which will be performed over',N_processes,'processes.')
@@ -125,26 +131,29 @@ def parallel_fitting_automatic(datasets_keys:list,Z:int,A:int,Rs=np.arange(5.00,
         if redo_N:
 
             print('Check if any fits need to be redone.')
-
             #redo fits with bad convergence
             redo_pairings = []
             eps_N=1e-3
-
             for j in range(len(pairings)):
-                
                 pairing = pairings[j]
                 key_RN = 'R'+str(pairing[3]) + '_N'+str(pairing[4])
+                best_key_RN = key_RN
+                chisq_RN = results_dict[key_RN]['chisq']
+                best_chisq_RN = chisq_RN
                 for N_off in np.arange(pairing[4]-3 if redo_aggressive else 1,0,-1):
-                    key_RNm1 = 'R'+str(pairing[3]) + '_N'+str(pairing[4]-1) 
+                    key_RNm1 = 'R'+str(pairing[3]) + '_N'+str(pairing[4]-N_off) 
                     if key_RNm1 in results_dict:
-                        chisq_RN = results_dict[key_RN]['chisq']
                         chisq_RNm1 = results_dict[key_RNm1]['chisq']
-                        if eps_N<(chisq_RN-chisq_RNm1)/chisq_RNm1:
-                            print('For '+ key_RN +' chi^2 with '+str(N_off)+' less parameter is more than 1 permil better:',chisq_RN,'vs',chisq_RNm1)
-                            #print('Use ai:',results_dict[key_RNm1]['ai'])
-                            pairing[5]['ai_ini'] = results_dict[key_RNm1]['ai']
-                            redo_pairings.append(copy.deepcopy(pairing))
-                            break
+                        if eps_N<(best_chisq_RN-chisq_RNm1)/chisq_RNm1:
+                            best_key_RN = key_RNm1
+                            best_chisq_RN = chisq_RNm1
+                            best_N_off = N_off
+                
+                if best_key_RN != key_RN:
+                    print('For '+ key_RN +' chi^2 with '+str(best_N_off)+' less parameter is more than 1 permil better:',chisq_RN,'vs',best_chisq_RN)
+                    #print('Use ai:',results_dict[key_RNm1]['ai'])
+                    pairing[5]['ai_ini'] = results_dict[best_key_RN]['ai']
+                    redo_pairings.append(copy.deepcopy(pairing))
 
             N_tasks = len(redo_pairings)
             N_processes = np.min([N_processes,N_tasks])
