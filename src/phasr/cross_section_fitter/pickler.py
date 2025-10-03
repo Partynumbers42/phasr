@@ -7,7 +7,7 @@ import pickle
 import glob
 import hashlib
 
-from .uncertainties import add_systematic_uncertanties
+from .uncertainties import add_systematic_uncertainties
 
 def tracking_str_generator(results_dict,tracked_keys=None,visible_keys=[]):
     
@@ -114,32 +114,59 @@ def pickle_load_all_results_dicts_R(Z,A,R,settings):
 def promote_best_fit(best_key:str,best_results:dict,overwrite=True,verbose=True):
     
     # calc systematic uncertainties 
-    best_result = add_systematic_uncertanties(best_key,best_results)
+    best_result = add_systematic_uncertainties(best_key,best_results)
     
     if not best_result is None:   
         path = local_paths.best_fit_path + 'best_fit_result_Z' + str(best_result['Z']) + '_A'  + str(best_result['A']) + '.pkl'
-
+        
         os.makedirs(os.path.dirname(path), exist_ok=True)
         
         if (not os.path.exists(path)) or overwrite:
             with open( path, "wb" ) as file:
                 pickle.dump(best_result, file)
             if verbose:
-                print('Saving results to',path)
+                print('Saving best result to',path)
         else:
             print('File at',path,'already exists')
+        
+        path_syst_result_folder = local_paths.best_fit_path + 'best_fit_result_Z' + str(best_result['Z']) + '_A'  + str(best_result['A']) + '_systematics'
+        if verbose:
+            print('Saving results for systematics to',path_syst_result_folder)
+        
+        for result_key in best_results:
+            
+            result = best_results[result_key]
+            path_syst_result = path_syst_result_folder + '/fit_result_R'+str(result['R'])+'_N'+str(result['N'])+ '.pkl'
+            
+            os.makedirs(os.path.dirname(path_syst_result), exist_ok=True)
+            
+            if (not os.path.exists(path_syst_result)) or overwrite:
+                with open( path_syst_result, "wb" ) as systematic_file:
+                    pickle.dump(result, systematic_file)
         
     
 def load_best_fit(Z,A,verbose=True):
     
-    path = local_paths.best_fit_path + 'best_fit_result_Z' + str(Z) + '_A'  + str(A) + '.pkl'
+    systematic_path = local_paths.best_fit_path + 'best_fit_result_Z' + str(Z) + '_A'  + str(A) + '.pkl'
     
-    if os.path.exists(path):
-        with open( path, "rb" ) as file:
+    if os.path.exists(systematic_path):
+        with open( systematic_path, "rb" ) as file:
             results_dict = pickle.load(file) 
         if verbose:
-            print('Loading results from',path)
-        return results_dict
+            print('Loading results from',systematic_path)
     else:
-        print('File at',path,'not found')
+        print('File at',systematic_path,'not found')
+        return None, None
     
+    path_syst_result_folder = local_paths.best_fit_path + 'best_fit_result_Z' + str(Z) + '_A'  + str(A) + '_systematics'
+    
+    systematic_paths = os.listdir(path_syst_result_folder)
+    
+    systematic_results_dict = {}
+    
+    for systematic_path in systematic_paths:
+        with open( path_syst_result_folder+'/'+systematic_path, "rb" ) as systematic_file:
+            systematic_result = pickle.load(systematic_file) 
+        systematic_results_dict[systematic_path[11:-4]] = systematic_result
+    
+    return results_dict, systematic_results_dict    

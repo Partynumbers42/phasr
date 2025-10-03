@@ -117,7 +117,7 @@ def round_positive_by_error(val,err,offset=1):
     decimals=-np.log10(err)+offset
     return np.true_divide(np.rint(val * 10.**decimals.astype(int)), 10.**decimals.astype(int))
 
-def add_systematic_uncertanties(best_key:str,best_results:dict,rbin=1e-1,**args):
+def add_systematic_uncertainties(best_key:str,best_results:dict,rbin=1e-1,**args):
 
     best_result = best_results[best_key]
     
