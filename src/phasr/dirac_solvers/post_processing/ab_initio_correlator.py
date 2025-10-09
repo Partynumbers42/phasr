@@ -96,6 +96,7 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None,print_radius_
         atom_AI.set_scalars_from_rho()
         if hasattr(atom_AI,'form_factor') or hasattr(atom_AI,'charge_denstiy'):
             atom_AI.fill_gaps()
+        atom_AI.update_dependencies()
         AI_datasets[AI_model]['atom'] = atom_AI 
         
         # identify type
@@ -209,6 +210,7 @@ def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_
                 if (not 'APV' in saved_keys) or renew:
                     AI_datasets[AI_model]['APV'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,verbose=True,**left_right_asymmetry_args)
                 if (not 'APV2' in saved_keys) or renew:
+                    atom_key.
                     AI_datasets[AI_model]['APV2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,verbose=True,**left_right_asymmetry_args)
             else:
                 if (not 'APV_mean' in saved_keys) or renew:
