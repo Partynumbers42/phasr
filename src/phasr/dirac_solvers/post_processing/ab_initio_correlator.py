@@ -210,6 +210,8 @@ def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_
                 else:
                     if not 'APV_mean' in prekeys:
                         AI_datasets[AI_model]['theta_mean'], AI_datasets[AI_model]['Qsq_mean'], AI_datasets[AI_model]['APV_mean'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,acceptance=acceptance_exp,verbose=True,**left_right_asymmetry_args)
+                    if not 'APV_mean2' in prekeys:
+                        AI_datasets[AI_model]['theta_mean2'], AI_datasets[AI_model]['Qsq_mean2'], AI_datasets[AI_model]['APV_mean2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,acceptance=acceptance_exp,verbose=True,**left_right_asymmetry_args)
             #
             if renew:
                 with open( path_correlation_quantities, "w" ) as file:
