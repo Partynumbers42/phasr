@@ -162,68 +162,72 @@ def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_
             with open( path_correlation_quantities, "rb" ) as file:
                 correlation_quantities_array = np.genfromtxt( file,comments=None,skip_header=0,delimiter=',',names=['par','val'],autostrip=True,dtype=['<U10',float])
             
-            AI_datasets[AI_model]={**AI_datasets[AI_model],**{quantity_tuple[0]:quantity_tuple[1] for quantity_tuple in correlation_quantities_array}}
+            saved_values = {quantity_tuple[0]:quantity_tuple[1] for quantity_tuple in correlation_quantities_array}
+            AI_datasets[AI_model]={**AI_datasets[AI_model],**saved_values}
             if verboseLoad:
-                print("Loaded correlation quantities for "+str(AI_model)+" from ",path_correlation_quantities)
-        else:
-            if verbose:
-                print('Calculating correlation quantities for: ',AI_model)
-            #
-            atom_key = AI_datasets[AI_model]['atom']
-            if not 'rch' in prekeys:
-                AI_datasets[AI_model]['rch']=atom_key.charge_radius
-            if not 'rchsq' in prekeys:
-                AI_datasets[AI_model]['rchsq']=atom_key.charge_radius_sq
-            if not 'rp' in prekeys:
-                AI_datasets[AI_model]['rp']=atom_key.proton_radius
-            if not 'rpsq' in prekeys:
-                AI_datasets[AI_model]['rpsq']=atom_key.proton_radius_sq
-            if not 'rn' in prekeys:
-                AI_datasets[AI_model]['rn']=atom_key.neutron_radius
-            if not 'rnsq' in prekeys:
-                AI_datasets[AI_model]['rnsq']=atom_key.neutron_radius_sq
-            if not 'rw' in prekeys:
-                AI_datasets[AI_model]['rw']=atom_key.weak_radius
-            if not 'rwsq' in prekeys:
-                AI_datasets[AI_model]['rwsq']=atom_key.weak_radius_sq
-            #
-            if q_exp is not None:
-                if not 'Fch_exp' in prekeys:
-                    AI_datasets[AI_model]['Fch_exp']=atom_key.Fch(q_exp,L=0)
-                if not 'Fw_exp' in prekeys:
-                    AI_datasets[AI_model]['Fw_exp']=atom_key.Fw(q_exp,L=0)
-            #
-            for nuc in ['p','n','ch']:
-                #key='M0'+nuc
-                if not 'S_'+nuc in prekeys:
-                    AI_datasets[AI_model]['S_'+nuc] = overlap_integral_scalar(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True,**overlap_integral_args)
-                if not 'V_'+nuc in prekeys:
-                    AI_datasets[AI_model]['V_'+nuc] = overlap_integral_vector(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True,**overlap_integral_args)
-            #
-            if E_exp is not None and theta_exp is not None:
-                
-                if acceptance_exp is None:
-                    if not 'APV' in prekeys:
-                        AI_datasets[AI_model]['APV'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,verbose=True,**left_right_asymmetry_args)
-                    #if not 'APV2' in prekeys:
-                    #    AI_datasets[AI_model]['APV2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,verbose=True,**left_right_asymmetry_args)
-                else:
-                    if not 'APV_mean' in prekeys:
-                        AI_datasets[AI_model]['theta_mean'], AI_datasets[AI_model]['Qsq_mean'], AI_datasets[AI_model]['APV_mean'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,acceptance=acceptance_exp,verbose=True,**left_right_asymmetry_args)
-                    if not 'APV_mean2' in prekeys:
-                        AI_datasets[AI_model]['theta_mean2'], AI_datasets[AI_model]['Qsq_mean2'], AI_datasets[AI_model]['APV_mean2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,acceptance=acceptance_exp,verbose=True,**left_right_asymmetry_args)
-            #
-            if renew:
-                with open( path_correlation_quantities, "w" ) as file:
-                    file.write('')
-            for key in AI_datasets[AI_model]:
-                if key not in prekeys:
+                print("Loaded (existing) correlation quantities for "+str(AI_model)+" from ",path_correlation_quantities)
+            
+            saved_keys = list(saved_values.keys())
+        
+        if verbose:
+            print('Calculating (additional) correlation quantities for: ',AI_model)
+        #
+        atom_key = AI_datasets[AI_model]['atom']
+        if (not 'rch' in saved_keys) or renew:
+            AI_datasets[AI_model]['rch']=atom_key.charge_radius
+        if (not 'rchsq' in saved_keys) or renew:
+            AI_datasets[AI_model]['rchsq']=atom_key.charge_radius_sq
+        if (not 'rp' in saved_keys) or renew:
+            AI_datasets[AI_model]['rp']=atom_key.proton_radius
+        if (not 'rpsq' in saved_keys) or renew:
+            AI_datasets[AI_model]['rpsq']=atom_key.proton_radius_sq
+        if (not 'rn' in saved_keys) or renew:
+            AI_datasets[AI_model]['rn']=atom_key.neutron_radius
+        if (not 'rnsq' in saved_keys) or renew:
+            AI_datasets[AI_model]['rnsq']=atom_key.neutron_radius_sq
+        if (not 'rw' in saved_keys) or renew:
+            AI_datasets[AI_model]['rw']=atom_key.weak_radius
+        if (not 'rwsq' in saved_keys) or renew:
+            AI_datasets[AI_model]['rwsq']=atom_key.weak_radius_sq
+        #
+        if q_exp is not None:
+            if (not 'Fch_exp' in saved_keys) or renew:
+                AI_datasets[AI_model]['Fch_exp']=atom_key.Fch(q_exp,L=0)
+            if (not 'Fw_exp' in saved_keys) or renew:
+                AI_datasets[AI_model]['Fw_exp']=atom_key.Fw(q_exp,L=0)
+        #
+        for nuc in ['p','n','ch']:
+            #key='M0'+nuc
+            if (not 'S_'+nuc in saved_keys) or renew:
+                AI_datasets[AI_model]['S_'+nuc] = overlap_integral_scalar(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True,**overlap_integral_args)
+            if (not 'V_'+nuc in saved_keys) or renew:
+                AI_datasets[AI_model]['V_'+nuc] = overlap_integral_vector(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True,**overlap_integral_args)
+        #
+        if E_exp is not None and theta_exp is not None:
+            
+            if acceptance_exp is None:
+                if (not 'APV' in saved_keys) or renew:
+                    AI_datasets[AI_model]['APV'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,verbose=True,**left_right_asymmetry_args)
+                if (not 'APV2' in saved_keys) or renew:
+                    AI_datasets[AI_model]['APV2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,verbose=True,**left_right_asymmetry_args)
+            else:
+                if (not 'APV_mean' in saved_keys) or renew:
+                    AI_datasets[AI_model]['theta_mean'], AI_datasets[AI_model]['Qsq_mean'], AI_datasets[AI_model]['APV_mean'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,acceptance=acceptance_exp,verbose=True,**left_right_asymmetry_args)
+                if (not 'APV_mean2' in saved_keys) or renew:
+                    AI_datasets[AI_model]['theta_mean2'], AI_datasets[AI_model]['Qsq_mean2'], AI_datasets[AI_model]['APV_mean2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,acceptance=acceptance_exp,verbose=True,**left_right_asymmetry_args)
+        #
+        if renew:
+            with open( path_correlation_quantities, "w" ) as file:
+                file.write('')
+        for key in AI_datasets[AI_model]:
+            if key not in prekeys:
+                if (key not in saved_keys) or renew:
                     with open( path_correlation_quantities, "a" ) as file:
                         line='{},{val:.16e}'.format(key,val=AI_datasets[AI_model][key]) #key+','+str(a[key])
                         file.write(line+'\n')
-            if verboseLoad:
-                print("Correlation quantities (overlap integrals, radii, etc.) saved in ", path_correlation_quantities)
-        
+        if verboseLoad:
+            print("Correlation quantities (overlap integrals, radii, etc.) saved in ", path_correlation_quantities)
+    
     return AI_datasets
 
 def r_ch_rpso(r2p,r2so,Z,A):
