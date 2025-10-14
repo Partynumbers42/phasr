@@ -169,7 +169,9 @@ def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_
                 print("Loaded (existing) correlation quantities for "+str(AI_model)+" from ",path_correlation_quantities)
             
             saved_keys = list(saved_values.keys())
-        
+        else:
+            saved_keys = []
+
         if verbose:
             print('Calculating (additional) correlation quantities for: ',AI_model)
         #
