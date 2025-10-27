@@ -24,6 +24,7 @@ from .. import nucleus
 def fitter(datasets_keys:list,initialization:initializer,barrett_moment_keys=[],monotonous_decrease_precision=np.inf,xi_diff_convergence_limit=1e-4,numdifftools_step=1.e-4,verbose=True,renew=False,cross_section_args={},**minimizer_args):
     ''' **minimzer_args is passed to scipy minimize '''
     # usually: monotonous_decrease_precision=0.04
+    # xi_diff_convergence_limit is a deprecated feature and has no effect   
     
     settings_dict = {'datasets':datasets_keys,'datasets_barrett_moment':barrett_moment_keys,'monotonous_decrease_precision':monotonous_decrease_precision,'xi_diff_convergence_limit':xi_diff_convergence_limit,'numdifftools_step':numdifftools_step,**cross_section_args,**minimizer_args}
     
