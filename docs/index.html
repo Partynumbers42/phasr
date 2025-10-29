@@ -34,7 +34,7 @@
                 
                 <a class="section" href="#versions">Versions/Change-Log</a>
                 <a class="section" href="#about">About this Package</a>
-                <a class="section" href="#dependencies">Technology</a>
+                <a class="section" href="#dependencies">Dependencies</a>
 
                 <div class="divider left"></div>
 
@@ -49,14 +49,16 @@
 
                 <a class="section" href="#nucleus">nucleus</a>
                 <a class="section" href="#dirac_solver">dirac_solvers</a>
+                <a class="section" href="#cross_section_fitter">cross_section_fitter</a>
                 
                 <div class="divider left"></div>
 
                 <a class="title" href="#advanced">Common Use Cases</a>
 
-                <a class="section" href="#ana">Crosssection (analytic \(\rho_\text{ch}\))</a>
-                <a class="section" href="#num">Crosssection (numeric \(\rho_\text{ch}\))</a>
+                <a class="section" href="#ana">Cross section (analytic \(\rho_\text{ch}\))</a>
+                <a class="section" href="#num">Cross section (numeric \(\rho_\text{ch}\))</a>
                 <a class="section" href="#PV">Left-right Asymmetry (PVES)</a>
+                <a class="section" href="#fit">Fit to Cross section data</a>
                 
                 <div class="divider left"></div>
 
@@ -73,11 +75,13 @@
                 <h1 id="intro">Introduction</h1>
                 
                 <p> <code> phasr </code> is a python package able to calculate scattering phase shifts for arbitrary radial potentials and calculate (elastic) electron nucleus scattering cross sections based on it. 
-                    In combination with a fitting routine it can be used to fit elastic electron nucleus scattering data to extract charge density parameterizations. It is also possible to increase the precision sufficiently to quantitatively resolve parity violating electron scattering. </p> 
+                    In combination with a fitting routine it can be used to fit elastic electron nucleus scattering data to extract charge density parameterizations. It is also possible to increase the precision sufficiently to quantitatively resolve parity violating electron scattering. 
+                    Since Version 0.5.0 a module with fitting routines for the purpose of extracting charge distributions from elastic electron nucleus scattering is also part of the package. </p> 
             
                 <h2 id="versions">Versions/Change-Log:</h2>
              
                 <p>
+                    <b>Version 0.5.0 :</b> Add cross_section_fitter module.<br>
                     <b>Version 0.4.0 :</b> Add left-right asymmetry.<br>
                     <b>Version 0.3.2 :</b> Extend docs.<br>
                     <b>Version 0.3.1 :</b> Add access to reference parameterizations.<br>
@@ -99,11 +103,11 @@
                 Since these also applied to the nuclei we were interested in, we build such a framework in python, which calculates elastic electron nucleus scattering cross sections based on input charge densities using the phase shift model, from which this package evolved. 
                 With such a more modern implementation and programming language, the calculations can become faster, broader accessible, easier to understand and easier to incorporate into existing programs. 
                 The code leading up to this package has already been used successfully in the papers <a href="https://inspirehep.net/literature/2796887"> [Noël, Hoferichter - 2024] </a> and <a href="https://inspirehep.net/literature/2856799"> [Heinz, Hoferichter, Miyagi, Noël, Schwenk - 2024] </a> 
-                to calculate and extract charge distributions for nuclei of interest to \( \mu \to e \) conversion, a beyond the Standard Model process of interest in particle physics. The package has been benchmarked for nuclei reaching from ... to ... . 
+                to calculate and extract charge distributions for nuclei of interest to \( \mu \to e \) conversion, a beyond the Standard Model process of interest in particle physics as well as parity violating electron scattering. The package has been successfully employed for nuclei reaching from \(^{27}\)Al to \(^{208}\)Pb . 
                 
                 <h2 id="dependencies">Dependencies</h2>
                 
-                <p>This program is built with python 3. <br> <br>
+                <p>This program is built with/for python 3. <br> <br>
                 <u> It requires the following packages to operate properly: </u> <br>
                 numpy <br> <!--(add Version?)-->
                 scipy <br> <!--(add Version?)-->
@@ -116,11 +120,12 @@
 
                 <h2 id="installingapp">Install the package</h2>
                 
-                <p> To install and use the program please follow the following steps for setup. We assume you already have a working python environment setup on your machine (othewise see REF).<br>
+                <p> To install and use the program please follow the following steps for setup. We assume you already have a working python environment setup on your machine. <!--(add link to setup explanation?)--><br>
                 The package is listed on <a href="https://pypi.org/project/phasr/">PyPI</a>, which is why it can be easily installed via:
                 <pre><code> pip install phasr </code></pre>
+                This should also install the required packages as listed <a href="#dependencies"> above </a>, if they are not already installed. <br> 
                 If you want the latest (development) version, you can clone it from the <a href="https://github.com/Partynumbers42/phasr"> phasr GitHub repository </a>. <br> 
-                Note that you need need to also install all the required packages as listed <a href="#dependencies"> above </a>.
+                Note that in this case you might need to install the required packages as listed <a href="#dependencies"> above </a> manually.  
                 </p>
 
                 <h2 id="openingapp">Use the package</h2>
@@ -352,7 +357,7 @@
                 <br>
             </ul>
 
-            The 'fermi' nucleus_type also has a few of these attributes as not all quantities can be written in a simple closed analytic form, for this parameterization.<br>
+            The 'fermi' nucleus_type also has a few of these attributes as not all quantities can be written in a simple closed analytic form (that would be faster to evaluate as the numerical integrals), for this parameterization.<br>
             If a form_factor_dict or density_dict is supplied the different multipoles also become attributes (as 'F'+multipole or 'rho'+multipole). <br>
             The multipoles follow the naming pattern of 
             multipole = multipole_name + L + N, which gives for example : 'M0p', 'M0n', 'M2p', 'M2n', ... , 'Phipp0p', 'Phipp0n', ... , 'Delta1p', ... , 'Sigmap1n', ... , which should be the way in which the keys of the dictionaries are written (as 'F'+multipole or 'rho'+multipole). 
@@ -617,6 +622,12 @@
                         <b>return</b>: args with the quickest runtime for <code>left_right_asymmetry_lepton_nucleus_scattering</code> which are still consistent with left-right asymmetry calculations with the maximum precision up to a relative precision of the value of left_right_asymmetry_precision. 
                         <br> 
                     </ul>
+                
+                <h2 id="cross_section_fitter">The <code>cross_section_fitter</code> module</h2>
+                    
+                    <p>The <code>cross_section_fitter</code> module contains fitting routines to semi-automatically extract charge distrobutions including uncertainty bands from elestic electron nucleus scattering. 
+                    </p>
+
 
                 <div class="divider" style="width:24%; margin:30px 0;"></div>
                 
@@ -746,7 +757,11 @@ plt.legend()
 plt.show()</code></pre>
                 resulting in the following graphic: <br>
                 <img src="./images/208Pb.png"> <br>
-                which is consistent with the results from the original reference. Good parameters to improve the runtime can be found analogously to the crosssection case with <code>optimise_left_right_asymmetry_precision</code>
+                which is consistent with the results from the original reference. Good parameters to improve the runtime can be found analogously to the crosssection case with <code>optimise_left_right_asymmetry_precision</code>, which might take very long to run due to the increased runtime. 
+
+                <h2 id="fit">Fit a charge distribution to cross section data</h2>
+                  
+                <p> to todo ...</p>
 
                 <h1>More Info</h1>
 

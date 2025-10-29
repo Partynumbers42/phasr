@@ -71,13 +71,3 @@ class trafos():
     mb_to_fmsq = 1e3*mub_to_fmsq
     invMeVsq_to_fmsq = hc**2
     
-    #fmsq_to_invMeVsq = 1./hc**2
-    # 
-    #invMeVsq_to_invmmualphasq = (mmu*alpha_el)**2
-    # 
-    #fmsq_to_invmmualphasq = fmsq_to_invMeVsq*invMeVsq_to_invmmualphasq
-    #mub_to_invmmualphasq = mub_to_fmsq*fmsq_to_invmmualphasq
-    #cmsq_to_invmmualphasq = cmsq_to_mub*mub_to_invmmualphasq
-    # 
-    #invmmualphasq_to_fmsq = 1./fmsq_to_invmmualphasq
-    #
