@@ -625,15 +625,15 @@
                 
                 <h2 id="cross_section_fitter">The <code>cross_section_fitter</code> module</h2>
                     
-                    <p>The <code>cross_section_fitter</code> module contains fitting routines to semi-automatically extract charge distrobutions including uncertainty bands from elestic electron nucleus scattering. For an example of how to employ these functions see <a href="#fit"> below </a> or the example notebook (TODO).
-                    </p>
+                    <p>The <code>cross_section_fitter</code> module contains fitting routines to semi-automatically extract charge distrobutions including uncertainty bands from elestic electron nucleus scattering. For an example of how to employ these functions see <a href="#fit"> below </a> and the there discussed example notebook</p>
 
 
                 <div class="divider" style="width:24%; margin:30px 0;"></div>
                 
                 <h1 id="advanced">Common use cases</h1>
                 
-                For common use cases we also refer to the Python notebook <a href="./Example.ipynb" download> Example.pynb </a> , which shows a selection of example usecases. It also repeats the examples shown here. 
+                For common use cases we also refer to the two Python notebooks <a href="./examples.zip" download> examples.zip </a>. The basic use cases up until Version 0.4 are shown in <code>ExamplesBasic.ipynb</code>, which also repeats the examples shown here. 
+                As of Version 0.5.0 another notebook <code>ExamplesFit.ipynb</code> with some auxilary files was added to show the usage of the fitting subroutines added in that update. See also the fit example shown <a href="#fit"> below </a>. 
 
                 <h2 id="ana">Calculate the scattering crosssection based on an analytic charge densitycharge distribution parametrisation</h2>
                 
@@ -761,7 +761,7 @@ plt.show()</code></pre>
 
                 <h2 id="fit">Fit a charge distribution to cross section data</h2>
                   
-                <p> Using the the <code>cross_section_fitter</code> module to extract Fourier Bessel charge distributions from elastic electron nucleus scattering requires several steps, which require external supervison and decisions along the way.</p>
+                <p> Using the the <code>cross_section_fitter</code> module to extract Fourier Bessel charge distributions from elastic electron nucleus scattering requires several steps, which require external supervison and decisions along the way.
                 <ol>
                     <li> Import and transformation of the experimental data (<code>phr.import_dataset</code>) </li>
                     <li> Baseline fits eastablishing \(R, N\) range (<code>phr.parallel_fitting_automatic</code>) </li>
@@ -770,6 +770,8 @@ plt.show()</code></pre>
                     <li> Selection of asymptotic conform results (<code>phr.cross_section_fitter.split_based_on_asymptotic_and_p_val</code>) </li>
                     <li> Select/Promote a best fit and construct systematic uncertainty bands based on the other remaining solutions (<code>phr.cross_section_fitter.promote_best_fit</code>) </li>
                 </ol> 
+                For the example discussed here you may also follow the <code>ExamplesFit.ipynb</code> notebook. Note that if you download the zip-archive all fits are already part of the archive, thus if you actually want to rerun any fits (which would be very time intensive), you need to delete the respective files in the tmp folder. 
+                </p>
 
                 <u><p><b> Import and transformation of the experimental data </b></u><br>
                 We consider having a file with rows of different data points where the columns contain inputs on the initial electron energy, the scattering angle and the measured elastic scattering crosssection ideally also containing columns for uncertainties.
@@ -876,8 +878,38 @@ p_val = results_dict_bar_sel[key]['p_val']
         best_key_bar = key</code></pre>
                 after which <code>best_key_bar, best_p_val</code> contain the best p value and its corresponding dictionary key. We can now promote this fit to beeing the reference parameterization for this kind of nucleus, by calling
                 <pre><code class="python">phr.cross_section_fitter.promote_best_fit(best_key_bar,results_dict_bar_sel)</code></pre>
-                this will also call <code>phr.cross_section_fitter.add_systematic_uncertainties</code> to construct systematic uncertainty bands as an envelope around the selection of fits. 
+                this will also call <code>phr.cross_section_fitter.add_systematic_uncertainties</code> to construct systematic uncertainty bands as an envelope around the selection of fits. Alternatively we can do this manually by calling
+                <pre><code class="python">best_results_dict_bar = phr.cross_section_fitter.add_systematic_uncertainties(best_key_bar,results_dict_bar_sel)</code></pre>
+                We can now plot the resulting charge distribution and the uncertainty bands via 
+                <pre><code class="python">best_nuc_result = phr.nucleus('Ar40_FB_best_test',18,40,ai=best_results_dict_bar['ai'],R=best_results_dict_bar['R'])
+best_cov_ai_model = best_results_dict_bar['cov_ai_model']
+best_cov_ai_stat = best_results_dict_bar['cov_ai_stat'] * np.sqrt(best_results_dict_bar['redchisq'])
+best_cov_ai_syst = best_results_dict_bar['cov_ai_syst']
 
+r = np.arange(0,15,1e-2)
+best_rho = best_nuc_result.charge_density(r)
+plt.plot(r,best_rho,color='C0',zorder=2,label='best fit')
+best_jac_rho = best_nuc_result.charge_density_jacobian(r)
+best_drho_model = np.sqrt(np.einsum('ij,ik,kj->j',best_jac_rho,best_cov_ai_model,best_jac_rho))
+best_drho_stat = np.sqrt(np.einsum('ij,ik,kj->j',best_jac_rho,best_cov_ai_stat,best_jac_rho))
+best_drho_syst = np.sqrt(np.einsum('ij,ik,kj->j',best_jac_rho,best_cov_ai_syst,best_jac_rho))
+plt.plot(r,best_rho+best_drho_stat,color='C0',linestyle=':',zorder=1,label='stat. error')
+plt.plot(r,best_rho-best_drho_stat,color='C0',linestyle=':',zorder=1)
+plt.plot(r,best_rho+best_drho_syst,color='C0',linestyle='--',zorder=1,label='syst. error')
+plt.plot(r,best_rho-best_drho_syst,color='C0',linestyle='--',zorder=1)
+for key in results_dict_bar_sel:
+    result=results_dict_bar_sel[key]
+    nuc_result = phr.nucleus('Ar40_FB_test_'+key,18,40,ai=result['ai'],R=result['R'])
+    plt.plot(r,nuc_result.charge_density(r),color='gray',zorder=-2) #,label=key
+plt.xlim(0,8.5)
+plt.ylim(0,0.11)
+plt.legend()
+plt.title('$^{40}$Ar')
+plt.xlabel('$r$ in fm')
+plt.ylabel(r'$\rho$ in fm$^{-3}$')</code></pre>
+                which results in the following graphic<br>
+                <img src="./images/40Ar.png"> <br>
+                We see that in this case we find very large systematic uncertainties. This is not necessarily the case, but a result of the only very low momentum transfer covered by the experimental data. We note that the statistical uncertainties are reduced \(\chi^2\) inflated (in particular this also happens as part of the derivation of the combined 'model' errors). 
                 </p>
 
 
