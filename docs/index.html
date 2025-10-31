@@ -625,7 +625,7 @@
                 
                 <h2 id="cross_section_fitter">The <code>cross_section_fitter</code> module</h2>
                     
-                    <p>The <code>cross_section_fitter</code> module contains fitting routines to semi-automatically extract charge distrobutions including uncertainty bands from elestic electron nucleus scattering. 
+                    <p>The <code>cross_section_fitter</code> module contains fitting routines to semi-automatically extract charge distrobutions including uncertainty bands from elestic electron nucleus scattering. For an example of how to employ these functions see <a href="#fit"> below </a> or the example notebook (TODO).
                     </p>
 
 
@@ -761,7 +761,125 @@ plt.show()</code></pre>
 
                 <h2 id="fit">Fit a charge distribution to cross section data</h2>
                   
-                <p> to todo ...</p>
+                <p> Using the the <code>cross_section_fitter</code> module to extract Fourier Bessel charge distributions from elastic electron nucleus scattering requires several steps, which require external supervison and decisions along the way.</p>
+                <ol>
+                    <li> Import and transformation of the experimental data (<code>phr.import_dataset</code>) </li>
+                    <li> Baseline fits eastablishing \(R, N\) range (<code>phr.parallel_fitting_automatic</code>) </li>
+                    <li> Selection of \(R, N\) range based on statistic properties (<code>phr.cross_section_fitter.select_RN_based_on_property</code>) </li>
+                    <li> Fits for the selected \(R, N\) range (<code>phr.parallel_fitting_manual</code>) </li>
+                    <li> Selection of asymptotic conform results (<code>phr.cross_section_fitter.split_based_on_asymptotic_and_p_val</code>) </li>
+                    <li> Select/Promote a best fit and construct systematic uncertainty bands based on the other remaining solutions (<code>phr.cross_section_fitter.promote_best_fit</code>) </li>
+                </ol> 
+
+                <u><p><b> Import and transformation of the experimental data </b></u><br>
+                We consider having a file with rows of different data points where the columns contain inputs on the initial electron energy, the scattering angle and the measured elastic scattering crosssection ideally also containing columns for uncertainties.
+                We may then import and transform this data by running <code>phr.import_dataset</code> and answering the appearing questions, which will transform the data into the structure and units expected from the fitting routine.<br> 
+                For the sake of this example we may consider a dataset for \(^{40}\)Ar from <a href="https://www.sciencedirect.com/science/article/abs/pii/0375947482900045?via%3Dihub"> [Ottermann et al. - 1982] </a>, whos data we have written down in a file <code>Ottermann1982_Ar40.txt</code>. 
+                We may load this dataset now with the intend of using it for a fit by calling (assuming that the file is in the same folder)
+                <pre><code class="python">path_Ar40_Ot82 = "../Ottermann1982_Ar40.txt"
+phr.import_dataset(path_Ar40_Ot82,"Ottermann1982",Z=18,A=40)</code></pre>
+                and following und answering the questions presented to you, which will walk you through providing the necessary information such that the data can be interpreted correctly. 
+                For this example the questions should be answered in the following way: 
+                <pre>What column (starting at 0) contains the central values for the energie? 0
+In what units is the energy (MeV or GeV)? MeV
+What column (starting at 0) contains the central values for the angles? 1
+In what units is the angle theta (deg or rad)? deg
+Does the file contain direct cross sections or relative measurements to a different nucleus? (answer with: direct or relative) direct
+What column (starting at 0) contains the central values for the cross section? 2
+In what units is the cross section (fmsq, cmsq, mub, mb or invMeVsq)? fmsq
+Does the data distinguish between statistical and systematical uncertainties? (y or n) y
+What columns (starting at 0), if any, contain statistical uncertainties for the cross sections (separate by comma)? 3
+Are the statistical uncertainties absolute values or relative to the central value? (answer with: absolute or relative) relative
+Are the relative statistical uncertainties in percent and thus need to divided by 100? (y or n) y
+What columns (starting at 0), if any, contain systematical uncertainties for the cross sections (separate by comma)? 4
+Are the systematical uncertainties absolute values or relative to the central value? (answer with: absolute or relative) relative
+Are the relative systematical uncertainties in percent and thus need to divided by 100? (y or n) y
+Do you want to add a global relative statistical uncertainty w.r.t. the cross section as an (additional) uncertainty component? (For 3% insert 3, type 0 if you do not want to do so)? 0
+Do you want to add a global relative systematical uncertainty w.r.t. the cross section as an (additional) uncertainty component? (For 3% insert 3, type 0 if you do not want to do so)? 0.8</pre>
+                If you feel like you entered something wrong, you can always rerun this function, which will overwrite the existing prepared data. 
+                After this step the fitting routines can now identify this dataset by the unique label of "Ottermann1982" and the correct \(Z, A\). 
+                We can list all imported datasets for a given \(Z, A\) by calling <code>phr.cross_section_fitter.list_datasets(Z,A)</code>
+                One may provide correlation matrices for statitistical and systematical uncertainties as additional arguments in the <code>import_dataset</code> function. 
+                If these are not set, statistical uncertainties are considered completely uncorrelated and systematical uncertainties 100% correlated (considing they are in associaton with / dominated by normalisation uncertainties). <br>
+                One may also import Barrett moments using the function <code>phr.cross_section_fitter.import_barrett_moment</code>, where the parameters and values are simply directly supplied (radii constrains can be considered as a special case of a barrett moment with \(k=2,\alpha=0\)). 
+                </p>
+
+                <u><p><b> Baseline fits </b></u><br>
+                We may run baseline fits over a range of \(R,N\) to establish a minimum \(N\) for a given \(R\) range. We call for this <code>phr.parallel_fitting_automatic</code>. This function will derive how many \(N\) are covered by the exerimental data for a specific \(R\). 
+                Then centered around this central value for \(N\) closeby values for \(N\) are choosen for the \(R,N\) pairs that should the fit should run for. 
+                After the fits are run one should check if the lower borders of validity in \(R,N\) are sufficiently established or otherwise increase the range in \(R\) and/or \(N\). 
+                Initial values for the fits are either taken from older fits with the same parameters, or from reference charge distributions from <a href="https://www.sciencedirect.com/science/article/abs/pii/0092640X87900131?via%3Dihub"> [De Vries et al. - 1987] </a> (which can be accessed via <code>phr.nuclei.load_reference_nucleus</code>). 
+                Before running all these fits it might make sense to establish the necessary precision for the cross section calculation to minimze runtime by running <code>phr.optimise_crosssection_precision</code> for the considered data points and a typical charge distribution as described above. 
+                The call may then look like:
+                <pre><code class="python">args_optimised =  {'method': 'DOP853', 'N_partial_waves': 25, 'atol': 1e-08, 'rtol': 1e-06, 'energy_norm': 0.001973269804, 'phase_difference_limit': 1e-06}
+results_dict = phr.cross_section_fitter.fit_organizer.parallel_fitting_automatic(['Ottermann1982'],18,40,np.arange(4.00,8.75+0.25,0.25),redo_N=True,redo_aggressive=True,N_base_offset=1,N_base_span=3,cross_section_args=args_optimised)</code></pre>  
+                This function will now run up to 5 different values of \(N\) fits per \(R\) with \(R\) in a range from 4.00fm to 8.75fm in steps of 0.25fm, resulting in a total of 102 fits. 
+                These fits will be run in parallel and distributed over different processes based on the number of cores available on the maschine minus two (or if you set the keyword <code>N_processes</code> manually). 
+                It makes sense to run this on a fast maschine with a lot of cores. It might still take between minutes to hours up to days to complete all fits, dependent on the used maschine and considered nucleus and datasets. Completed fits are saved and simply loaded if the function is run again with the same parameters and starting conditions. 
+                The resulting <code>results_dict</code> is now a dictionary containing all fit results, from fitting against the 'Ottermann1982' dataset. Since we activated <code>redo_N</code> and <code>redo_aggressive</code>, after a first pass, individual fits were redone if any other fit result with the same \(R\) but smaller \(N\) had a better loss function, indicating that the fit did not find the best minimum yet. 
+                </p>
+
+                <u><p><b> Selection of \(R, N\) </b></u><br>
+
+                We want to select a range of \(R, N\) with good statistics. We may generate 2d-arrays in \(R, N\) to study the statistical properties and if the studied range in \(R, N\) is sufficient. 
+                We use the function <code>phr.cross_section_fitter.generate_data_tables</code> to prepare tables for different statistical properties. The <code>pandas</code> package is a good way to illustrate these 2d-arrays as tables in a jupyther notebook (you need to have this packege installed for this to work). 
+                <pre><code class="python">import pandas as pd
+database_tables, Rs, Ns, hist = phr.cross_section_fitter.generate_data_tables(results_dict)
+pd.DataFrame(database_tables['p_val'],index=Rs,columns=Ns)</code></pre>  
+                which shows a table with all the p values for all the fits. Other keywords are for example 'chisq' or 'redchisq' for \(\chi^2\) or the \(\chi^2/\text{d.o.f}\) respectively. 
+                You may plot a histogramm of the distribution of the statistical quantities (using the <code>matplotlib</code> package) via. Here you may choose to plot it like this
+                <pre><code class="python">import matplotlib.pyplot as plt
+plt.title('fit distribution')
+plt.xlabel(r'$p_{val}$')
+plt.plot([0.2,0.2],[0,42],color='red',linestyle='--')
+plt.ylim(0,42)
+plt.xlim(0,0.7)
+plt.hist(hist['p_val'],10)
+plt.show()</code></pre>
+                which results in the following graphic:<br>
+                <img src="./images/p_val_dist_base.png"> <br>
+                There will usually be a structure of one peak to the right containing fits that "work", and a collection very close to zero with fits that do not "work". One may study the distribution a bit more by adjusting the number of bins. 
+                Based on this ditribution one may choose a cutoff criterium. In our case we choose a p value of 0.2 as the cutoff (denoted by the red dashed line). We can select all \(R, N\) pairs whoes fits have a p value greater than 0.2 via 
+<pre><code class="python">selected_RN_tuples = phr.cross_section_fitter.fit_organizer.select_RN_based_on_property(results_dict,'p_val',0.2)</code></pre></p>
+                
+                <u><p><b> Final fits for our selection of \(R, N\) </b></u><br>
+
+                We now perform the actual fits we want to use for our analysis. Here we only fit in the established window of values for \(R, N\) using the previous fit results as initial values. Here we also may now turn on additional constraints. <br>
+                One additional contraint that we usually want to enable is a penalty on oscillations for large \(R\). A typical weight for this is <code>monotonous_decrease_precision=0.04</code>, in accordance with typical uncertainties on radii squared. 
+                But if one has the computing resources one may play around with different values for this. <br>
+                Other constraints are from Barrett moments (or radii squared as a special case), where we usually study fitting with or without them. These are included as an additional constraint in the same way as the datasets by listing keys of previously importet values. <br>
+                A fit including barrett moments may look like 
+                <pre><code class="python">ini_settings = {'datasets':['Ottermann1982'],'datasets_barrett_moment':[],'monotonous_decrease_precision':np.inf}
+results_dict_bar = phr.cross_section_fitter.fit_organizer.parallel_fitting_manual(['Ottermann1982'],18,40,selected_RN_tuples,redo_N=True,monotonous_decrease_precision=0.04,barrett_moment_keys=['Fricke1995_2p'],initialize_from=ini_settings,cross_section_args=args_optimised)</code></pre>
+                </p>
+
+                <u><p><b> Selection of asymptotic confrom results </b></u><br>
+
+                We can again study the statistical quantities of our fit results with the same tools as the baseline fits and find based on the histogram that a p value of 0.3 is a good cutoff. <br>
+                <img src="./images/p_val_dist_bar.png"> <br>
+                We further veto all fits with bad asymptotic behaviour. For this we define three areas in \(q\) to match an upper limit for the asymptotic. 
+                Ideally if the fits clearly contrains several minima in the form factor these regions should be seperated by the last clearly defined minimas, such that it matches onto the maximum values in the last two clearly defined areas. 
+                We have a minimum falloff with \(q^{-4}\) which will jump in for our example case, since the data does not cover sufficent range in \(q\). We can study the resulting form factors and then choose
+                <pre><code class="python">qs=[50,235,370,600]
+results_dict_bar_sel, results_dict_bar_veto, veto_fct = phr.cross_section_fitter.fit_organizer.split_based_on_asymptotic_and_p_val(results_dict_bar,qs=qs,p_val_lim=0.3)</code></pre>
+                The <code>results_dict_bar_sel</code> dictionary now contains all fits we consider reasonable in describing the provided data without overparametrizating. The condition on the asymptotic should set an implicit upper limit on \(N\) for each \(R\). If this limit is not saturated yet, one might want to take a step back and extend the basefits to higher \(N\).  
+                </p>
+
+                <u><p><b> Select/Promote best fit and add systemetic uncertainty bands </b></u><br>
+                One may now choose the best fit within the remaining sample usually by considering the fit with the best reduced \(\chi^2\). One way to select this could be to run
+                <pre><code class="python">best_key_bar = None
+best_p_val = 0
+for key in results_dict_bar_sel:
+p_val = results_dict_bar_sel[key]['p_val']
+    if p_val > best_p_val:
+        best_p_val = p_val
+        best_key_bar = key</code></pre>
+                after which <code>best_key_bar, best_p_val</code> contain the best p value and its corresponding dictionary key. We can now promote this fit to beeing the reference parameterization for this kind of nucleus, by calling
+                <pre><code class="python">phr.cross_section_fitter.promote_best_fit(best_key_bar,results_dict_bar_sel)</code></pre>
+                this will also call <code>phr.cross_section_fitter.add_systematic_uncertainties</code> to construct systematic uncertainty bands as an envelope around the selection of fits. 
+
+                </p>
+
 
                 <h1>More Info</h1>
 
