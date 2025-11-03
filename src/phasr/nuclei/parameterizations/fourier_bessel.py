@@ -16,8 +16,6 @@ class nucleus_FB(nucleus_base):
         self.ai=ai
         self.R=R
         #
-        # for others maybe restructure -> dicts etc. ? maybe disentangle nuclei and parametrization for a part? gets complicated
-        #
         if ('ai_proton' in args) and ('R_proton' in args) :
             self.ai_proton=args['ai_proton']
             self.R_proton=args['R_proton']
@@ -57,14 +55,12 @@ class nucleus_FB(nucleus_base):
         #if hasattr(self,'k_barrett') and hasattr(self,'alpha_barrett'):
         #    self.barrett_moment = Barrett_moment_FB(self.ai,self.R,self.qi,self.total_charge,self.k_barrett,self.alpha_barrett)
         #    self.barrett_moment_jacobian = Barrett_moment_FB_jacob(self.R,self.qi,self.total_charge,self.k_barrett,self.alpha_barrett)
-        
         #
         if hasattr(self,'ai_proton') and hasattr(self,'R_proton'):
             self.N_a_proton=len(self.ai_proton)
             self.qi_proton=np.arange(1,self.N_a_proton+1)*pi/self.R_proton
             #def rho_p(r): return charge_density_FB(r,self.ai_proton,self.R_proton,self.qi_proton)
             self.proton_density = partial(charge_density_FB,ai=self.ai_proton,R=self.R_proton,qi=self.qi_proton)
-        
         #
         if hasattr(self,'ai_neutron') and hasattr(self,'R_neutron'):
             self.N_a_neutron=len(self.ai_neutron)

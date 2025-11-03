@@ -8,7 +8,7 @@ from .. import nucleus
 import numdifftools as ndt
 from scipy.linalg import inv
 
-from scipy.optimize import minimize#, OptimizeResult
+from scipy.optimize import minimize
 
 
 def generate_systematic_errorband_exact(best_key:str,best_results:dict,rrange=[0,15,1e-1],select='all'):

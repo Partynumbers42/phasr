@@ -18,5 +18,5 @@ from .dirac_solvers import crosssection_lepton_nucleus_scattering, left_right_as
 from .dirac_solvers import overlap_integral_scalar, overlap_integral_vector, overlap_integral_dipole
 from .dirac_solvers.post_processing.crosssection import optimise_crosssection_precision
 from .dirac_solvers.post_processing.left_right_asymmetry import optimise_left_right_asymmetry_precision
-from .cross_section_fitter import import_dataset
+from .cross_section_fitter import import_dataset, load_best_fit
 from .cross_section_fitter import fit_runner, parallel_fitting_automatic, parallel_fitting_manual

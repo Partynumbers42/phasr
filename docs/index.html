@@ -761,7 +761,9 @@ plt.show()</code></pre>
 
                 <h2 id="fit">Fit a charge distribution to cross section data</h2>
                   
-                <p> Using the the <code>cross_section_fitter</code> module to extract Fourier Bessel charge distributions from elastic electron nucleus scattering requires several steps, which require external supervison and decisions along the way.
+                <p> Using the the <code>cross_section_fitter</code> module to extract Fourier Bessel charge distributions from elastic electron nucleus scattering requires several steps, which require external supervison and decisions along the way. 
+                    We follow the fitting strategie as described in <a href="https://inspirehep.net/literature/2796887"> [Noël, Hoferichter - 2024] </a>. 
+                    For the sake of this example we may seperate the fitting strategie into the following steps, which will be discussed in the following. 
                 <ol>
                     <li> Import and transformation of the experimental data (<code>phr.import_dataset</code>) </li>
                     <li> Baseline fits eastablishing \(R, N\) range (<code>phr.parallel_fitting_automatic</code>) </li>
@@ -770,7 +772,7 @@ plt.show()</code></pre>
                     <li> Selection of asymptotic conform results (<code>phr.cross_section_fitter.split_based_on_asymptotic_and_p_val</code>) </li>
                     <li> Select/Promote a best fit and construct systematic uncertainty bands based on the other remaining solutions (<code>phr.cross_section_fitter.promote_best_fit</code>) </li>
                 </ol> 
-                For the example discussed here you may also follow the <code>ExamplesFit.ipynb</code> notebook. Note that if you download the zip-archive all fits are already part of the archive, thus if you actually want to rerun any fits (which would be very time intensive), you need to delete the respective files in the tmp folder. 
+                For the example discussed here you may also follow the <code>ExamplesFit.ipynb</code> notebook. Note that if you download the zip-archive all fits are already part of the archive, thus if you actually want to rerun any fits (which could be time intensive), you need to delete the respective files in the tmp folder. 
                 </p>
 
                 <u><p><b> Import and transformation of the experimental data </b></u><br>

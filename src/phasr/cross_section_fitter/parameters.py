@@ -63,9 +63,6 @@ class parameter_set():
         xi_dummy[xi_dummy<0]=0
         xi_dummy[xi_dummy>1]=1
         self.xi = xi_dummy
-        
-        #if hasattr(self,'cov_ai_tilde'):
-        # not needed atm potentially add later #TODO
     
     def set_ai_tilde_from_xi(self):
         ai_tilde_dummy = np.zeros(self.N_a)
