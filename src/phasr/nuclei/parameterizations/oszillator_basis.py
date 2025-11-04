@@ -12,7 +12,7 @@ class nucleus_osz(nucleus_base):
     def __init__(self,name,Z,A,Ci_dict,**args): #,R_cut=None,rho_cut=None
         nucleus_base.__init__(self,name,Z,A,**args)
         self.nucleus_type = "oszillator-basis"
-        self.multipoles = list(Ci_dict.keys()) 
+        self.multipoles = list(Ci_dict.keys())
         for multipole in Ci_dict:
             setattr(self,'Ci_'+multipole,Ci_dict[multipole])
         #
@@ -50,9 +50,13 @@ class nucleus_osz(nucleus_base):
             rhoMLp=getattr(self,'rhoM0p')
             rhoMLn=getattr(self,'rhoM0n')
             def rho2MLp(r): return density_osz(r,getattr(self,'Ci_M0p'),self.b_osz,L=0,q_order=2)
+            setattr(self, "rho2MLp", rho2MLp)
             def rho2MLn(r): return density_osz(r,getattr(self,'Ci_M0n'),self.b_osz,L=0,q_order=2)
+            setattr(self, "rho2MLn", rho2MLn)
             def rho2PhippLp(r): return density_osz(r,getattr(self,'Ci_Phipp0p'),self.b_osz,L=0,q_order=2)
+            setattr(self, "rho2PhippLp", rho2PhippLp)
             def rho2PhippLn(r): return density_osz(r,getattr(self,'Ci_Phipp0n'),self.b_osz,L=0,q_order=2)
+            setattr(self, "rho2PhippLn", rho2PhippLn)
             def rhoch(r): return rhoch_composition_osz(r,rhoMLp,rho2MLp,rho2MLn,rho2PhippLp,rho2PhippLn)
             setattr(self,'charge_density',rhoch)
             def rhow(r): return rhow_composition_osz(r,rhoMLp,rhoMLn,rho2MLp,rho2MLn,rho2PhippLp,rho2PhippLn)

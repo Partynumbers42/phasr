@@ -24,7 +24,16 @@ def select_density(nucleus_response,response):
         return nucleus_response.charge_density
     elif response == 'w':
         return nucleus_response.weak_density
+    elif response == 'rho2MLp':
+        return nucleus_response.rho2MLp
+    elif response == 'rho2MLn':
+        return nucleus_response.rho2MLn
+    elif response == 'rho2PhippLp':
+        return nucleus_response.rho2PhippLp
+    elif response == 'rho2PhippLn':
+        return nucleus_response.rho2PhippLn
     else:
+        print(response)
         raise ValueError("Unphysical response choosen")
 
 def calculate_states(nucleus_potential,kappa_e=-1,recoil=True,nonzero_electron_mass=True,**args):
@@ -47,8 +56,8 @@ def calculate_states(nucleus_potential,kappa_e=-1,recoil=True,nonzero_electron_m
 
 
 def overlap_integral_scalar(nucleus_potential,response,nucleus_response=None,kappa_e=-1,recoil=True,nonzero_electron_mass=True,**args):
-    # response = 'p' , 'n' , 'ch' , 'w'
-
+    # response = 'p' , 'n' , 'ch' , 'w', 'c'
+    
     boundstate, continuumstate = calculate_states(nucleus_potential,kappa_e=kappa_e,recoil=recoil,nonzero_electron_mass=nonzero_electron_mass,**args)
 
     if nucleus_response is None:
@@ -71,7 +80,7 @@ def overlap_integral_scalar(nucleus_potential,response,nucleus_response=None,kap
 
 def overlap_integral_vector(nucleus_potential,response,nucleus_response=None,kappa_e=-1,recoil=True,nonzero_electron_mass=True,**args):
     # response = 'p' , 'n' , 'ch' , 'w'
-
+    
     boundstate, continuumstate = calculate_states(nucleus_potential,kappa_e=kappa_e,recoil=recoil,nonzero_electron_mass=nonzero_electron_mass,**args)
 
     if nucleus_response is None:
