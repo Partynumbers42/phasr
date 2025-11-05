@@ -33,7 +33,6 @@ def select_density(nucleus_response,response):
     elif response == 'rho2PhippLn':
         return nucleus_response.rho2PhippLn
     else:
-        print(response)
         raise ValueError("Unphysical response choosen")
 
 def calculate_states(nucleus_potential,kappa_e=-1,recoil=True,nonzero_electron_mass=True,**args):
@@ -56,7 +55,7 @@ def calculate_states(nucleus_potential,kappa_e=-1,recoil=True,nonzero_electron_m
 
 
 def overlap_integral_scalar(nucleus_potential,response,nucleus_response=None,kappa_e=-1,recoil=True,nonzero_electron_mass=True,**args):
-    # response = 'p' , 'n' , 'ch' , 'w', 'c'
+    # response = 'p' , 'n' , 'ch' , 'w', 'rho2MLp', 'rho2MLn', 'rho2PhippLp', 'rho2PhippLn'
     
     boundstate, continuumstate = calculate_states(nucleus_potential,kappa_e=kappa_e,recoil=recoil,nonzero_electron_mass=nonzero_electron_mass,**args)
 
