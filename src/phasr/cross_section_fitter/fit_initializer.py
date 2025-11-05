@@ -8,15 +8,6 @@ from ..nuclei import load_reference_nucleus, nucleus
 from .parameters import ai_abs_bounds_default
 from .pickler import pickle_load_all_results_dicts_R
 
-# check for old fits needs to change, should be able to start from fit without barrett moment
-# should not rerun just because a better initial fit becomes available
-# add try load fit result with loaded initial values ??
-# check if fit result was done immediately 
-# maybe need to relabel existing fits
-# move initializer inside fitter ???
-# save initial state source ???
-# maybe ignore initial values when reloading fits ???
-
 class initializer():
     
     def __init__(self,Z:int,A:int,R:float,N:int,ai=None,ai_abs_bound=None,initialize_from='reference'): #check_other_fits=False,settings={}

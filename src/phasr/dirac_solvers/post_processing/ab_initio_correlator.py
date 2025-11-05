@@ -7,7 +7,10 @@ pi=np.pi
 
 import os
 
+#import numdifftools as ndt
 from scipy.interpolate import splev, splrep
+from scipy.optimize import minimize
+from scipy.linalg import inv
 
 from ...physical_constants.iaea_nds import massofnucleusZN, JPofnucleusZN
 from ...nuclei import nucleus
@@ -106,7 +109,6 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None,print_radius_
             AI_datasets[AI_model]['type'] = 'magic'
         else:
             AI_datasets[AI_model]['type'] = AI_model
-        # more than 3 groups ?
         
         # check radii
         Rn2c = AI_datasets[AI_model]['Rn2c']
@@ -243,158 +245,114 @@ def F_CMS_Gauss(q,Omega,A):
     b=b_cm(Omega,A)
     return np.exp((b*q/2)**2)
 
-def linear_model(x,paramdict):
-    m=paramdict['m']
-    b=paramdict['b']
-    return m * x + b
+def linear_model(x,m,b):
+    return x * m + b
 
-def residual(params, x, data, yerr):
-    model = linear_model(x,params)
-    return (model-data)/yerr
+def fit_linear_correlation(arr_dict,x_str,y_str,x_offset,**minimizer_args): #,numdifftools_step=1.e-4,scale_yerr=True
+    
+    x_data_unnormalized=arr_dict[x_str] + x_offset
+    y_data_unnormalized=arr_dict[y_str]
+    
+    # normalize data in x any y direction 
+    x_data_mean = np.mean(x_data_unnormalized)
+    x_data_std = np.std(x_data_unnormalized)
+    y_data_mean = np.mean(y_data_unnormalized)
+    y_data_std = np.std(y_data_unnormalized)
+    x_data = (x_data_unnormalized - x_data_mean) / x_data_std
+    y_data = (y_data_unnormalized - y_data_mean) / y_data_std
+    
+    # fit normalized 
+    y_error=np.std(y_data)
+    m_ini = -np.std(y_data)/np.std(x_data) # somewhat arbitrary
+    b_ini = np.mean(y_data) # somewhat arbitrary
+    xi_initial = np.array([m_ini,b_ini])
+    
+    def residuals(xi):
+        model = linear_model(x_data,xi[0],xi[1])
+        residuals = (model - y_data)/y_error
+        return residuals
+    
+    def loss(xi):
+        return np.sum(residuals(xi)**2)
+    
+    result = minimize(loss,xi_initial,**minimizer_args) 
+    
+    # if fit statistics become relevant in the future reactivate 
+    # Hessian_function = ndt.Hessian(loss,step=numdifftools_step)
+    # hessian = Hessian_function(result.x)
+    # hessian_inv = inv(hessian)
+    # covariance_xi = 2*hessian_inv
+    # unused, what is the correct way to normalize this? 
+    # covar = covariance_xi * y_error**2 * (redchisq if scale_yerr else 1.)
+    # ,'cov':covar
+    # chisq = loss(xi)
+    # dof = len(resid) - len(xi)
+    # redchisq = chisq / dof
+    # ,'residual':resid,'redchisq':redchisq
+    
+    xi = result.x
+    m_normalized, b_normalized = xi[0], xi[1]
+    
+    # change back to unnormalized coordinates
+    m = m_normalized * (y_data_std/x_data_std)
+    b = b_normalized * y_data_std + y_data_mean - m_normalized * (y_data_std/x_data_std) * x_data_mean
+    
+    resid = residuals(xi)
+    db = np.std(resid) * y_error * y_data_std
+    
+    results={'val':b,'dval':db,'m':m,'x_str':x_str,'y_str':x_str}
+    return results
 
-# TODO replace lmfit here with scipy minimize
-
-from lmfit import minimize, Parameters
-
-def AbInitioCorrelator(AI_datasets,x_str='rchsq',x_offset=0,y_strs=None,scale_yerr=True,corr_skin=False): #,return_all=False
+def AbInitioCorrelator(AI_datasets,x_str='rchsq',x_offset=0,y_strs=None,corr_skin=False,**minimizer_args): #,return_all=False
     #
-    scale_yerr=True    
+    val_arr={}
     #
-    ov_arr={}
-    #
-    ov_arr[x_str]=np.array([])
+    val_arr[x_str]=np.array([])
     for AI_model in AI_datasets:
         
         if x_str in ['rn-rp','rw-rch']:
             rsqi=AI_datasets[AI_model][x_str[:2]]-AI_datasets[AI_model][x_str[3:]]
-            ov_arr[x_str]=np.append(ov_arr[x_str],rsqi)
+            val_arr[x_str]=np.append(val_arr[x_str],rsqi)
         else:
             rsqi=AI_datasets[AI_model][x_str]
-            ov_arr[x_str]=np.append(ov_arr[x_str],rsqi)
+            val_arr[x_str]=np.append(val_arr[x_str],rsqi)
     
     results_dict={}
     
     if y_strs is None:
-        
         if not corr_skin:
-        
             for ov in ['S','V']:
                 for nuc in ['p','n']:
-
-                    ov_arr[ov+nuc]=np.array([])
+                    val_arr[ov+nuc]=np.array([])
                     key = ov+'_'+nuc
                     for AI_model in AI_datasets:
                         ovi=AI_datasets[AI_model][key]
-                        ov_arr[ov+nuc]=np.append(ov_arr[ov+nuc],ovi)
-                    #
-                    x=ov_arr[x_str] + x_offset
-                    data=ov_arr[ov+nuc]
-                    #
-                    params = Parameters()
-                    
-                    params.add('m', value=-np.std(data)/np.std(x))
-                    params.add('b', value=np.mean(data))
-                    #
-                    yerr=0*x+1.0 # important that this is 1 such that the residuals are unnormalised
-                    out = minimize(residual, params, args=(x, data, yerr),scale_covar=scale_yerr)
-                    
-                    m=out.params['m'].value
-                    b=out.params['b'].value
-                    resid=out.residual
-                    redchi=out.redchi
-                    db=np.std(resid)
-                    covar=out.covar
-                    
-                    results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
-                    results_dict[ov+nuc] = results
-            
-            for r2 in ['rpsq','rnsq','rwsq']: #,'APV','APV2'
+                        val_arr[ov+nuc]=np.append(val_arr[ov+nuc],ovi)
+                    results_dict[ov+nuc] = fit_linear_correlation(val_arr,x_str,ov+nuc,x_offset,**minimizer_args)
+            for r2 in ['rpsq','rnsq','rwsq']: 
                 key = r2
-                ov_arr[key]=np.array([])
+                val_arr[key]=np.array([])
                 for AI_model in AI_datasets:
                     r2i=AI_datasets[AI_model][key]
-                    ov_arr[key]=np.append(ov_arr[key],r2i)
-                #
-                x=ov_arr[x_str] + x_offset
-                data=ov_arr[key]
-                #
-                params = Parameters()
-                
-                params.add('m', value=-np.std(data)/np.std(x))
-                params.add('b', value=np.mean(data))
-                #
-                yerr=0*x+1.0 # important that this is 1 such that the residuals are unnormalised
-                out = minimize(residual, params, args=(x, data, yerr),scale_covar=scale_yerr)
-                
-                m=out.params['m'].value
-                b=out.params['b'].value
-                resid=out.residual
-                redchi=out.redchi
-                db=np.std(resid)
-                covar=out.covar
-                
-                results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
-                results_dict[key] = results
-    
+                    val_arr[key]=np.append(val_arr[key],r2i)
+                results_dict[key] = fit_linear_correlation(val_arr,x_str,key,x_offset,**minimizer_args) 
         else:
-        
             for rdiff in ['rn-rp','rw-rch']:
                 key = rdiff
                 key1 = key[:2]
                 key2 = key[3:]
-                ov_arr[key]=np.array([])
+                val_arr[key]=np.array([])
                 for AI_model in AI_datasets:
                     rdiffi=AI_datasets[AI_model][key1]-AI_datasets[AI_model][key2]
-                    ov_arr[key]=np.append(ov_arr[key],rdiffi)
-                #
-                x=ov_arr[x_str] + x_offset
-                data=ov_arr[key]
-                #
-                params = Parameters()
-                
-                params.add('m', value=-np.std(data)/np.std(x))
-                params.add('b', value=np.mean(data))
-                #
-                yerr=0*x+1.0 # important that this is 1 such that the residuals are unnormalised
-                out = minimize(residual, params, args=(x, data, yerr),scale_covar=scale_yerr)
-                
-                m=out.params['m'].value
-                b=out.params['b'].value
-                resid=out.residual
-                redchi=out.redchi
-                db=np.std(resid)
-                covar=out.covar
-                
-                results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
-                results_dict[key] = results
-    
+                    val_arr[key]=np.append(val_arr[key],rdiffi)
+                results_dict[key] = fit_linear_correlation(val_arr,x_str,key,x_offset,**minimizer_args)   
     else:
         for y_str in y_strs:
             key = y_str
-            ov_arr[key]=np.array([])
+            val_arr[key]=np.array([])
             for AI_model in AI_datasets:
                 yi=AI_datasets[AI_model][key]
-                ov_arr[key]=np.append(ov_arr[key],yi)
-            #
-            x=ov_arr[x_str] + x_offset
-            data=ov_arr[key]
-            #
-            params = Parameters()
+                val_arr[key]=np.append(val_arr[key],yi)
+            results_dict[key] = fit_linear_correlation(val_arr,x_str,key,x_offset,**minimizer_args)
             
-            params.add('m', value=-np.std(data)/np.std(x))
-            params.add('b', value=np.mean(data))
-            #
-            yerr=0*x+1.0 # important that this is 1 such that the residuals are unnormalised
-            out = minimize(residual, params, args=(x, data, yerr),scale_covar=scale_yerr)
-            
-            m=out.params['m'].value
-            b=out.params['b'].value
-            resid=out.residual
-            redchi=out.redchi
-            db=np.std(resid)
-            covar=out.covar
-            
-            results={'I':b,'dI':db,'residual':resid,'redchisq':redchi,'m':m,'covar':covar,'x_str':x_str}
-            results_dict[key] = results
-    
-    return results_dict, ov_arr
+    return results_dict, val_arr
