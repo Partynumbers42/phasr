@@ -200,6 +200,7 @@ class nucleus_num(nucleus_base):
                     FF = getattr(self,'F'+multipole)
                     rho = fourier_transform_mom_to_pos(FF,multipole+'_'+self.name,self.qrange,self.rrange,L=L,norm=1,renew=self.renew)
                     setattr(self,'rho'+multipole,rho)
+                    # reinstate this
                     #def q2FF(q): return q**2 * FF(q)
                     #rho2 = fourier_transform_mom_to_pos(q2FF,multipole+'_q2_'+self.name,self.qrange,self.rrange,L=L,norm=1,renew=self.renew)
                     #setattr(self,'rho2'+multipole,rho2)
@@ -293,7 +294,6 @@ def fourier_transform_mom_to_pos(fct_q,name,qrange,rrange,L=0,norm=1,renew=False
     # spline
     fct_r_spl = spline_field(fct_r_vec,"charge_density",name,rrange,renew=renew)
     #
-    # TODO test:
     r_crit = optimise_radius_highenergy_continuation(fct_r_spl,rrange[1],1e-3) # set xmin to radius
     # highenergy exponential decay for rho
     fct_r = partial(field_ultimate_exp,R=r_crit,val=0,t=0,field_spl=fct_r_spl) # Asymptotic: exp(-r)

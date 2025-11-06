@@ -49,6 +49,7 @@ class nucleus_fermi(nucleus_base):
     
     def fill_gaps(self):
         self.nucleus_num.fill_gaps()
+        self.nucleus_num.update_dependencies()
         self.form_factor = self.nucleus_num.form_factor
         self.electric_potential = self.nucleus_num.electric_potential
         self.electric_field = self.nucleus_num.electric_field
