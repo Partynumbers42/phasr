@@ -248,7 +248,9 @@ def phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args):
     return partial_wave_kappa.phase_shift, partial_wave_kappa.phase_difference
 
 def phase_shift_from_partial_wave_wrapper(nucleus,kappa,energy,lepton_mass,save_and_load_phase_shifts=False,verbose=False,**args):
-    args = {'kappa':kappa,'energy':energy,'lepton_mass':lepton_mass,**args}    
+    
+    args = {'kappa':kappa,'energy':energy,'lepton_mass':lepton_mass,**args}
+    
     path = local_paths.phase_shift_path + 'phase_shift_'+nucleus.name+'_E'+str(energy)+'_kappa'+str(kappa)+'_m'+str(lepton_mass)+'.txt'
     save = save_and_load_phase_shifts
     renew =  not save_and_load_phase_shifts
@@ -387,7 +389,7 @@ def collect_phase_shifts_singlethreaded(energy,nucleus,lepton_mass,N_partial_wav
             
             if verbose:
                 print('Calculate phaseshift for kappa=',kappa,', ',end="")
-
+                
             phase_shifts[kappa], phase_differences[kappa] = phase_shift_from_partial_wave_wrapper(nucleus,kappa,energy,lepton_mass,verbose=False,**args) #phase_shift_from_partial_wave(nucleus,kappa,energy,lepton_mass,**args)
             
             if verbose:

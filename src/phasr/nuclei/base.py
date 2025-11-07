@@ -224,7 +224,15 @@ class nucleus_base:
         rhoMLn=getattr(self,'rhoM'+str(L)+'n')
         rhoPhippLp=getattr(self,'rhoPhipp'+str(L)+'p')
         rhoPhippLn=getattr(self,'rhoPhipp'+str(L)+'n')
-        return rho0ch_composition(r,rhoMLp,rhoMLn,rhoPhippLp,rhoPhippLn)
+        
+        if hasattr(self,'rho2M'+str(L)+'p') and hasattr(self,'rho2M'+str(L)+'n') and hasattr(self,'rho2Phipp'+str(L)+'p') and hasattr(self,'rho2Phipp'+str(L)+'n'):   
+            rho2MLp=getattr(self,'rho2M'+str(L)+'p')
+            rho2MLn=getattr(self,'rho2M'+str(L)+'n')
+            rho2PhippLp=getattr(self,'rho2Phipp'+str(L)+'p')
+            rho2PhippLn=getattr(self,'rho2Phipp'+str(L)+'n')
+            return rho0ch_composition(r,rhoMLp,rhoMLn,rhoPhippLp,rhoPhippLn,rho2MLp,rho2MLn,rho2PhippLp,rho2PhippLn)
+        else:
+            return rho0ch_composition(r,rhoMLp,rhoMLn,rhoPhippLp,rhoPhippLn)
 
     def rhow(self,r):
         L=0
@@ -236,7 +244,15 @@ class nucleus_base:
         rhoMLn=getattr(self,'rhoM'+str(L)+'n')
         rhoPhippLp=getattr(self,'rhoPhipp'+str(L)+'p')
         rhoPhippLn=getattr(self,'rhoPhipp'+str(L)+'n')
-        return rho0w_composition(r,rhoMLp,rhoMLn,rhoPhippLp,rhoPhippLn)
+        
+        if hasattr(self,'rho2M'+str(L)+'p') and hasattr(self,'rho2M'+str(L)+'n') and hasattr(self,'rho2Phipp'+str(L)+'p') and hasattr(self,'rho2Phipp'+str(L)+'n'):   
+            rho2MLp=getattr(self,'rho2M'+str(L)+'p')
+            rho2MLn=getattr(self,'rho2M'+str(L)+'n')
+            rho2PhippLp=getattr(self,'rho2Phipp'+str(L)+'p')
+            rho2PhippLn=getattr(self,'rho2Phipp'+str(L)+'n')
+            return rho0w_composition(r,rhoMLp,rhoMLn,rhoPhippLp,rhoPhippLn,rho2MLp,rho2MLn,rho2PhippLp,rho2PhippLn)
+        else:
+            return rho0w_composition(r,rhoMLp,rhoMLn,rhoPhippLp,rhoPhippLn)
     
     def Elch(self,r):
         
@@ -266,7 +282,6 @@ class nucleus_base:
     def Vweak(self,r):
         return constants.fermi_constant*constants.hc**2/(2**(3./2.))*self.weak_density(r)
             
-
 def Fch_composition(q,FM_p,FM_n,FPhipp_p,FPhipp_n,Z,rsqp=constants.rsq_p,rsqn=constants.rsq_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
     rsqp/=constants.hc**2
     rsqn/=constants.hc**2
@@ -292,26 +307,34 @@ def Fw_composition(q,FM_p,FM_n,FPhipp_p,FPhipp_n,Qw,Qw_p=constants.Qw_p,Qw_n=con
      + ((Qw_p*(1+2*kp)+Qw_n*(2*kn+2*ksN))/(4*mN**2))*(q**2)*FPhipp_p(q) \
      + ((Qw_n*(1+2*kp+2*ksN)+Qw_p*(2*kn))/(4*mN**2))*(q**2)*FPhipp_n(q) )
 
-def rho0ch_composition(r,rhoM_p,rhoM_n,rhoPhipp_p,rhoPhipp_n,rsqp=constants.rsq_p,rqsn=constants.rsq_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
+def rho0ch_composition(r,rhoM_p,rhoM_n,rhoPhipp_p,rhoPhipp_n,rho2M_p=None,rho2M_n=None,rho2Phipp_p=None,rho2Phipp_n=None,rsqp=constants.rsq_p,rqsn=constants.rsq_n,kp=constants.kappa_p,kn=constants.kappa_n,mN=masses.mN):
     # only valid for L=0
     mN/=constants.hc 
-    def rho2M_p(r): return -radial_laplace(rhoM_p)(r)
-    def rho2M_n(r): return -radial_laplace(rhoM_n)(r)
-    def rho2Phipp_p(r): return -radial_laplace(rhoPhipp_p)(r)
-    def rho2Phipp_n(r): return -radial_laplace(rhoPhipp_n)(r)
+    if rho2M_p is None:
+        def rho2M_p(r): return -radial_laplace(rhoM_p)(r)
+    if rho2M_n is None:
+        def rho2M_n(r): return -radial_laplace(rhoM_n)(r)
+    if rho2Phipp_p is None:
+        def rho2Phipp_p(r): return -radial_laplace(rhoPhipp_p)(r)
+    if rho2Phipp_n is None:
+        def rho2Phipp_n(r): return -radial_laplace(rhoPhipp_n)(r)
     return 1 * \
     ( rhoM_p(r) - ((rsqp/6)+(1./(8*mN**2)))*rho2M_p(r) \
      - (rqsn/6)*rho2M_n(r) \
      + ((1+2*kp)/(4*mN**2))*rho2Phipp_p(r) \
      + ((2*kn)/(4*mN**2))*rho2Phipp_n(r) )
 
-def rho0w_composition(r,rhoM_p,rhoM_n,rhoPhipp_p,rhoPhipp_n,Qw_p=constants.Qw_p,Qw_n=constants.Qw_n,rsqp=constants.rsq_p,rsqn=constants.rsq_n,rsqsN=constants.rsq_sN,kp=constants.kappa_p,kn=constants.kappa_n,ksN=constants.kappa_sN,mN=masses.mN):
+def rho0w_composition(r,rhoM_p,rhoM_n,rhoPhipp_p,rhoPhipp_n,rho2M_p=None,rho2M_n=None,rho2Phipp_p=None,rho2Phipp_n=None,Qw_p=constants.Qw_p,Qw_n=constants.Qw_n,rsqp=constants.rsq_p,rsqn=constants.rsq_n,rsqsN=constants.rsq_sN,kp=constants.kappa_p,kn=constants.kappa_n,ksN=constants.kappa_sN,mN=masses.mN):
     # only valid for L=0
     mN/=constants.hc
-    def rho2M_p(r): return -radial_laplace(rhoM_p)(r)
-    def rho2M_n(r): return -radial_laplace(rhoM_n)(r)
-    def rho2Phipp_p(r): return -radial_laplace(rhoPhipp_p)(r)
-    def rho2Phipp_n(r): return -radial_laplace(rhoPhipp_n)(r)
+    if rho2M_p is None:
+        def rho2M_p(r): return -radial_laplace(rhoM_p)(r)
+    if rho2M_n is None:
+        def rho2M_n(r): return -radial_laplace(rhoM_n)(r)
+    if rho2Phipp_p is None:
+        def rho2Phipp_p(r): return -radial_laplace(rhoPhipp_p)(r)
+    if rho2Phipp_n is None:
+        def rho2Phipp_n(r): return -radial_laplace(rhoPhipp_n)(r)
     return 1 * \
     ( Qw_p*rhoM_p(r) - (Qw_p*((rsqp/6)+(1./(8*mN**2))) + Qw_n*((rsqn/6)+(rsqsN/6)))*rho2M_p(r) \
      + Qw_n*rhoM_n(r) - (Qw_n*((rsqp/6)+(rsqsN/6)+(1./(8*mN**2))) + Qw_p*(rsqn/6))*rho2M_n(r) \
