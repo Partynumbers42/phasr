@@ -43,6 +43,8 @@ def get_dimfactor(response):
         dimfactor = (constants.hc/masses.mmu)**5
     else:
         raise ValueError("Dimension of overlap integral is wrong!")
+    
+    return dimfactor
 
 
 def calculate_states(nucleus_potential,kappa_e=-1,recoil=True,nonzero_electron_mass=True,args_boundstate={},args_continuumstate={}):
