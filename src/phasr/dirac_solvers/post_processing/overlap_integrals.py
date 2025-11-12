@@ -33,7 +33,17 @@ def select_density(nucleus_response,response):
     elif response == 'rho2PhippLn':
         return nucleus_response.rho2PhippLn
     else:
-        raise ValueError("Unphysical response choosen")
+        raise ValueError("Unphysical response chosen")
+
+def get_dimfactor(response):
+
+    if response in ['p' , 'n' , 'ch' , 'w']:
+        dimfactor = (constants.hc/masses.mmu)**3
+    elif response in ['rho2MLp', 'rho2MLn', 'rho2PhippLp', 'rho2PhippLn']:
+        dimfactor = (constants.hc/masses.mmu)**5
+    else:
+        raise ValueError("Dimension of overlap integral is wrong!")
+
 
 def calculate_states(nucleus_potential,kappa_e=-1,recoil=True,nonzero_electron_mass=True,args_boundstate={},args_continuumstate={}):
 
@@ -64,21 +74,23 @@ def overlap_integral_scalar(nucleus_potential,response,nucleus_response=None,kap
 
     density = select_density(nucleus_response,response)
 
+    dimfactor = get_dimfactor(response)
+
     if kappa_e==-1:
         def integrand(r):
-            return 1/(2*np.sqrt(2)) * density(r)*(constants.hc/masses.mmu)**3 * ( + continuumstate.wavefct_g(r)*boundstate.wavefunction_g_1s12(r) - continuumstate.wavefct_f(r)*boundstate.wavefunction_f_1s12(r) )
+            return 1/(2*np.sqrt(2)) * density(r) * dimfactor * ( + continuumstate.wavefct_g(r)*boundstate.wavefunction_g_1s12(r) - continuumstate.wavefct_f(r)*boundstate.wavefunction_f_1s12(r) )
     elif kappa_e==+1:
         def integrand(r):
-            return 1/(2*np.sqrt(2)) * density(r)*(constants.hc/masses.mmu)**3 * ( - continuumstate.wavefct_f(r)*boundstate.wavefunction_g_1s12(r) - continuumstate.wavefct_g(r)*boundstate.wavefunction_f_1s12(r) )
+            return 1/(2*np.sqrt(2)) * density(r) * dimfactor * ( - continuumstate.wavefct_f(r)*boundstate.wavefunction_g_1s12(r) - continuumstate.wavefct_g(r)*boundstate.wavefunction_f_1s12(r) )
     else:
         raise ValueError("Unphysical value for kappa_e choosen")
     
-    overlap_integral, _ = quad(integrand,0,np.inf,limit=1000) # in mmu^7/2 fm^-1
+    overlap_integral, _ = quad(integrand,0,np.inf,limit=1000) # in mmu^7/2 fm^-1 for LO, mmu^11/2 for NLO
     
-    return overlap_integral *(masses.mmu/constants.hc) # in mmu^5/2
+    return overlap_integral *(masses.mmu/constants.hc) # in mmu^5/2 for LO, mmu^9/2 for NLO
 
 def overlap_integral_vector(nucleus_potential,response,nucleus_response=None,kappa_e=-1,recoil=True,nonzero_electron_mass=True,**args):
-    # response = 'p' , 'n' , 'ch' , 'w'
+    # response = 'p' , 'n' , 'ch' , 'w', 'rho2MLp', 'rho2MLn', 'rho2PhippLp', 'rho2PhippLn'
     
     boundstate, continuumstate = calculate_states(nucleus_potential,kappa_e=kappa_e,recoil=recoil,nonzero_electron_mass=nonzero_electron_mass,**args)
 
@@ -87,18 +99,20 @@ def overlap_integral_vector(nucleus_potential,response,nucleus_response=None,kap
 
     density = select_density(nucleus_response,response)
 
+    dimfactor = get_dimfactor(response)
+
     if kappa_e==-1:
         def integrand(r):
-            return 1/(2*np.sqrt(2)) * density(r)*(constants.hc/masses.mmu)**3 * ( + continuumstate.wavefct_g(r)*boundstate.wavefunction_g_1s12(r) + continuumstate.wavefct_f(r)*boundstate.wavefunction_f_1s12(r) )
+            return 1/(2*np.sqrt(2)) * density(r) * dimfactor * ( + continuumstate.wavefct_g(r)*boundstate.wavefunction_g_1s12(r) + continuumstate.wavefct_f(r)*boundstate.wavefunction_f_1s12(r) )
     elif kappa_e==+1:
         def integrand(r):
-            return 1/(2*np.sqrt(2)) * density(r)*(constants.hc/masses.mmu)**3 * ( - continuumstate.wavefct_f(r)*boundstate.wavefunction_g_1s12(r) + continuumstate.wavefct_g(r)*boundstate.wavefunction_f_1s12(r) )
+            return 1/(2*np.sqrt(2)) * density(r) * dimfactor * ( - continuumstate.wavefct_f(r)*boundstate.wavefunction_g_1s12(r) + continuumstate.wavefct_g(r)*boundstate.wavefunction_f_1s12(r) )
     else:
-        raise ValueError("Unphysical value for kappa_e choosen")
+        raise ValueError("Unphysical value for kappa_e chosen")
     
-    overlap_integral, _ = quad(integrand,0,np.inf,limit=1000) # in mmu^7/2 fm^-1
+    overlap_integral, _ = quad(integrand,0,np.inf,limit=1000) # in mmu^7/2 fm^-1 for LO, mmu^11/2 for NLO
     
-    return overlap_integral *(masses.mmu/constants.hc) # in mmu^5/2
+    return overlap_integral *(masses.mmu/constants.hc) # in mmu^5/2 for LO, mmu^9/2 for NLO
     
 def overlap_integral_dipole(nucleus_potential,nucleus_response=None,kappa_e=-1,recoil=True,nonzero_electron_mass=True,**args):
     
@@ -116,7 +130,7 @@ def overlap_integral_dipole(nucleus_potential,nucleus_response=None,kappa_e=-1,r
         def integrand(r):
             return 4/(np.sqrt(2)) * electric_field(r)*(constants.hc/masses.mmu)**2 * ( + continuumstate.wavefct_f(r)*boundstate.wavefunction_f_1s12(r) - continuumstate.wavefct_g(r)*boundstate.wavefunction_g_1s12(r) )
     else:
-        raise ValueError("Unphysical value for kappa_e choosen")
+        raise ValueError("Unphysical value for kappa_e chosen")
         
     overlap_integral, _ = quad(integrand,0,np.inf,limit=1000) # in mmu^5/2 fm^-1
     
