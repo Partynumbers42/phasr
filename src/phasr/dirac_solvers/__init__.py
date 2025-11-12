@@ -3,4 +3,3 @@ from .continuumstate import default_continuumstate_settings, continuumstates
 from .post_processing.crosssection import crosssection_lepton_nucleus_scattering
 from .post_processing.left_right_asymmetry import left_right_asymmetry_lepton_nucleus_scattering
 from .post_processing.overlap_integrals import overlap_integral_scalar, overlap_integral_vector, overlap_integral_dipole
-from .post_processing.ab_initio_correlator import prepare_ab_initio_results
