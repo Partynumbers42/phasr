@@ -25,7 +25,10 @@ from functools import partial
 # the code of this submodule is fairly specialized to the initial specific use case and should be generalized
 # no guarantied for the contents and reliability of this submodule
 
-def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None,print_radius_check=False): 
+def prepare_results(Z,A,folder_path,name=None,r_cut=None,print_radius_check=False): 
+    # the code assumes a folder with two files per (ab-inito) calculation following the naming scheme of name+'.csv' and name+'_FF.csv',
+    # containing scalar parameters and quantities as well as the form factors respectively 
+    # 
     # r_cut needs to be accessed for the considered nucleus
     #
     if name is None:
@@ -60,6 +63,7 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None,print_radius_
         formfactors=np.copy(FF0)
         for key in FF0.dtype.names:
             try:
+                # this normalization adjustment is specific to the normalization of the data we used 
                 L = int(key[-2])
                 if key[1:6] in ['Sigma','Delta']:
                     formfactors[key]*=np.sqrt(4*pi/(2*spin_nucleus+1))
@@ -83,7 +87,7 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None,print_radius_
         multipoles_keys.remove('q')
         x_data=formfactors['q']
 
-        # spline and add CMS corrections
+        # spline and add CMS corrections (form factors need to be corrected for center of mass effects)
         for key in multipoles_keys:
             y_data = formfactors[key]
             y_data_spl = splrep(x_data,y_data,s=0)
@@ -152,9 +156,111 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None,print_radius_
 def CMS_corrected_spline(q,Omega,A,y_data_spl):
     return splev(q,y_data_spl,ext=0)*F_CMS_Gauss(q,Omega,A)
 
+def calculate_correlation_quantities(AI_datasets,quantities_fct_dict={},renew=False,verbose=True,verboseLoad=True):
+    #
+    for AI_model in AI_datasets:
+        
+        prekeys = list(AI_datasets[AI_model].keys())
+        
+        path_correlation_quantities=local_paths.correlation_quantities_paths + "correlation_quantities_"+AI_datasets[AI_model]['atom'].name+".txt"
+        
+        os.makedirs(os.path.dirname(path_correlation_quantities), exist_ok=True)
+
+        if os.path.exists(path_correlation_quantities) and renew==False:
+            with open( path_correlation_quantities, "rb" ) as file:
+                correlation_quantities_array = np.genfromtxt( file,comments=None,skip_header=0,delimiter=',',names=['par','val'],autostrip=True,dtype=['<U10',float])
+            
+            saved_values = {quantity_tuple[0]:quantity_tuple[1] for quantity_tuple in correlation_quantities_array}
+            AI_datasets[AI_model]={**AI_datasets[AI_model],**saved_values}
+            saved_keys = list(saved_values.keys())
+            
+            if verboseLoad and len(saved_keys)>0:
+                print("Loaded (existing) correlation quantities for "+str(AI_model)+" from ",path_correlation_quantities,": ",saved_keys)
+            
+        else:
+            saved_keys = []
+
+        if verbose:
+            print('Calculating (additional) correlation quantities for: ',AI_model)
+        #
+        atom_key = AI_datasets[AI_model]['atom']
+        if (not 'rch' in saved_keys) or renew:
+            AI_datasets[AI_model]['rch']=atom_key.charge_radius
+        if (not 'rchsq' in saved_keys) or renew:
+            AI_datasets[AI_model]['rchsq']=atom_key.charge_radius_sq
+        if (not 'rp' in saved_keys) or renew:
+            AI_datasets[AI_model]['rp']=atom_key.proton_radius
+        if (not 'rpsq' in saved_keys) or renew:
+            AI_datasets[AI_model]['rpsq']=atom_key.proton_radius_sq
+        if (not 'rn' in saved_keys) or renew:
+            AI_datasets[AI_model]['rn']=atom_key.neutron_radius
+        if (not 'rnsq' in saved_keys) or renew:
+            AI_datasets[AI_model]['rnsq']=atom_key.neutron_radius_sq
+        if (not 'rw' in saved_keys) or renew:
+            AI_datasets[AI_model]['rw']=atom_key.weak_radius
+        if (not 'rwsq' in saved_keys) or renew:
+            AI_datasets[AI_model]['rwsq']=atom_key.weak_radius_sq
+        #
+        for quantity_key in quantities_fct_dict:
+            if (not quantity_key in saved_keys) or renew:        
+                AI_datasets[AI_model][quantity_key] = quantities_fct_dict[quantity_key](atom_key)
+        #
+        if renew:
+            with open( path_correlation_quantities, "w" ) as file:
+                file.write('')
+        for key in AI_datasets[AI_model]:
+            if key not in prekeys:
+                if (key not in saved_keys) or renew:
+                    with open( path_correlation_quantities, "a" ) as file:
+                        line='{},{val:.16e}'.format(key,val=AI_datasets[AI_model][key]) #key+','+str(a[key])
+                        file.write(line+'\n')
+        if verboseLoad:
+            print("Correlation quantities (overlap integrals, radii, etc.) saved in ", path_correlation_quantities)
+    
+    return AI_datasets
+
+def calculate_correlation_form_factors(AI_datasets,q_exp,**args):
+        def Fch_q(atom_key):
+            return atom_key.Fch(q_exp,L=0)
+        def Fw_q(atom_key):
+            return atom_key.Fw(q_exp,L=0)
+        q_str = 'q{:.3f}'.format(q_exp)        
+        quantities_fct_dict={'Fch_'+q_str:Fch_q,'Fw_'+q_str:Fw_q}
+        return calculate_correlation_quantities(AI_datasets,quantities_fct_dict,**args)
+
+def calculate_correlation_SI_overlap_integrals(AI_datasets,reference_nucleus=None,overlap_integral_args={},**args):
+        quantities_fct_dict={}
+        nuc_ref_str = reference_nucleus.name if reference_nucleus is not None else 'from_dataset'
+        for nuc in ['p','n','ch']:
+            #key='M0'+nuc
+            def S_N(atom_key):
+                return overlap_integral_scalar(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True,**overlap_integral_args)
+            quantities_fct_dict['S'+nuc+'_rhoch_'+nuc_ref_str] = S_N
+            def V_N(atom_key):
+                return overlap_integral_vector(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True,**overlap_integral_args)
+            quantities_fct_dict['V'+nuc+'_rhoch_'+nuc_ref_str] = V_N            
+        return calculate_correlation_quantities(AI_datasets,quantities_fct_dict,**args)
+
+def calculate_correlation_left_right_asymmetry(AI_datasets,E_exp,theta_exp,acceptance_exp=None,reference_nucleus=None,left_right_asymmetry_args={},**args):
+        #
+        nuc_ref_str = reference_nucleus.name if reference_nucleus is not None else 'from_dataset'
+        #
+        if acceptance_exp is None:
+            def APV(atom_key):
+                return left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key if reference_nucleus is None else reference_nucleus,verbose=True,**left_right_asymmetry_args)
+            quantities_fct_dict={'APV_'+'E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp)+'_rhoch_'+nuc_ref_str:APV}
+        else:
+            def APV(atom_key):
+                return left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key if reference_nucleus is None else reference_nucleus,acceptance=acceptance_exp,verbose=True,**left_right_asymmetry_args)
+            quantities_fct_dict={'APV_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str:APV}
+        #
+        return calculate_correlation_quantities(AI_datasets,quantities_fct_dict,**args)
+
+        #AI_datasets[AI_model]['theta_mean2'], AI_datasets[AI_model]['Qsq_mean2'], AI_datasets[AI_model]['APV_mean2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,acceptance=acceptance_exp,verbose=True,**left_right_asymmetry_args)
 
 
-def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,theta_exp=None,acceptance_exp=None,renew=False,verbose=True,verboseLoad=True,overlap_integral_args={},left_right_asymmetry_args={}):
+
+def calculate_correlation_quantities_old(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,theta_exp=None,acceptance_exp=None,renew=False,verbose=True,verboseLoad=True,overlap_integral_args={},left_right_asymmetry_args={}):
     #
     for AI_model in AI_datasets:
         
