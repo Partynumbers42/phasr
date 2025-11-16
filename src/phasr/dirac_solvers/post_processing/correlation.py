@@ -27,7 +27,7 @@ from functools import partial
 
 def prepare_results(Z,A,folder_path,name=None,r_cut=None,print_radius_check=False): 
     # the code assumes a folder with two files per (ab-inito) calculation following the naming scheme of name+'.csv' and name+'_FF.csv',
-    # containing scalar parameters and quantities as well as the form factors respectively 
+    # containing the relevant scalar parameters and quantities as well as the form factors respectively 
     # 
     # r_cut needs to be accessed for the considered nucleus
     #
@@ -202,8 +202,16 @@ def calculate_correlation_quantities(AI_datasets,quantities_fct_dict={},renew=Fa
             AI_datasets[AI_model]['rwsq']=atom_key.weak_radius_sq
         #
         for quantity_key in quantities_fct_dict:
-            if (not quantity_key in saved_keys) or renew:        
-                AI_datasets[AI_model][quantity_key] = quantities_fct_dict[quantity_key](atom_key)
+            if (not quantity_key in saved_keys) or renew:
+                if type(quantity_key) == tuple or type(quantity_key) == list:
+                    # for functions that return more than one value
+                    quantities_tuple = quantities_fct_dict[quantity_key](atom_key)
+                    tuple_index = 0
+                    for quantity_sub_key in quantity_key:
+                        AI_datasets[AI_model][quantity_sub_key] = quantities_tuple[tuple_index]
+                        tuple_index+=0
+                else:
+                    AI_datasets[AI_model][quantity_key] = quantities_fct_dict[quantity_key](atom_key)
         #
         if renew:
             with open( path_correlation_quantities, "w" ) as file:
@@ -252,12 +260,9 @@ def calculate_correlation_left_right_asymmetry(AI_datasets,E_exp,theta_exp,accep
         else:
             def APV(atom_key):
                 return left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key if reference_nucleus is None else reference_nucleus,acceptance=acceptance_exp,verbose=True,**left_right_asymmetry_args)
-            quantities_fct_dict={'APV_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str:APV}
+            quantities_fct_dict={['theta_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'Qsq_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'APV_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str]:APV}
         #
         return calculate_correlation_quantities(AI_datasets,quantities_fct_dict,**args)
-
-        #AI_datasets[AI_model]['theta_mean2'], AI_datasets[AI_model]['Qsq_mean2'], AI_datasets[AI_model]['APV_mean2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,acceptance=acceptance_exp,verbose=True,**left_right_asymmetry_args)
-
 
 
 def calculate_correlation_quantities_old(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,theta_exp=None,acceptance_exp=None,renew=False,verbose=True,verboseLoad=True,overlap_integral_args={},left_right_asymmetry_args={}):
