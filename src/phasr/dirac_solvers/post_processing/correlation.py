@@ -200,6 +200,10 @@ def calculate_correlation_quantities(AI_datasets,quantities_fct_dict={},renew=Fa
             AI_datasets[AI_model]['rw']=atom_key.weak_radius
         if (not 'rwsq' in saved_keys) or renew:
             AI_datasets[AI_model]['rwsq']=atom_key.weak_radius_sq
+        if (not 'rw-rch' in saved_keys) or renew:
+            AI_datasets[AI_model]['rw-rch']=atom_key.weak_radius - atom_key.charge_radius
+        if (not 'rn-rp' in saved_keys) or renew:
+            AI_datasets[AI_model]['rn-rp']=atom_key.neutron_radius - atom_key.proton_radius
         #
         for quantity_key in quantities_fct_dict:
             if (not quantity_key in saved_keys) or renew:
@@ -420,56 +424,23 @@ def fit_linear_correlation(arr_dict,x_str,y_str,x_offset,**minimizer_args): #,nu
     results={'val':b,'dval':db,'m':m,'x_str':x_str,'y_str':x_str}
     return results
 
-def AbInitioCorrelator(AI_datasets,x_str='rchsq',x_offset=0,y_strs=None,corr_skin=False,**minimizer_args): #,return_all=False
+def Correlator(AI_datasets,x_str='rchsq',y_strs=['rwsq'],x_offset=0,**minimizer_args): 
     #
-    val_arr={}
+    val_arr_dict={}
     #
-    val_arr[x_str]=np.array([])
+    val_arr_dict[x_str]=np.array([])
     for AI_model in AI_datasets:
-        
-        if x_str in ['rn-rp','rw-rch']:
-            rsqi=AI_datasets[AI_model][x_str[:2]]-AI_datasets[AI_model][x_str[3:]]
-            val_arr[x_str]=np.append(val_arr[x_str],rsqi)
-        else:
-            rsqi=AI_datasets[AI_model][x_str]
-            val_arr[x_str]=np.append(val_arr[x_str],rsqi)
+        rsqi=AI_datasets[AI_model][x_str]
+        val_arr_dict[x_str]=np.append(val_arr_dict[x_str],rsqi)
     
     results_dict={}
     
-    if y_strs is None:
-        if not corr_skin:
-            for ov in ['S','V']:
-                for nuc in ['p','n']:
-                    val_arr[ov+nuc]=np.array([])
-                    key = ov+'_'+nuc
-                    for AI_model in AI_datasets:
-                        ovi=AI_datasets[AI_model][key]
-                        val_arr[ov+nuc]=np.append(val_arr[ov+nuc],ovi)
-                    results_dict[ov+nuc] = fit_linear_correlation(val_arr,x_str,ov+nuc,x_offset,**minimizer_args)
-            for r2 in ['rpsq','rnsq','rwsq']: 
-                key = r2
-                val_arr[key]=np.array([])
-                for AI_model in AI_datasets:
-                    r2i=AI_datasets[AI_model][key]
-                    val_arr[key]=np.append(val_arr[key],r2i)
-                results_dict[key] = fit_linear_correlation(val_arr,x_str,key,x_offset,**minimizer_args) 
-        else:
-            for rdiff in ['rn-rp','rw-rch']:
-                key = rdiff
-                key1 = key[:2]
-                key2 = key[3:]
-                val_arr[key]=np.array([])
-                for AI_model in AI_datasets:
-                    rdiffi=AI_datasets[AI_model][key1]-AI_datasets[AI_model][key2]
-                    val_arr[key]=np.append(val_arr[key],rdiffi)
-                results_dict[key] = fit_linear_correlation(val_arr,x_str,key,x_offset,**minimizer_args)   
-    else:
-        for y_str in y_strs:
-            key = y_str
-            val_arr[key]=np.array([])
-            for AI_model in AI_datasets:
-                yi=AI_datasets[AI_model][key]
-                val_arr[key]=np.append(val_arr[key],yi)
-            results_dict[key] = fit_linear_correlation(val_arr,x_str,key,x_offset,**minimizer_args)
-            
-    return results_dict, val_arr
+    for y_str in y_strs:
+        key = y_str
+        val_arr_dict[key]=np.array([])
+        for AI_model in AI_datasets:
+            yi=AI_datasets[AI_model][key]
+            val_arr_dict[key]=np.append(val_arr_dict[key],yi)
+        results_dict[key] = fit_linear_correlation(val_arr_dict,x_str,key,x_offset,**minimizer_args)
+        
+    return results_dict, val_arr_dict
