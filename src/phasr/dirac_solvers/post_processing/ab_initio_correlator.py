@@ -9,6 +9,7 @@ import os
 
 # the code of this submodule is fairly specialized to the initial specific use case and should be generalized
 # no guarantied for the contents and reliability of this submodule
+# for a more gernealized version consider the function provided as part of correlation.py
 
 #import numdifftools as ndt
 from scipy.interpolate import splev, splrep

@@ -168,7 +168,7 @@ def calculate_correlation_quantities(AI_datasets,quantities_fct_dict={},renew=Fa
 
         if os.path.exists(path_correlation_quantities) and renew==False:
             with open( path_correlation_quantities, "rb" ) as file:
-                correlation_quantities_array = np.genfromtxt( file,comments=None,skip_header=0,delimiter=',',names=['par','val'],autostrip=True,dtype=['<U10',float])
+                correlation_quantities_array = np.genfromtxt( file,comments=None,skip_header=0,delimiter=',',names=['par','val'],autostrip=True,dtype=['<U50',float])
             
             saved_values = {quantity_tuple[0]:quantity_tuple[1] for quantity_tuple in correlation_quantities_array}
             AI_datasets[AI_model]={**AI_datasets[AI_model],**saved_values}
@@ -231,6 +231,25 @@ def calculate_correlation_quantities(AI_datasets,quantities_fct_dict={},renew=Fa
     
     return AI_datasets
 
+def S_N(atom_key,nuc,reference_nucleus=None,**overlap_integral_args):
+    if reference_nucleus == None:
+        reference_nucleus = atom_key
+    return overlap_integral_scalar(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True,**overlap_integral_args)
+            
+def V_N(atom_key,nuc,reference_nucleus=None,**overlap_integral_args):
+    if reference_nucleus == None:
+        reference_nucleus = atom_key
+    return overlap_integral_vector(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True,**overlap_integral_args)
+
+def calculate_correlation_SI_overlap_integrals(AI_datasets,reference_nucleus=None,overlap_integral_args={},**args):
+        quantities_fct_dict={}
+        nuc_ref_str = reference_nucleus.name if reference_nucleus is not None else 'from_dataset'
+        for nuc in ['p','n','ch']:
+            #key='M0'+nuc
+            quantities_fct_dict['S'+nuc+'_rhoch_'+nuc_ref_str] = partial(S_N,nuc=nuc,reference_nucleus=reference_nucleus,**overlap_integral_args)
+            quantities_fct_dict['V'+nuc+'_rhoch_'+nuc_ref_str] = partial(V_N,nuc=nuc,reference_nucleus=reference_nucleus,**overlap_integral_args)           
+        return calculate_correlation_quantities(AI_datasets,quantities_fct_dict,**args)
+
 def calculate_correlation_form_factors(AI_datasets,q_exp,**args):
         def Fch_q(atom_key):
             return atom_key.Fch(q_exp,L=0)
@@ -238,19 +257,6 @@ def calculate_correlation_form_factors(AI_datasets,q_exp,**args):
             return atom_key.Fw(q_exp,L=0)
         q_str = 'q{:.3f}'.format(q_exp)        
         quantities_fct_dict={'Fch_'+q_str:Fch_q,'Fw_'+q_str:Fw_q}
-        return calculate_correlation_quantities(AI_datasets,quantities_fct_dict,**args)
-
-def calculate_correlation_SI_overlap_integrals(AI_datasets,reference_nucleus=None,overlap_integral_args={},**args):
-        quantities_fct_dict={}
-        nuc_ref_str = reference_nucleus.name if reference_nucleus is not None else 'from_dataset'
-        for nuc in ['p','n','ch']:
-            #key='M0'+nuc
-            def S_N(atom_key):
-                return overlap_integral_scalar(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True,**overlap_integral_args)
-            quantities_fct_dict['S'+nuc+'_rhoch_'+nuc_ref_str] = S_N
-            def V_N(atom_key):
-                return overlap_integral_vector(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True,**overlap_integral_args)
-            quantities_fct_dict['V'+nuc+'_rhoch_'+nuc_ref_str] = V_N            
         return calculate_correlation_quantities(AI_datasets,quantities_fct_dict,**args)
 
 def calculate_correlation_left_right_asymmetry(AI_datasets,E_exp,theta_exp,acceptance_exp=None,reference_nucleus=None,left_right_asymmetry_args={},**args):
