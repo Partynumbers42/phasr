@@ -76,20 +76,25 @@ def parallel_fitting_manual(datasets_keys:list,Z:int,A:int,RN_tuples=[],redo_N=F
                     redo_pairings.append(copy.deepcopy(pairing))
                     
             N_tasks = len(redo_pairings)
-            N_processes = np.min([N_processes,N_tasks])
-            print('Queuing',N_tasks,'tasks that need to be redone, which will be performed over',N_processes,'processes.')
             
-            with Pool(processes=N_processes) as pool:  # maxtasksperchild=1
-                redo_results = pool.starmap(fit_runner,redo_pairings)
-            
-            redo_results_dict = { 'R'+str(redo_pairings[i][3]) + '_N'+str(redo_pairings[i][4]) : redo_results[i] for i in range(len(redo_results))}
+            if N_tasks>0:
+                N_processes = np.min([N_processes,N_tasks])
+                print('Queuing',N_tasks,'tasks that need to be redone, which will be performed over',N_processes,'processes.')
+                
+                with Pool(processes=N_processes) as pool:  # maxtasksperchild=1
+                    redo_results = pool.starmap(fit_runner,redo_pairings)
+                
+                redo_results_dict = { 'R'+str(redo_pairings[i][3]) + '_N'+str(redo_pairings[i][4]) : redo_results[i] for i in range(len(redo_results))}
 
-            for pairing in redo_pairings:
-                key_RN = 'R'+str(pairing[3]) + '_N'+str(pairing[4]) 
-                chisq_RN_old = results_dict[key_RN]['chisq']
-                chisq_RN_new = redo_results_dict[key_RN]['chisq']
-                if chisq_RN_new < chisq_RN_old:
-                    results_dict[key_RN] = redo_results_dict[key_RN]
+                for pairing in redo_pairings:
+                    key_RN = 'R'+str(pairing[3]) + '_N'+str(pairing[4]) 
+                    chisq_RN_old = results_dict[key_RN]['chisq']
+                    chisq_RN_new = redo_results_dict[key_RN]['chisq']
+                    if chisq_RN_new < chisq_RN_old:
+                        results_dict[key_RN] = redo_results_dict[key_RN]
+            else:
+                print('No fits need to be redone.')
+                
         
     return results_dict
 
