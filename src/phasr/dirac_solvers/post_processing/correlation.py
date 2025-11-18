@@ -5,16 +5,23 @@ from ... import constants, masses
 import numpy as np
 pi=np.pi
 
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import matplotlib.lines as mlines
+
 import os
 
-#import numdifftools as ndt
 from scipy.interpolate import splev, splrep
 from scipy.optimize import minimize
-from scipy.linalg import inv
+
+#import numdifftools as ndt
+#from scipy.linalg import inv
 
 from ...physical_constants.iaea_nds import massofnucleusZN, JPofnucleusZN
 from ...nuclei import nucleus
 from ...nuclei.parameterizations.numerical import field_ultimate_cutoff#, highenergycutoff_field
+
+from ...utility.math import short_uncertainty_notation
 
 from .overlap_integrals import overlap_integral_scalar, overlap_integral_vector, overlap_integral_dipole
 
@@ -274,94 +281,6 @@ def calculate_correlation_left_right_asymmetry(AI_datasets,E_exp,theta_exp,accep
         #
         return calculate_correlation_quantities(AI_datasets,quantities_fct_dict,**args)
 
-
-def calculate_correlation_quantities_old(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,theta_exp=None,acceptance_exp=None,renew=False,verbose=True,verboseLoad=True,overlap_integral_args={},left_right_asymmetry_args={}):
-    #
-    for AI_model in AI_datasets:
-        
-        prekeys = list(AI_datasets[AI_model].keys())
-        
-        if acceptance_exp is None:
-            path_correlation_quantities=local_paths.correlation_quantities_paths + "correlation_quantities_"+AI_datasets[AI_model]['atom'].name+'_'+reference_nucleus.name+('_E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp) if (not (E_exp is None) and (not theta_exp is None)) else '')+('_q{:.3f}'.format(q_exp) if q_exp is not None else '')+".txt"
-        else:
-            path_correlation_quantities=local_paths.correlation_quantities_paths + "correlation_quantities_"+AI_datasets[AI_model]['atom'].name+'_'+reference_nucleus.name+('_E{:.2f}_weighted_mean'.format(E_exp) if (not (E_exp is None)) else '')+('_q{:.3f}'.format(q_exp) if q_exp is not None else '')+".txt"
-        
-        os.makedirs(os.path.dirname(path_correlation_quantities), exist_ok=True)
-
-        if os.path.exists(path_correlation_quantities) and renew==False:
-            with open( path_correlation_quantities, "rb" ) as file:
-                correlation_quantities_array = np.genfromtxt( file,comments=None,skip_header=0,delimiter=',',names=['par','val'],autostrip=True,dtype=['<U10',float])
-            
-            saved_values = {quantity_tuple[0]:quantity_tuple[1] for quantity_tuple in correlation_quantities_array}
-            AI_datasets[AI_model]={**AI_datasets[AI_model],**saved_values}
-            if verboseLoad:
-                print("Loaded (existing) correlation quantities for "+str(AI_model)+" from ",path_correlation_quantities)
-            
-            saved_keys = list(saved_values.keys())
-        else:
-            saved_keys = []
-
-        if verbose:
-            print('Calculating (additional) correlation quantities for: ',AI_model)
-        #
-        atom_key = AI_datasets[AI_model]['atom']
-        if (not 'rch' in saved_keys) or renew:
-            AI_datasets[AI_model]['rch']=atom_key.charge_radius
-        if (not 'rchsq' in saved_keys) or renew:
-            AI_datasets[AI_model]['rchsq']=atom_key.charge_radius_sq
-        if (not 'rp' in saved_keys) or renew:
-            AI_datasets[AI_model]['rp']=atom_key.proton_radius
-        if (not 'rpsq' in saved_keys) or renew:
-            AI_datasets[AI_model]['rpsq']=atom_key.proton_radius_sq
-        if (not 'rn' in saved_keys) or renew:
-            AI_datasets[AI_model]['rn']=atom_key.neutron_radius
-        if (not 'rnsq' in saved_keys) or renew:
-            AI_datasets[AI_model]['rnsq']=atom_key.neutron_radius_sq
-        if (not 'rw' in saved_keys) or renew:
-            AI_datasets[AI_model]['rw']=atom_key.weak_radius
-        if (not 'rwsq' in saved_keys) or renew:
-            AI_datasets[AI_model]['rwsq']=atom_key.weak_radius_sq
-        #
-        if q_exp is not None:
-            if (not 'Fch_exp' in saved_keys) or renew:
-                AI_datasets[AI_model]['Fch_exp']=atom_key.Fch(q_exp,L=0)
-            if (not 'Fw_exp' in saved_keys) or renew:
-                AI_datasets[AI_model]['Fw_exp']=atom_key.Fw(q_exp,L=0)
-        #
-        for nuc in ['p','n','ch']:
-            #key='M0'+nuc
-            if (not 'S_'+nuc in saved_keys) or renew:
-                AI_datasets[AI_model]['S_'+nuc] = overlap_integral_scalar(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True,**overlap_integral_args)
-            if (not 'V_'+nuc in saved_keys) or renew:
-                AI_datasets[AI_model]['V_'+nuc] = overlap_integral_vector(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True,**overlap_integral_args)
-        #
-        if E_exp is not None and theta_exp is not None:
-            
-            if acceptance_exp is None:
-                if (not 'APV' in saved_keys) or renew:
-                    AI_datasets[AI_model]['APV'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,verbose=True,**left_right_asymmetry_args)
-                if (not 'APV2' in saved_keys) or renew:
-                    AI_datasets[AI_model]['APV2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,verbose=True,**left_right_asymmetry_args)
-            else:
-                if (not 'APV_mean' in saved_keys) or renew:
-                    AI_datasets[AI_model]['theta_mean'], AI_datasets[AI_model]['Qsq_mean'], AI_datasets[AI_model]['APV_mean'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,reference_nucleus,acceptance=acceptance_exp,verbose=True,**left_right_asymmetry_args)
-                if (not 'APV_mean2' in saved_keys) or renew:
-                    AI_datasets[AI_model]['theta_mean2'], AI_datasets[AI_model]['Qsq_mean2'], AI_datasets[AI_model]['APV_mean2'] = left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key,acceptance=acceptance_exp,verbose=True,**left_right_asymmetry_args)
-        #
-        if renew:
-            with open( path_correlation_quantities, "w" ) as file:
-                file.write('')
-        for key in AI_datasets[AI_model]:
-            if key not in prekeys:
-                if (key not in saved_keys) or renew:
-                    with open( path_correlation_quantities, "a" ) as file:
-                        line='{},{val:.16e}'.format(key,val=AI_datasets[AI_model][key]) #key+','+str(a[key])
-                        file.write(line+'\n')
-        if verboseLoad:
-            print("Correlation quantities (overlap integrals, radii, etc.) saved in ", path_correlation_quantities)
-    
-    return AI_datasets
-
 def r_ch_rpso(r2p,r2so,Z,A):
     return r2p + constants.rsq_p + ((A-Z)/Z)*constants.rsq_n + 3*constants.hc**2/(4*masses.mN**2) + r2so
 
@@ -380,7 +299,7 @@ def fit_linear_correlation(arr_dict,x_str,y_str,x_offset,**minimizer_args): #,nu
     x_data_unnormalized=arr_dict[x_str] + x_offset
     y_data_unnormalized=arr_dict[y_str]
     
-    # normalize data in x any y direction 
+    # normalize data in x and y direction 
     x_data_mean = np.mean(x_data_unnormalized)
     x_data_std = np.std(x_data_unnormalized)
     y_data_mean = np.mean(y_data_unnormalized)
@@ -390,8 +309,8 @@ def fit_linear_correlation(arr_dict,x_str,y_str,x_offset,**minimizer_args): #,nu
     
     # fit normalized 
     y_error=np.std(y_data)
-    m_ini = -np.std(y_data)/np.std(x_data) # somewhat arbitrary
-    b_ini = np.mean(y_data) # somewhat arbitrary
+    m_ini = -np.std(y_data)/np.std(x_data) # somewhat arbitrary initial value
+    b_ini = np.mean(y_data) # somewhat arbitrary initial value
     xi_initial = np.array([m_ini,b_ini])
     
     def residuals(xi):
@@ -438,7 +357,7 @@ def Correlator(AI_datasets,x_str='rchsq',y_strs=['rwsq'],x_offset=0,**minimizer_
     for AI_model in AI_datasets:
         rsqi=AI_datasets[AI_model][x_str]
         val_arr_dict[x_str]=np.append(val_arr_dict[x_str],rsqi)
-    
+        
     results_dict={}
     
     for y_str in y_strs:
@@ -450,3 +369,154 @@ def Correlator(AI_datasets,x_str='rchsq',y_strs=['rwsq'],x_offset=0,**minimizer_
         results_dict[key] = fit_linear_correlation(val_arr_dict,x_str,key,x_offset,**minimizer_args)
         
     return results_dict, val_arr_dict
+
+def implications_of_correlation(AI_datasets,x_str,y_strs,x_ref,dx_ref,verbose=True):
+
+    x_offset = -x_ref
+    results_dict, _ = Correlator(AI_datasets,x_str,y_strs,x_offset=x_offset)
+
+    correlation_results_dict = {x_str:{'val':x_ref,'error_dr':dx_ref,'error_corr':0}}
+
+    for y_str in y_strs:
+        
+        results=results_dict[y_str]
+        m=results['m']
+        b=results['val']
+        db=results['dval']
+        
+        y_val=(x_ref + x_offset)*m+b # = b
+        dy_dr=np.sqrt(dx_ref**2*m**2)
+        dy_corr=db
+
+        correlation_results_dict[y_str]={'val':y_val,'error_dr':dy_dr,'error_corr':dy_corr}
+        
+        if verbose:
+            y_val_str, [dy_dr_str,dy_corr_str] = short_uncertainty_notation(y_val,[dy_dr,dy_corr])
+            print(y_str+'='+y_val_str+r'('+dy_dr_str+r')('+dy_corr_str+r')')
+
+    return correlation_results_dict
+
+
+# for convenience
+def rsq_dict_add_r_vals(rsq_correlation_results_dict,verbose=True):
+    r_correlation_results_dict = {}
+    for rsq_str in rsq_correlation_results_dict:
+        r_str=rsq_str[:-2]
+        rsq_val=rsq_correlation_results_dict[rsq_str]['val']
+        drsq_dr=rsq_correlation_results_dict[rsq_str]['error_dr']
+        drsq_corr=rsq_correlation_results_dict[rsq_str]['error_corr']
+        r_val = np.sqrt(rsq_val)
+        dr_dr = drsq_dr/(2*r_val)
+        dr_corr = drsq_corr/(2*r_val)
+        r_correlation_results_dict[r_str] = {'val':r_val,'error_dr':dr_dr,'error_corr':dr_corr}
+
+        if verbose:
+            r_val_str, [dr_dr_str,dr_corr_str] = short_uncertainty_notation(r_val,[dr_dr,dr_corr])
+            print(r_str+'='+r_val_str+r'('+dr_dr_str+r')('+dr_corr_str+r')')
+    
+    return r_correlation_results_dict
+
+
+# plotting routine
+def plot_correlation(AI_datasets,x_str,y_strs,x_ref=None,dx_ref=None,x_ref_label=None,y_str_label_trans=lambda x: x, figsize=(5,4), dpi=200 ,xrange=None,yrange=None,plot_color_legend=True,plot_marker_legend=True):
+
+    AI_names = {'DN2LOGO':r'$\Delta$NNLO$_\operatorname{GO}$','N2LOsat':r'NNLO$_\operatorname{sat}$','EM1p82p0':r'$1.8/2.0$ (EM)','EM2p02p0':r'$2.0/2.0$ (EM)','EM2p02p0PWA':r'$2.0/2.0$ (PWA)','EM2p22p0':r'$2.2/2.0$ (EM)','1p82p0EM7p5':'1.8/2.0 (EM7.5)', '1p82p0sim7p5':'1.8/2.0 (sim7.5)','NIsample':'Samples from\nHu et al. (2022)','SM':'shell model'}
+    marker_dict={'DN2LOGO':'s','N2LOsat':'D','EM1p82p0':'p','EM2p02p0':'X','EM2p02p0PWA':'d','EM2p22p0':'P','1p82p0EM7p5':'v','1p82p0sim7p5':'^','NIsample':'.','SM':'h'}
+    
+    x_offset = -x_ref if not x_ref is None else 0
+    results_dict, val_arr_dict = Correlator(AI_datasets,x_str,y_strs,x_offset=x_offset)
+    
+    if xrange is None:
+
+        if x_ref is None:
+            x_extra_min = val_arr_dict[x_str][0]
+            x_extra_max = val_arr_dict[x_str][0]
+        elif dx_ref is None:
+            x_extra_min = x_ref
+            x_extra_max = x_ref
+        else:
+            x_extra_min = x_ref - dx_ref
+            x_extra_max = x_ref + dx_ref
+        
+        x_val_min, x_val_max = np.min(np.append(val_arr_dict[x_str],x_extra_min)), np.max(np.append(val_arr_dict[x_str],x_extra_max)) 
+        x_tics = (x_val_max-x_val_min)*2e-1
+        x_min ,x_max = x_val_min - x_tics , x_val_max + x_tics
+        x_round_digs=-int(np.floor(np.log10(np.abs(x_tics))))
+        x_min=np.around(x_min,x_round_digs)
+        x_max=np.around(x_max,x_round_digs)
+        x_tics=np.around(x_tics,x_round_digs)
+    else:
+        x_min ,x_max, x_tics = xrange[0], xrange[1], xrange[2]
+    x_bin = x_tics * 1e-3
+
+    if yrange is None:
+        y_val_min, y_val_max = +np.inf, -np.inf
+        for y_str in y_strs:
+            y_val_min, y_val_max = np.min(np.append(val_arr_dict[y_str],y_val_min)), np.max(np.append(val_arr_dict[y_str],y_val_max))
+        y_tics = (y_val_max-y_val_min)*1e-1
+        y_min ,y_max = y_val_min - y_tics , y_val_max + y_tics
+        y_round_digs=-int(np.floor(np.log10(np.abs(y_tics))))
+        y_min=np.around(y_min,y_round_digs)
+        y_max=np.around(y_max,y_round_digs)
+        y_tics=np.around(y_tics,y_round_digs)
+    else:
+        y_min ,y_max, y_tics = yrange[0], yrange[1], yrange[2]
+    y_bin = y_tics * 1e-3
+    
+    x=np.arange(x_min,x_max+x_bin,x_bin)
+    
+    AI_names = { key : AI_names[key] for key in AI_names if key in AI_datasets.keys()}
+    marker_dict = { key : marker_dict[key] for key in marker_dict if key in AI_datasets.keys()}
+
+    fig,ax=plt.subplots(figsize=figsize,dpi=dpi)
+
+    color_nr=0
+    for y_str in y_strs:
+        marker_nr=0
+        color_nr+=1
+        if color_nr==3:
+            color_nr+=1
+    
+        first=True
+        for AI_key in AI_datasets:
+            AI_name=AI_key if AI_key[:-4]!='NIsample' else 'NIsample'
+            ax.scatter(AI_datasets[AI_key][x_str],AI_datasets[AI_key][y_str],marker=marker_dict[AI_name],edgecolor='black',linewidth=0.2,s=50,alpha=1,label=(y_str_label_trans(y_str) if first else None),color='C'+str(color_nr),zorder=2 if AI_name!='NIsample' else 1)
+            first=False
+        
+    for y_str in results_dict:
+        
+        results=results_dict[y_str]
+        m=results['m']
+        b=results['val']
+        db=results['dval']
+        
+        y=(x + x_offset)*m+b
+        ax.plot(x,y,color='grey',zorder=0,linewidth=0.5)
+        ax.fill_between(x,y+db,y-db,alpha=0.25,color='grey',zorder=-1)
+
+    if not x_ref is None: 
+        ax.plot([x_ref,x_ref],[y_min,y_max],linestyle='--',color='C3',zorder=-2)
+        if not dx_ref is None:
+            ax.fill_betweenx([y_min,y_max],2*[x_ref-dx_ref],2*[x_ref+dx_ref],alpha=0.25,color='C3',zorder=-3,edgecolor=None)
+        if not x_ref_label is None:
+            ax.annotate(x_ref_label, (x_ref+x_bin,y_min+y_bin),horizontalalignment='left', verticalalignment='bottom',color='C3')
+        
+    ax.set_xticks(np.arange(x_min,x_max+x_tics,x_tics))#,rotation = 15
+    ax.set_xlim(x_min,x_max)
+    ax.set_yticks(np.arange(y_min,y_max+y_tics,y_tics))#,rotation = 15
+    ax.set_ylim(y_min,y_max)
+    ax.minorticks_on()
+
+    # top
+    if plot_color_legend:
+        handles = [mpatches.Patch(color=line._facecolors) for line in ax.get_legend_handles_labels()[0]]
+        leg1 = ax.legend(handles, ax.get_legend_handles_labels()[1], ncol=4, bbox_to_anchor=(0.00, 1.00,1.00,0), loc="upper left", fontsize=8) #,mode="expand"
+        ax.add_artist(leg1)
+    
+    # bottom
+    if plot_marker_legend:
+        handles = [mlines.Line2D([], [], marker=marker, mec='k', mfc='w', ls='') for marker in list(marker_dict.values())]
+        handles_names = list(AI_names.values())
+        ax.legend(handles, handles_names, ncol=3, loc='upper left',fontsize=8, bbox_to_anchor=(0.00, -0.2, 1.00, 0),mode="expand")
+
+    return fig, ax
