@@ -152,6 +152,74 @@ def prepare_ab_initio_results(Z,A,folder_path,name=None,r_cut=None,print_radius_
 def CMS_corrected_spline(q,Omega,A,y_data_spl):
     return splev(q,y_data_spl,ext=0)*F_CMS_Gauss(q,Omega,A)
 
+def translate_old_to_new(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,theta_exp=None,acceptance_exp=None,renew=False,verbose=True,verboseLoad=True,overlap_integral_args={},left_right_asymmetry_args={}):
+    
+    for AI_model in AI_datasets:
+        
+        prekeys = list(AI_datasets[AI_model].keys())
+        
+        if acceptance_exp is None:
+            path_correlation_quantities=local_paths.correlation_quantities_paths + "correlation_quantities_"+AI_datasets[AI_model]['atom'].name+'_'+reference_nucleus.name+('_E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp) if (not (E_exp is None) and (not theta_exp is None)) else '')+('_q{:.3f}'.format(q_exp) if q_exp is not None else '')+".txt"
+        else:
+            path_correlation_quantities=local_paths.correlation_quantities_paths + "correlation_quantities_"+AI_datasets[AI_model]['atom'].name+'_'+reference_nucleus.name+('_E{:.2f}_weighted_mean'.format(E_exp) if (not (E_exp is None)) else '')+('_q{:.3f}'.format(q_exp) if q_exp is not None else '')+".txt"
+        
+        os.makedirs(os.path.dirname(path_correlation_quantities), exist_ok=True)
+
+        if os.path.exists(path_correlation_quantities) and renew==False:
+            with open( path_correlation_quantities, "rb" ) as file:
+                correlation_quantities_array = np.genfromtxt( file,comments=None,skip_header=0,delimiter=',',names=['par','val'],autostrip=True,dtype=['<U10',float])
+            
+            saved_values = {quantity_tuple[0]:quantity_tuple[1] for quantity_tuple in correlation_quantities_array}
+            AI_datasets[AI_model]={**AI_datasets[AI_model],**saved_values}
+            if verboseLoad:
+                print("Loaded (existing) correlation quantities for "+str(AI_model)+" from ",path_correlation_quantities)
+            
+            saved_keys = list(saved_values.keys())
+        else:
+            saved_keys = []
+
+        nuc_ref_str = reference_nucleus.name
+
+        for key in saved_keys:
+            if key in ['S_p','S_n','V_p','V_n','S_ch','V_ch']:
+                new_key = key[:1]+key[2:]+'_rhoch_'+nuc_ref_str
+                print(key,'->',new_key)
+                AI_datasets[AI_model][new_key] = AI_datasets[AI_model][key]
+            if key in ['APV']:
+                new_key = 'APV_'+'E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp)+'_rhoch_'+nuc_ref_str
+                print(key,'->',new_key)
+                AI_datasets[AI_model][new_key] = AI_datasets[AI_model][key]
+            if key in ['APV2']:
+                new_key = 'APV_'+'E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp)+'_rhoch_'+'from_dataset'
+                print(key,'->',new_key)
+                AI_datasets[AI_model][new_key] = AI_datasets[AI_model][key]
+            if key in ['theta_mean','Qsq_mean','APV_mean']:
+                new_key = key[:-4]+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str
+                print(key,'->',new_key)
+                AI_datasets[AI_model][new_key] = AI_datasets[AI_model][key]
+            if key in ['theta_mean2','Qsq_mean2','APV_mean2']:
+                new_key = key[:-4]+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+'from_dataset'
+                print(key,'->',new_key)
+                AI_datasets[AI_model][new_key] = AI_datasets[AI_model][key]
+
+        path_correlation_quantities_new=local_paths.correlation_quantities_paths + "correlation_quantities_"+AI_datasets[AI_model]['atom'].name+".txt"
+        
+        if renew:
+            with open( path_correlation_quantities_new, "w" ) as file:
+                file.write('')
+        for key in AI_datasets[AI_model]:
+            if key not in prekeys:
+                if (key not in saved_keys) or renew:
+                    with open( path_correlation_quantities_new, "a" ) as file:
+                        line='{},{val:.16e}'.format(key,val=AI_datasets[AI_model][key]) #key+','+str(a[key])
+                        file.write(line+'\n')
+        if verboseLoad:
+            print("Correlation quantities (overlap integrals, radii, etc.) saved in ", path_correlation_quantities_new)
+    
+    
+
+
+
 def calculate_correlation_quantities(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,theta_exp=None,acceptance_exp=None,renew=False,verbose=True,verboseLoad=True,overlap_integral_args={},left_right_asymmetry_args={}):
     #
     for AI_model in AI_datasets:
