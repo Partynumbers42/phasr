@@ -167,7 +167,7 @@ def translate_old_to_new(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,the
 
         if os.path.exists(path_correlation_quantities) and renew==False:
             with open( path_correlation_quantities, "rb" ) as file:
-                correlation_quantities_array = np.genfromtxt( file,comments=None,skip_header=0,delimiter=',',names=['par','val'],autostrip=True,dtype=['<U10',float])
+                correlation_quantities_array = np.genfromtxt( file,comments=None,skip_header=0,delimiter=',',names=['par','val'],autostrip=True,dtype=['<U100',float])
             
             saved_values = {quantity_tuple[0]:quantity_tuple[1] for quantity_tuple in correlation_quantities_array}
             AI_datasets[AI_model]={**AI_datasets[AI_model],**saved_values}
@@ -176,6 +176,7 @@ def translate_old_to_new(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,the
             
             saved_keys = list(saved_values.keys())
         else:
+            print('path does not exist:',path_correlation_quantities)
             saved_keys = []
 
         nuc_ref_str = reference_nucleus.name
@@ -198,7 +199,7 @@ def translate_old_to_new(AI_datasets,reference_nucleus,q_exp=None,E_exp=None,the
                 print(key,'->',new_key)
                 AI_datasets[AI_model][new_key] = AI_datasets[AI_model][key]
             if key in ['theta_mean2','Qsq_mean2','APV_mean2']:
-                new_key = key[:-4]+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+'from_dataset'
+                new_key = key[:-5]+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+'from_dataset'
                 print(key,'->',new_key)
                 AI_datasets[AI_model][new_key] = AI_datasets[AI_model][key]
 

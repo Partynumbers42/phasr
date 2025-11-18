@@ -175,7 +175,7 @@ def calculate_correlation_quantities(AI_datasets,quantities_fct_dict={},renew=Fa
 
         if os.path.exists(path_correlation_quantities) and renew==False:
             with open( path_correlation_quantities, "rb" ) as file:
-                correlation_quantities_array = np.genfromtxt( file,comments=None,skip_header=0,delimiter=',',names=['par','val'],autostrip=True,dtype=['<U50',float])
+                correlation_quantities_array = np.genfromtxt( file,comments=None,skip_header=0,delimiter=',',names=['par','val'],autostrip=True,dtype=['<U100',float])
             
             saved_values = {quantity_tuple[0]:quantity_tuple[1] for quantity_tuple in correlation_quantities_array}
             AI_datasets[AI_model]={**AI_datasets[AI_model],**saved_values}
@@ -213,16 +213,22 @@ def calculate_correlation_quantities(AI_datasets,quantities_fct_dict={},renew=Fa
             AI_datasets[AI_model]['rn-rp']=atom_key.neutron_radius - atom_key.proton_radius
         #
         for quantity_key in quantities_fct_dict:
-            if (not quantity_key in saved_keys) or renew:
-                if type(quantity_key) == tuple or type(quantity_key) == list:
-                    # for functions that return more than one value
+            if type(quantity_key) == np.ndarray or type(quantity_key) == tuple:
+                # if a function has more then one return value
+                sub_key_missing = False
+                for quantity_sub_key in quantity_key:
+                    if (not quantity_sub_key in saved_keys) or renew:
+                        sub_key_missing = True
+                if sub_key_missing:
                     quantities_tuple = quantities_fct_dict[quantity_key](atom_key)
                     tuple_index = 0
                     for quantity_sub_key in quantity_key:
                         AI_datasets[AI_model][quantity_sub_key] = quantities_tuple[tuple_index]
                         tuple_index+=0
-                else:
+            else:
+                if (not quantity_key in saved_keys) or renew:
                     AI_datasets[AI_model][quantity_key] = quantities_fct_dict[quantity_key](atom_key)
+            
         #
         if renew:
             with open( path_correlation_quantities, "w" ) as file:
@@ -277,7 +283,10 @@ def calculate_correlation_left_right_asymmetry(AI_datasets,E_exp,theta_exp,accep
         else:
             def APV(atom_key):
                 return left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key if reference_nucleus is None else reference_nucleus,acceptance=acceptance_exp,verbose=True,**left_right_asymmetry_args)
-            quantities_fct_dict={['theta_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'Qsq_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'APV_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str]:APV}
+            
+            # -> not working yet needs to be reworked, dict key cant be list
+            
+            quantities_fct_dict={('theta_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'Qsq_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'APV_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str):APV}
         #
         return calculate_correlation_quantities(AI_datasets,quantities_fct_dict,**args)
 
