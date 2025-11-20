@@ -5,7 +5,6 @@ from ... import constants, masses
 import numpy as np
 pi=np.pi
 
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.lines as mlines
 
@@ -427,7 +426,7 @@ def rsq_dict_add_r_vals(rsq_correlation_results_dict,verbose=True):
 
 
 # plotting routine
-def plot_correlation(AI_datasets,x_str,y_strs,x_ref=None,dx_ref=None,x_ref_label=None,y_str_label_trans=lambda x: x, figsize=(5,4), dpi=200 ,xrange=None,yrange=None,plot_color_legend=True,plot_marker_legend=True):
+def plot_correlation(ax,AI_datasets,x_str,y_strs,x_ref=None,dx_ref=None,x_ref_label=None,y_str_label_trans=lambda x: x ,xrange=None,yrange=None,plot_color_legend=True,plot_marker_legend=True,hatch=None):
 
     AI_names = {'DN2LOGO':r'$\Delta$NNLO$_\operatorname{GO}$','N2LOsat':r'NNLO$_\operatorname{sat}$','EM1p82p0':r'$1.8/2.0$ (EM)','EM2p02p0':r'$2.0/2.0$ (EM)','EM2p02p0PWA':r'$2.0/2.0$ (PWA)','EM2p22p0':r'$2.2/2.0$ (EM)','1p82p0EM7p5':'1.8/2.0 (EM7.5)', '1p82p0sim7p5':'1.8/2.0 (sim7.5)','NIsample':'Samples from\nHu et al. (2022)','SM':'shell model'}
     marker_dict={'DN2LOGO':'s','N2LOsat':'D','EM1p82p0':'p','EM2p02p0':'X','EM2p02p0PWA':'d','EM2p22p0':'P','1p82p0EM7p5':'v','1p82p0sim7p5':'^','NIsample':'.','SM':'h'}
@@ -459,13 +458,13 @@ def plot_correlation(AI_datasets,x_str,y_strs,x_ref=None,dx_ref=None,x_ref_label
         x_tics=np.around(x_tics,x_round_digs)
     else:
         x_min ,x_max, x_tics = xrange[0], xrange[1], xrange[2]
-    x_bin = x_tics * 1e-3
+    x_bin = x_tics * 1.e-3
 
     if yrange is None:
         y_val_min, y_val_max = +np.inf, -np.inf
         for y_str in y_strs:
             y_val_min, y_val_max = np.min(np.append(val_arr_dict[y_str],y_val_min)), np.max(np.append(val_arr_dict[y_str],y_val_max))
-        y_tics = (y_val_max-y_val_min)*1e-1
+        y_tics = (y_val_max-y_val_min)*2e-1
         y_min ,y_max = y_val_min - y_tics , y_val_max + y_tics
         y_round_digs=-int(np.floor(np.log10(np.abs(y_tics))))
         y_min=np.around(y_min,y_round_digs)
@@ -473,15 +472,12 @@ def plot_correlation(AI_datasets,x_str,y_strs,x_ref=None,dx_ref=None,x_ref_label
         y_tics=np.around(y_tics,y_round_digs)
     else:
         y_min ,y_max, y_tics = yrange[0], yrange[1], yrange[2]
-    y_bin = y_tics * 1e-3
+    y_bin = y_tics * 1.e-3
     
     x=np.arange(x_min,x_max+x_bin,x_bin)
     
-    fig,ax=plt.subplots(figsize=figsize,dpi=dpi)
-
     color_nr=0
     for y_str in y_strs:
-        marker_nr=0
         color_nr+=1
         if color_nr==3:
             color_nr+=1
@@ -489,7 +485,7 @@ def plot_correlation(AI_datasets,x_str,y_strs,x_ref=None,dx_ref=None,x_ref_label
         first=True
         for AI_key in AI_datasets:
             AI_name=AI_key if AI_key[:-4]!='NIsample' else 'NIsample'
-            ax.scatter(AI_datasets[AI_key][x_str],AI_datasets[AI_key][y_str],marker=marker_dict[AI_name],edgecolor='black',linewidth=0.2,s=50,alpha=1,label=(y_str_label_trans(y_str) if first else None),color='C'+str(color_nr),zorder=2 if AI_name!='NIsample' else 1)
+            ax.scatter(AI_datasets[AI_key][x_str],AI_datasets[AI_key][y_str],marker=marker_dict[AI_name],edgecolor='black',linewidth=0.2,s=50,hatch=hatch,alpha=1,label=(y_str_label_trans(y_str) if first else None),color='C'+str(color_nr),zorder=2 if AI_name!='NIsample' else 1)
             first=False
         
     for y_str in results_dict:
@@ -510,9 +506,9 @@ def plot_correlation(AI_datasets,x_str,y_strs,x_ref=None,dx_ref=None,x_ref_label
         if not x_ref_label is None:
             ax.annotate(x_ref_label, (x_ref+x_bin,y_min+y_bin),horizontalalignment='left', verticalalignment='bottom',color='C3')
         
-    ax.set_xticks(np.arange(x_min,x_max+x_tics,x_tics))#,rotation = 15
+    ax.set_xticks(np.arange(x_min,x_max+x_tics,x_tics,dtype=type(x_tics)))#,rotation = 15
     ax.set_xlim(x_min,x_max)
-    ax.set_yticks(np.arange(y_min,y_max+y_tics,y_tics))#,rotation = 15
+    ax.set_yticks(np.arange(y_min,y_max+y_tics,y_tics,dtype=type(y_tics)))#,rotation = 15
     ax.set_ylim(y_min,y_max)
     ax.minorticks_on()
 
@@ -520,12 +516,15 @@ def plot_correlation(AI_datasets,x_str,y_strs,x_ref=None,dx_ref=None,x_ref_label
     if plot_color_legend:
         handles = [mpatches.Patch(color=line._facecolors) for line in ax.get_legend_handles_labels()[0]]
         leg1 = ax.legend(handles, ax.get_legend_handles_labels()[1], ncol=4, bbox_to_anchor=(0.00, 1.00,1.00,0), loc="upper left", fontsize=8) #,mode="expand"
+        leg1.set_in_layout(True)
         ax.add_artist(leg1)
+        #art1.set_in_layout(True)
     
     # bottom
     if plot_marker_legend:
         handles = [mlines.Line2D([], [], marker=marker, mec='k', mfc='w', ls='') for marker in list(marker_dict.values())]
         handles_names = list(AI_names.values())
         ax.legend(handles, handles_names, ncol=3, loc='upper left',fontsize=8, bbox_to_anchor=(0.00, -0.2, 1.00, 0),mode="expand")
-
-    return fig, ax
+        #leg2.set_in_layout(True)
+        #art2 = ax.add_artist(leg2)
+        #art2.set_in_layout(True)
