@@ -247,7 +247,7 @@ def S_N(atom_key,nuc,reference_nucleus=None,**overlap_integral_args):
     if reference_nucleus == None:
         reference_nucleus = atom_key
     return overlap_integral_scalar(reference_nucleus,nuc,nucleus_response=atom_key,nonzero_electron_mass=True,**overlap_integral_args)
-            
+
 def V_N(atom_key,nuc,reference_nucleus=None,**overlap_integral_args):
     if reference_nucleus == None:
         reference_nucleus = atom_key
