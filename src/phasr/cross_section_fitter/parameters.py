@@ -58,7 +58,7 @@ class parameter_set():
         xi_dummy = np.zeros(self.N_x)
         for j in range(1,self.N_x+1):
             aj_tilde_implied_min, aj_tilde_implied_max = ai_tilde_implied_bounds(j,self.ai_tilde,self.ai_abs_bound,self.qi,self.N_a,self.R,self.total_charge)
-            xi_dummy[j-1] = (self.ai_tilde[j-1] - aj_tilde_implied_min)/(aj_tilde_implied_max-aj_tilde_implied_min) 
+            xi_dummy[j-1] = (self.ai_tilde[j-1] - aj_tilde_implied_min)/(aj_tilde_implied_max-aj_tilde_implied_min) if aj_tilde_implied_max!=aj_tilde_implied_min else 0.5
         # make sure xi are between 0 and 1
         xi_dummy[xi_dummy<0]=0
         xi_dummy[xi_dummy>1]=1
