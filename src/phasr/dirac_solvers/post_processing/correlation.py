@@ -163,6 +163,7 @@ def CMS_corrected_spline(q,Omega,A,y_data_spl):
     return splev(q,y_data_spl,ext=0)*F_CMS_Gauss(q,Omega,A)
 
 def calculate_correlation_quantities(AI_datasets,quantities_fct_dict={},renew=False,verbose=True,verboseLoad=True):
+    # Warning renew renews everything
     #
     for AI_model in AI_datasets:
         
