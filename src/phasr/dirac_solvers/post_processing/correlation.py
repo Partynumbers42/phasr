@@ -427,7 +427,7 @@ def rsq_dict_add_r_vals(rsq_correlation_results_dict,verbose=True):
 
 
 # plotting routine
-def plot_correlation(ax,AI_datasets,x_str,y_strs,x_ref=None,dx_ref=None,x_ref_label=None,y_str_label_trans=lambda x: x ,xrange=None,yrange=None,plot_color_legend=True,plot_marker_legend=True,hatch=None):
+def plot_correlation(ax,AI_datasets,x_str,y_strs,x_ref=None,dx_ref=None,x_ref_label=None,y_str_label_trans=lambda x: x ,xrange=None,yrange=None,plot_fit=True,plot_color_legend=True,plot_marker_legend=True,hatch=None):
 
     AI_names = {'DN2LOGO':r'$\Delta$NNLO$_\operatorname{GO}$','N2LOsat':r'NNLO$_\operatorname{sat}$','EM1p82p0':r'$1.8/2.0$ (EM)','EM2p02p0':r'$2.0/2.0$ (EM)','EM2p02p0PWA':r'$2.0/2.0$ (PWA)','EM2p22p0':r'$2.2/2.0$ (EM)','1p82p0EM7p5':'1.8/2.0 (EM7.5)', '1p82p0sim7p5':'1.8/2.0 (sim7.5)','NIsample':'Samples from\nHu et al. (2022)','SM':'shell model'}
     marker_dict={'DN2LOGO':'s','N2LOsat':'D','EM1p82p0':'p','EM2p02p0':'X','EM2p02p0PWA':'d','EM2p22p0':'P','1p82p0EM7p5':'v','1p82p0sim7p5':'^','NIsample':'.','SM':'h'}
@@ -489,16 +489,17 @@ def plot_correlation(ax,AI_datasets,x_str,y_strs,x_ref=None,dx_ref=None,x_ref_la
             ax.scatter(AI_datasets[AI_key][x_str],AI_datasets[AI_key][y_str],marker=marker_dict[AI_name],edgecolor='black',linewidth=0.2,s=50,hatch=hatch,alpha=1,label=(y_str_label_trans(y_str) if first else None),color='C'+str(color_nr),zorder=2 if AI_name!='NIsample' else 1)
             first=False
         
-    for y_str in results_dict:
-        
-        results=results_dict[y_str]
-        m=results['m']
-        b=results['val']
-        db=results['dval']
-        
-        y=(x + x_offset)*m+b
-        ax.plot(x,y,color='grey',zorder=0,linewidth=0.5)
-        ax.fill_between(x,y+db,y-db,alpha=0.25,color='grey',zorder=-1)
+    if plot_fit:
+        for y_str in results_dict:
+            
+            results=results_dict[y_str]
+            m=results['m']
+            b=results['val']
+            db=results['dval']
+            
+            y=(x + x_offset)*m+b
+            ax.plot(x,y,color='grey',zorder=0,linewidth=0.5)
+            ax.fill_between(x,y+db,y-db,alpha=0.25,color='grey',zorder=-1)
 
     if not x_ref is None: 
         ax.plot([x_ref,x_ref],[y_min,y_max],linestyle='--',color='C3',zorder=-2)
