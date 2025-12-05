@@ -410,19 +410,20 @@ def implications_of_correlation(AI_datasets,x_str,y_strs,x_ref,dx_ref,verbose=Tr
 def rsq_dict_add_r_vals(rsq_correlation_results_dict,verbose=True):
     r_correlation_results_dict = {}
     for rsq_str in rsq_correlation_results_dict:
-        r_str=rsq_str[:-2]
-        rsq_val=rsq_correlation_results_dict[rsq_str]['val']
-        drsq_dr=rsq_correlation_results_dict[rsq_str]['error_dr']
-        drsq_corr=rsq_correlation_results_dict[rsq_str]['error_corr']
-        r_val = np.sqrt(rsq_val)
-        dr_dr = drsq_dr/(2*r_val)
-        dr_corr = drsq_corr/(2*r_val)
-        r_correlation_results_dict[r_str] = {'val':r_val,'error_dr':dr_dr,'error_corr':dr_corr}
+        if rsq_str[0]=='r':
+            r_str=rsq_str[:-2]
+            rsq_val=rsq_correlation_results_dict[rsq_str]['val']
+            drsq_dr=rsq_correlation_results_dict[rsq_str]['error_dr']
+            drsq_corr=rsq_correlation_results_dict[rsq_str]['error_corr']
+            r_val = np.sqrt(rsq_val)
+            dr_dr = drsq_dr/(2*r_val)
+            dr_corr = drsq_corr/(2*r_val)
+            r_correlation_results_dict[r_str] = {'val':r_val,'error_dr':dr_dr,'error_corr':dr_corr}
 
-        if verbose:
-            r_val_str, [dr_dr_str,dr_corr_str] = short_uncertainty_notation(r_val,[dr_dr,dr_corr])
-            print(r_str+'='+r_val_str+r'('+dr_dr_str+r')('+dr_corr_str+r')')
-    
+            if verbose:
+                r_val_str, [dr_dr_str,dr_corr_str] = short_uncertainty_notation(r_val,[dr_dr,dr_corr])
+                print(r_str+'='+r_val_str+r'('+dr_dr_str+r')('+dr_corr_str+r')')
+        
     return r_correlation_results_dict
 
 
