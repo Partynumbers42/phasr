@@ -24,14 +24,14 @@ def select_density(nucleus_response,response):
         return nucleus_response.charge_density
     elif response == 'w':
         return nucleus_response.weak_density
-    elif response == 'rho2MLp':
-        return nucleus_response.rho2MLp
-    elif response == 'rho2MLn':
-        return nucleus_response.rho2MLn
-    elif response == 'rho2PhippLp':
-        return nucleus_response.rho2PhippLp
-    elif response == 'rho2PhippLn':
-        return nucleus_response.rho2PhippLn
+    elif response == 'rho2M0p':
+        return nucleus_response.rho2M0p
+    elif response == 'rho2M0n':
+        return nucleus_response.rho2M0n
+    elif response == 'rho2Phipp0p':
+        return nucleus_response.rho2Phipp0p
+    elif response == 'rho2Phipp0n':
+        return nucleus_response.rho2Phipp0n
     else:
         raise ValueError("Unphysical response chosen")
 
@@ -39,7 +39,7 @@ def get_dimfactor(response):
 
     if response in ['p' , 'n' , 'ch' , 'w']:
         dimfactor = (constants.hc/masses.mmu)**3
-    elif response in ['rho2MLp', 'rho2MLn', 'rho2PhippLp', 'rho2PhippLn']:
+    elif response in ['rho2M0p', 'rho2M0n', 'rho2Phipp0p', 'rho2Phipp0n']:
         dimfactor = (constants.hc/masses.mmu)**5
     else:
         raise ValueError("Dimension of overlap integral is wrong!")
@@ -67,7 +67,7 @@ def calculate_states(nucleus_potential,kappa_e=-1,recoil=True,nonzero_electron_m
 
 
 def overlap_integral_scalar(nucleus_potential,response,nucleus_response=None,kappa_e=-1,recoil=True,nonzero_electron_mass=True,**args):
-    # response = 'p' , 'n' , 'ch' , 'w', 'rho2MLp', 'rho2MLn', 'rho2PhippLp', 'rho2PhippLn'
+    # response = 'p' , 'n' , 'ch' , 'w', 'rho2M0p', 'rho2M0n', 'rho2Phipp0p', 'rho2Phipp0n'
     
     boundstate, continuumstate = calculate_states(nucleus_potential,kappa_e=kappa_e,recoil=recoil,nonzero_electron_mass=nonzero_electron_mass,**args)
 
@@ -92,7 +92,7 @@ def overlap_integral_scalar(nucleus_potential,response,nucleus_response=None,kap
     return overlap_integral *(masses.mmu/constants.hc) # in mmu^5/2 for LO, mmu^9/2 for NLO
 
 def overlap_integral_vector(nucleus_potential,response,nucleus_response=None,kappa_e=-1,recoil=True,nonzero_electron_mass=True,**args):
-    # response = 'p' , 'n' , 'ch' , 'w', 'rho2MLp', 'rho2MLn', 'rho2PhippLp', 'rho2PhippLn'
+    # response = 'p' , 'n' , 'ch' , 'w', 'rho2M0p', 'rho2M0n', 'rho2Phipp0p', 'rho2Phipp0n'
     
     boundstate, continuumstate = calculate_states(nucleus_potential,kappa_e=kappa_e,recoil=recoil,nonzero_electron_mass=nonzero_electron_mass,**args)
 
