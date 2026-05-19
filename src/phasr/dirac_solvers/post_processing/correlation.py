@@ -288,6 +288,26 @@ def calculate_correlation_left_right_asymmetry(AI_datasets,E_exp,theta_exp,accep
         #
         return calculate_correlation_quantities(AI_datasets,quantities_fct_dict,**args)
 
+#def calculate_correlation_left_right_asymmetry_with_radiative_corrections(AI_datasets,E_exp,theta_exp,acceptance_exp=None,reference_nucleus=None,left_right_asymmetry_args={},**args):
+#        #
+#        nuc_ref_str = reference_nucleus.name if reference_nucleus is not None else 'from_dataset'
+#        #
+#        if acceptance_exp is None:
+#            
+#            def APV_RC(atom_key):
+#                #APV_0 = AI_datasets[atom_key.name]['APV_'+'E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp)+'_rhoch_'+nuc_ref_str]
+#                #return APV_0 #+ ...
+#            
+#            quantities_fct_dict={'APV_RC_'+'E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp)+'_rhoch_'+nuc_ref_str:APV_RC}
+#        else:
+#            def APV_RC(atom_key):
+#                #APV_0 = AI_datasets[atom_key.name][('theta_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'Qsq_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'APV_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str)]
+#                #return APV_0 #+ ...
+#            
+#            quantities_fct_dict={'APV_RC_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str:APV_RC}
+#        #
+#        return calculate_correlation_quantities(AI_datasets,quantities_fct_dict,**args)
+
 def r_ch_rpso(r2p,r2so,Z,A):
     return r2p + constants.rsq_p + ((A-Z)/Z)*constants.rsq_n + 3*constants.hc**2/(4*masses.mN**2) + r2so
 
