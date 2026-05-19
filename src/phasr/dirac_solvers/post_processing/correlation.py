@@ -284,8 +284,6 @@ def calculate_correlation_left_right_asymmetry(AI_datasets,E_exp,theta_exp,accep
             def APV(atom_key):
                 return left_right_asymmetry_lepton_nucleus_scattering(E_exp,theta_exp,atom_key,atom_key if reference_nucleus is None else reference_nucleus,acceptance=acceptance_exp,verbose=True,**left_right_asymmetry_args)
             
-            # -> not working yet needs to be reworked, dict key cant be list
-            
             quantities_fct_dict={('theta_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'Qsq_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'APV_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str):APV}
         #
         return calculate_correlation_quantities(AI_datasets,quantities_fct_dict,**args)
@@ -340,10 +338,6 @@ def fit_linear_correlation(arr_dict,x_str,y_str,x_offset,**minimizer_args): #,nu
     # unused, what is the correct way to normalize this? 
     # covar = covariance_xi * y_error**2 * (redchisq if scale_yerr else 1.)
     # ,'cov':covar
-    # chisq = loss(xi)
-    # dof = len(resid) - len(xi)
-    # redchisq = chisq / dof
-    # ,'residual':resid,'redchisq':redchisq
     
     xi = result.x
     m_normalized, b_normalized = xi[0], xi[1]
@@ -354,8 +348,12 @@ def fit_linear_correlation(arr_dict,x_str,y_str,x_offset,**minimizer_args): #,nu
     
     resid = residuals(xi)
     db = np.std(resid) * y_error * y_data_std
+
+    chisq = loss(xi)
+    dof = len(resid) - len(xi)
+    redchisq = chisq / dof
     
-    results={'val':b,'dval':db,'m':m,'x_str':x_str,'y_str':x_str}
+    results={'val':b,'dval':db,'m':m,'x_str':x_str,'y_str':y_str,'residual':resid,'redchisq':redchisq}
     return results
 
 def Correlator(AI_datasets,x_str='rchsq',y_strs=['rwsq'],x_offset=0,**minimizer_args): 
