@@ -304,8 +304,8 @@ def correlation_left_right_asymmetry_add_radiative_corrections(AI_datasets,E_exp
             
             def APV_RC(atom_key):
                 APV_0 = AI_datasets[atom_key.name[len_base_label+1:]]['APV_'+'E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp)+'_rhoch_'+nuc_ref_str]
-                Qw_exp_corr = Qweak_exp/atom_key.Qw if Qweak_exp is not None else 1.0
                 Qsq_exp = momentum_transfer(E_exp,theta_exp,atom_key.mass)**2
+                Qw_exp_corr = Qweak_exp/atom_key.Qw if Qweak_exp is not None else 1.0
                 
                 print(atom_key,"APV without radiative corrections:", APV_0)
                 print(atom_key,"Qweak correction:", Qw_exp_corr-1)
@@ -316,7 +316,8 @@ def correlation_left_right_asymmetry_add_radiative_corrections(AI_datasets,E_exp
             quantities_fct_dict={'APV_RC_'+'E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp)+Qweak_exp_str+'_rhoch_'+nuc_ref_str:APV_RC}
         else:
             def APV_RC(atom_key):
-                _, Qsq_exp, APV_0 = AI_datasets[atom_key.name[len_base_label+1:]][('theta_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'Qsq_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'APV_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str)]
+                APV_0 = AI_datasets[atom_key.name[len_base_label+1:]]['APV_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str]
+                Qsq_exp = AI_datasets[atom_key.name[len_base_label+1:]]['Qsq_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str]
                 Qw_exp_corr = Qweak_exp/atom_key.Qw if Qweak_exp is not None else 1.0
                 
                 print(atom_key,"APV without radiative corrections:", APV_0)
