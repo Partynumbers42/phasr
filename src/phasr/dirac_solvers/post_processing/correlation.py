@@ -20,7 +20,8 @@ from ...physical_constants.iaea_nds import massofnucleusZN, JPofnucleusZN
 from ...nuclei import nucleus
 from ...nuclei.parameterizations.numerical import field_ultimate_cutoff#, highenergycutoff_field
 
-from ...utility.math import short_uncertainty_notation
+from ...utility.math import short_uncertainty_notation, momentum_transfer
+
 
 from .overlap_integrals import overlap_integral_scalar, overlap_integral_vector, overlap_integral_dipole
 
@@ -114,6 +115,8 @@ def prepare_results(Z,A,folder_path,name=None,r_cut=None,print_radius_check=Fals
         if hasattr(atom_AI,'form_factor') or hasattr(atom_AI,'charge_denstiy'):
             atom_AI.fill_gaps()
         atom_AI.update_dependencies()
+        AI_datasets[AI_model]['base_label'] = name 
+        AI_datasets[AI_model]['model_label'] = AI_model 
         AI_datasets[AI_model]['atom'] = atom_AI 
         
         # identify type
@@ -288,25 +291,47 @@ def calculate_correlation_left_right_asymmetry(AI_datasets,E_exp,theta_exp,accep
         #
         return calculate_correlation_quantities(AI_datasets,quantities_fct_dict,**args)
 
-#def calculate_correlation_left_right_asymmetry_with_radiative_corrections(AI_datasets,E_exp,theta_exp,acceptance_exp=None,reference_nucleus=None,left_right_asymmetry_args={},**args):
-#        #
-#        nuc_ref_str = reference_nucleus.name if reference_nucleus is not None else 'from_dataset'
-#        #
-#        if acceptance_exp is None:
-#            
-#            def APV_RC(atom_key):
-#                #APV_0 = AI_datasets[atom_key.name]['APV_'+'E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp)+'_rhoch_'+nuc_ref_str]
-#                #return APV_0 #+ ...
-#            
-#            quantities_fct_dict={'APV_RC_'+'E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp)+'_rhoch_'+nuc_ref_str:APV_RC}
-#        else:
-#            def APV_RC(atom_key):
-#                #APV_0 = AI_datasets[atom_key.name][('theta_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'Qsq_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'APV_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str)]
-#                #return APV_0 #+ ...
-#            
-#            quantities_fct_dict={'APV_RC_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str:APV_RC}
-#        #
-#        return calculate_correlation_quantities(AI_datasets,quantities_fct_dict,**args)
+def correlation_left_right_asymmetry_add_radiative_corrections(AI_datasets,E_exp,theta_exp,acceptance_exp=None,reference_nucleus=None,Qweak_exp=None,**args):
+        #
+        nuc_ref_str = reference_nucleus.name if reference_nucleus is not None else 'from_dataset'
+        #
+        # a bit janky but should be fine for now 
+        first_key = list(AI_datasets.keys())[0]
+        len_base_label = len(AI_datasets[first_key]['base_label'])
+        Qweak_exp_str = '_Qw{:.2f}'.format(AI_datasets[first_key]['atom'].Qw) if Qweak_exp is None else '_Qw{:.2f}'.format(Qweak_exp)
+        #
+        if acceptance_exp is None:
+            
+            def APV_RC(atom_key):
+                APV_0 = AI_datasets[atom_key.name[len_base_label+1:]]['APV_'+'E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp)+'_rhoch_'+nuc_ref_str]
+                Qw_exp_corr = Qweak_exp/atom_key.Qw if Qweak_exp is not None else 1.0
+                Qsq_exp = momentum_transfer(E_exp,theta_exp,atom_key.mass)**2
+                
+                print(atom_key,"APV without radiative corrections:", APV_0)
+                print(atom_key,"Qweak correction:", Qw_exp_corr-1)
+                print(atom_key,"Vacuum polarization correction:", vacuum_polarization_correction(Qsq_exp))
+                
+                return APV_0 * Qw_exp_corr/(1+vacuum_polarization_correction(Qsq_exp))
+            
+            quantities_fct_dict={'APV_RC_'+'E{:.2f}_theta{:.4f}'.format(E_exp,theta_exp)+Qweak_exp_str+'_rhoch_'+nuc_ref_str:APV_RC}
+        else:
+            def APV_RC(atom_key):
+                _, Qsq_exp, APV_0 = AI_datasets[atom_key.name[len_base_label+1:]][('theta_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'Qsq_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str,'APV_'+'E{:.2f}_weighted_mean'.format(E_exp)+'_rhoch_'+nuc_ref_str)]
+                Qw_exp_corr = Qweak_exp/atom_key.Qw if Qweak_exp is not None else 1.0
+                
+                print(atom_key,"APV without radiative corrections:", APV_0)
+                print(atom_key,"Qweak correction:", Qw_exp_corr-1)
+                print(atom_key,"Vacuum polarization correction:", vacuum_polarization_correction(Qsq_exp))
+                
+                return APV_0 * Qw_exp_corr/(1+vacuum_polarization_correction(Qsq_exp))
+            
+            quantities_fct_dict={'APV_RC_'+'E{:.2f}_weighted_mean'.format(E_exp)+Qweak_exp_str+'_rhoch_'+nuc_ref_str:APV_RC}
+        #
+        return calculate_correlation_quantities(AI_datasets,quantities_fct_dict,**args)
+
+def vacuum_polarization_correction(Qsq):
+    # Qsq in MeV^2
+    return (constants.alpha_el/(3*pi)) * np.log(Qsq/masses.me**2) 
 
 def r_ch_rpso(r2p,r2so,Z,A):
     return r2p + constants.rsq_p + ((A-Z)/Z)*constants.rsq_n + 3*constants.hc**2/(4*masses.mN**2) + r2so
