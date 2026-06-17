@@ -471,8 +471,21 @@ def rsq_dict_add_r_vals(rsq_correlation_results_dict,verbose=True):
     return r_correlation_results_dict
 
 
+def color_of(nr,colorwheel):
+    if colorwheel is None:
+        return 'C'+str(nr)
+    else:
+        return colorwheel[nr%len(colorwheel)]
+
 # plotting routine
-def plot_correlation(ax,AI_datasets,x_str,y_strs,x_ref=None,dx_ref=None,x_ref_label=None,y_str_label_trans=lambda x: x ,xrange=None,yrange=None,plot_fit=True,color_fit=False,plot_color_legend=True,plot_marker_legend=True,hatch=None,color_nr=0, scale_x=1, scale_y=1):
+def plot_correlation(ax,AI_datasets,x_str,y_strs,
+                     x_ref=None,dx_ref=None,x_ref_label=None,color_ref=None,y_str_label_trans=lambda x: x ,
+                     xrange=None,yrange=None,
+                     plot_fit=True,color_fit=False,plot_color_legend=True,plot_marker_legend=True,hatch=None,color_nr=0,colorwheel=None, 
+                     scale_x=1, scale_y=1):
+
+    if color_ref is None:
+        color_ref = 'C3'
 
     AI_names = {'DN2LOGO':r'$\Delta$NNLO$_\operatorname{GO}$','N2LOsat':r'NNLO$_\operatorname{sat}$','EM1p82p0':r'$1.8/2.0$ (EM)','EM2p02p0':r'$2.0/2.0$ (EM)','EM2p02p0PWA':r'$2.0/2.0$ (PWA)','EM2p22p0':r'$2.2/2.0$ (EM)','1p82p0EM7p5':'1.8/2.0 (EM7.5)', '1p82p0sim7p5':'1.8/2.0 (sim7.5)','NIsample':'Samples from\nHu et al. (2022)','SM':'shell model'}
     marker_dict={'DN2LOGO':'s','N2LOsat':'D','EM1p82p0':'p','EM2p02p0':'X','EM2p02p0PWA':'d','EM2p22p0':'P','1p82p0EM7p5':'v','1p82p0sim7p5':'^','NIsample':'.','SM':'h'}
@@ -542,7 +555,7 @@ def plot_correlation(ax,AI_datasets,x_str,y_strs,x_ref=None,dx_ref=None,x_ref_la
         first=True
         for AI_key in AI_datasets:
             AI_name=AI_key if AI_key[:-4]!='NIsample' else 'NIsample'
-            ax.scatter(AI_datasets[AI_key][x_str]*scale_x,AI_datasets[AI_key][y_str]*scale_y,marker=marker_dict[AI_name],edgecolor='black',linewidth=0.2,s=50,hatch=hatch,alpha=1,label=(y_str_label_trans(y_str) if first else None),color='C'+str(color_nr),zorder=2 if AI_name!='NIsample' else 1)
+            ax.scatter(AI_datasets[AI_key][x_str]*scale_x,AI_datasets[AI_key][y_str]*scale_y,marker=marker_dict[AI_name],edgecolor='black',linewidth=0.2,s=50,hatch=hatch,alpha=1,label=(y_str_label_trans(y_str) if first else None),color=color_of(color_nr,colorwheel),zorder=2 if AI_name!='NIsample' else 1)
             first=False
         
     if plot_fit:
@@ -559,15 +572,15 @@ def plot_correlation(ax,AI_datasets,x_str,y_strs,x_ref=None,dx_ref=None,x_ref_la
             db=results['dval']
             
             y=((x/scale_x + x_offset)*m+b)*scale_y
-            ax.plot(x,y,color='C'+str(color_nr) if color_fit else 'grey',zorder=0,linewidth=0.5)
-            ax.fill_between(x,y+db*scale_y,y-db*scale_y,alpha=0.25,color='C'+str(color_nr) if color_fit else 'grey',zorder=-1)
+            ax.plot(x,y,color=color_of(color_nr,colorwheel) if color_fit else 'grey',zorder=0,linewidth=0.5)
+            ax.fill_between(x,y+db*scale_y,y-db*scale_y,alpha=0.25,color=color_of(color_nr,colorwheel) if color_fit else 'grey',zorder=-1)
 
     if not x_ref is None: 
-        ax.plot([x_ref*scale_x,x_ref*scale_x],[y_min,y_max],linestyle='--',color='C3',zorder=-2)
+        ax.plot([x_ref*scale_x,x_ref*scale_x],[y_min,y_max],linestyle='--',color=color_ref,zorder=-2)
         if not dx_ref is None:
-            ax.fill_betweenx([y_min,y_max],2*[x_ref*scale_x-dx_ref*scale_x],2*[x_ref*scale_x+dx_ref*scale_x],alpha=0.25,color='C3',zorder=-3,edgecolor=None)
+            ax.fill_betweenx([y_min,y_max],2*[x_ref*scale_x-dx_ref*scale_x],2*[x_ref*scale_x+dx_ref*scale_x],alpha=0.25,color=color_ref,zorder=-3,edgecolor=None)
         if not x_ref_label is None:
-            ax.annotate(x_ref_label, (x_ref*scale_x+x_bin,y_min+y_bin),horizontalalignment='left', verticalalignment='bottom',color='C3')
+            ax.annotate(x_ref_label, (x_ref*scale_x+x_bin,y_min+y_bin),horizontalalignment='left', verticalalignment='bottom',color=color_ref)
         
     ax.set_xticks(np.arange(x_min,x_max+x_tics,x_tics,dtype=type(x_tics)))#,rotation = 15
     ax.set_xlim(x_min,x_max)
