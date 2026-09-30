@@ -481,8 +481,8 @@ def color_of(nr,colorwheel):
 def plot_correlation(ax,AI_datasets,x_str,y_strs,
                      x_ref=None,dx_ref=None,x_ref_label=None,color_ref=None,y_str_label_trans=lambda x: x ,
                      xrange=None,yrange=None,
-                     plot_fit=True,color_fit=False,plot_color_legend=True,plot_marker_legend=True,hatch=None,color_nr=0,colorwheel=None, 
-                     scale_x=1, scale_y=1):
+                     plot_fit=True,color_fit=False,plot_color_legend=True,plot_marker_legend=True,hatch=None,color_nr=0,colorwheel=None, color_edge=False,marker_alpha=1,
+                     scale_x=1, scale_y=1,**scatter_args):
 
     if color_ref is None:
         color_ref = 'C3'
@@ -555,7 +555,10 @@ def plot_correlation(ax,AI_datasets,x_str,y_strs,
         first=True
         for AI_key in AI_datasets:
             AI_name=AI_key if AI_key[:-4]!='NIsample' else 'NIsample'
-            ax.scatter(AI_datasets[AI_key][x_str]*scale_x,AI_datasets[AI_key][y_str]*scale_y,marker=marker_dict[AI_name],edgecolor='black',linewidth=0.2,s=50,hatch=hatch,alpha=1,label=(y_str_label_trans(y_str) if first else None),color=color_of(color_nr,colorwheel),zorder=2 if AI_name!='NIsample' else 1)
+            if color_edge:
+                ax.scatter(AI_datasets[AI_key][x_str]*scale_x,AI_datasets[AI_key][y_str]*scale_y,marker=marker_dict[AI_name],edgecolor=color_of(color_nr,colorwheel),linewidth=0.2,s=50,hatch=hatch,alpha=marker_alpha,label=(y_str_label_trans(y_str) if first else None),color='white',zorder=2 if AI_name!='NIsample' else 1,**scatter_args)
+            else:
+                ax.scatter(AI_datasets[AI_key][x_str]*scale_x,AI_datasets[AI_key][y_str]*scale_y,marker=marker_dict[AI_name],edgecolor='black',linewidth=0.2,s=50,hatch=hatch,alpha=marker_alpha,label=(y_str_label_trans(y_str) if first else None),color=color_of(color_nr,colorwheel),zorder=2 if AI_name!='NIsample' else 1,**scatter_args)
             first=False
         
     if plot_fit:
