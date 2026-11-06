@@ -10,4 +10,4 @@ Package to calculate scattering phase shifts for arbitrary radial potentials usi
 
 For the documentation visit: https://partynumbers42.github.io/phasr/
 
-This Project is still an early development version. Use with care. 
+This Project is still in development. Use with care. 
